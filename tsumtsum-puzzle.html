@@ -273,6 +273,35 @@
     transition: transform .5s cubic-bezier(.2,.7,.3,1), opacity .5s ease;
   }
 
+  /* ---------- ナミネ：ソラへの変化演出＆特殊リンク見た目 ---------- */
+  .tsum.soraTransforming .face{
+    animation: soraTransformFlash .5s ease-in-out;
+  }
+  @keyframes soraTransformFlash{
+    0%{ filter:brightness(1); transform:scale(1); }
+    35%{ filter:brightness(2.6) saturate(0); transform:scale(1.22); }
+    60%{ filter:brightness(1.8) saturate(0.3); transform:scale(0.92); }
+    100%{ filter:brightness(1) saturate(1); transform:scale(1); }
+  }
+  .namineTransformFlashLayer{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:55;
+    background:radial-gradient(circle, rgba(255,255,255,0.9), rgba(233,164,208,0.25) 60%, transparent 75%);
+    opacity:0;
+    animation: namineFlashFade .5s ease-out forwards;
+  }
+  @keyframes namineFlashFade{
+    0%{ opacity:0; }
+    20%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+  /* ナミネ・ソラは種類が違っても繋げられることを示す特別なリンク色の縁取り */
+  .tsum.namineLinkable .face{
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 8px 2px rgba(233,164,208,0.85), 0 4px 6px rgba(0,0,0,0.15);
+  }
+
   /* ---------- ガストンのハンティングショット演出 ---------- */
   .gastonShotLayer{
     position:absolute;
@@ -901,12 +930,16 @@
   // インデックス0は消去数1個目に対応（45個消去まで対応、以降は範囲外として最後の値を使う）
   const COIN_TABLE_NORMAL = [0,0,0,1,3,5,7,10,13,16,21,26,31,36,46,56,66,76,86,96,106,116,126,136,146,156,166,176,186,198,210,222,234,246,258,270,282,294,306,318,330,342,354,366,378];
   const COIN_TABLE_MINUS1 = [0,0,0,1,2,3,4,5,6,7,8,9,10,11,16,21,26,31,36,41,46,51,56,61,66,71,76,81,86,93,100,107,114,121,128,135,142,149,156,163,170,177,184,191,198];
+  const COIN_TABLE_MINUS2 = [0,0,0,1,2,3,4,5,6,7,10,13,16,19,27,35,43,51,59,67,75,83,91,99,107,115,123,131,139,149,159,169,179,189,199,209,219,229,239,249,259,269,279,289,299];
 
-  // coinBonus: そのツム固有のコイン補正値（現状 0 または -1 のみ使用）。
-  // ガストン・キャプテンライトイヤーのスキル発動中消去は-1補正、それ以外（通常のチェーン・ボム消去含む）は補正無し。
+  // coinBonus: そのツム固有のコイン補正値（0 / -1 / -2 に対応）。
+  // ガストン・キャプテンライトイヤーのスキル発動中消去は-1補正、ナミネ関連の消去は-2補正、
+  // それ以外（通常のチェーン・ボム消去含む）は補正無し。
   function coinsForChain(n, coinBonus){
     if(n<3) return 0;
-    const table = (coinBonus===-1) ? COIN_TABLE_MINUS1 : COIN_TABLE_NORMAL;
+    let table = COIN_TABLE_NORMAL;
+    if(coinBonus===-1) table = COIN_TABLE_MINUS1;
+    else if(coinBonus===-2) table = COIN_TABLE_MINUS2;
     const idx = Math.min(n, table.length) - 1;
     const base = table[idx];
     return Math.round(base * coinMultiplier);
@@ -933,7 +966,13 @@
     { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:170, skillNeed:16, colorGroup:'blue', coinBonus:-1,
       skillName:'ネヴァー・ギブアップ',
       skillDesc:'腕のビームで狙う敵がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径5ツム分の範囲を消去（5回まで）' },
+    { key:'namine', name:'ナミネ',     color:'#e8a4d0', dark:'#c97cae', motif:'flower', score:180, skillNeed:19, colorGroup:'redPink', coinBonus:-2,
+      skillName:'メモリーチェイン',
+      skillDesc:'盤面で2番目に多いサブツムを、6秒間「ソラ」に変化させる。ナミネとソラは離れていても一緒につなげられ、消すと周りのツムも巻き込んで消える' },
   ];
+
+  // ソラ：ナミネのスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
+  const SORA_TYPE = { key:'sora', name:'ソラ', color:'#2b2f4a', dark:'#181a2e', motif:'key', score:0, colorGroup:'navy' };
 
   // 盤面に実際に降ってくるツムの種類（アイテムで5種/4種に変化）
   let activeTsumTypes = TSUM_TYPES.slice();
@@ -943,6 +982,11 @@
   let gastonRainTimer = null;
   let buzzTapMode = false;
   let buzzTapsLeft = 0;
+
+  // ナミネ：スキル効果中はサブツムの1種類がソラに変化する
+  let namineActive = false;
+  let namineEndTimer = null;
+  let namineTransformedKey = null; // ソラに変化させた元のツムのkey（効果終了時に戻すため）
 
   // ------------------------------------------------------------
   // Items（ゲーム開始前に選ぶアイテム効果）
@@ -1066,7 +1110,12 @@
     if(gastonRainActive){
       return TSUM_TYPES.find(t=>t.key==='gaston');
     }
-    return activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
+    const picked = activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
+    // ナミネのスキル効果中、変化対象に選ばれた種類が新規に降ってくる場合はソラとして生成する
+    if(namineActive && picked.key===namineTransformedKey){
+      return SORA_TYPE;
+    }
+    return picked;
   }
 
   // マイツムを必ず含めつつ、盤面に出す種類数（4 or 5）をランダムに選ぶ。
@@ -1281,6 +1330,68 @@
         face.appendChild(btn);
         break;
       }
+      case 'flower': {
+        // 頭の上に咲く小さな花飾り（花びら5枚＋中心）
+        const petalColors = ['#fff0f8'];
+        for(let i=0;i<5;i++){
+          const petal = document.createElement('div');
+          petal.className='motif';
+          const s = size*0.16;
+          petal.style.width = s+'px';
+          petal.style.height = s*1.3+'px';
+          petal.style.background = `radial-gradient(circle at 50% 30%, #fff, ${lighten(type.color)} 70%)`;
+          petal.style.borderRadius = '50%';
+          petal.style.left = '50%';
+          petal.style.top = '-22%';
+          const angle = i*72;
+          petal.style.transform = `translate(-50%,-50%) rotate(${angle}deg) translateY(-${s*0.55}px)`;
+          petal.style.boxShadow = 'inset 0 -2px 3px rgba(0,0,0,0.1)';
+          face.appendChild(petal);
+        }
+        const center = document.createElement('div');
+        center.className='motif';
+        center.style.width = size*0.12+'px';
+        center.style.height = size*0.12+'px';
+        center.style.left = '50%'; center.style.top = '-22%';
+        center.style.transform = 'translate(-50%,-50%)';
+        center.style.background = 'radial-gradient(circle, #fff6c0, #ffd23f 70%)';
+        center.style.borderRadius = '50%';
+        face.appendChild(center);
+        break;
+      }
+      case 'key': {
+        // シンプルな鍵モチーフ（円＋柄＋歯）
+        const ring = document.createElement('div');
+        ring.className='motif';
+        const rs = size*0.22;
+        ring.style.width = rs+'px';
+        ring.style.height = rs+'px';
+        ring.style.left = '50%'; ring.style.top = '-6%';
+        ring.style.transform = 'translate(-50%,-50%)';
+        ring.style.border = `${size*0.05}px solid #ffd876`;
+        ring.style.borderRadius = '50%';
+        ring.style.background = 'transparent';
+        face.appendChild(ring);
+        const shaft = document.createElement('div');
+        shaft.className='motif';
+        shaft.style.width = size*0.06+'px';
+        shaft.style.height = size*0.3+'px';
+        shaft.style.left = '50%'; shaft.style.top = '18%';
+        shaft.style.transform = 'translateX(-50%)';
+        shaft.style.background = '#ffd876';
+        face.appendChild(shaft);
+        [0,1].forEach(i=>{
+          const tooth = document.createElement('div');
+          tooth.className='motif';
+          tooth.style.width = size*0.1+'px';
+          tooth.style.height = size*0.05+'px';
+          tooth.style.left = '50%'; tooth.style.top = (36+i*8)+'%';
+          tooth.style.transform = 'translateX(-2%)';
+          tooth.style.background = '#ffd876';
+          face.appendChild(tooth);
+        });
+        break;
+      }
     }
   }
 
@@ -1454,22 +1565,40 @@
     t.selected = true;
     t.vx = 0; t.vy = 0;
     t.el.classList.add('selected');
+    if(t.type.key==='namine' || t.type.key==='sora') t.el.classList.add('namineLinkable');
     updateRope();
     updateLinkCount();
   }
 
+  // ナミネとソラは互いに「同じ種類」とみなして自由に（離れていても）つなげられる特殊ペア
+  function isNamineSoraPair(keyA, keyB){
+    return (keyA==='namine' && keyB==='sora') || (keyA==='sora' && keyB==='namine');
+  }
+  function sameChainType(keyA, keyB){
+    return keyA===keyB || isNamineSoraPair(keyA, keyB);
+  }
+
   function tryAddToSelection(t){
-    if(t.type.key !== selectedType) return;
+    if(!sameChainType(t.type.key, selectedType)) return;
     const len = selectedPath.length;
     if(len>=2 && selectedPath[len-2] === t){
       const removed = selectedPath.pop();
       removed.selected = false;
-      removed.el.classList.remove('selected');
+      removed.el.classList.remove('selected','namineLinkable');
       updateRope(); updateLinkCount();
       return;
     }
     if(selectedPath.includes(t)) return;
     const last = selectedPath[selectedPath.length-1];
+    // ナミネ⇄ソラ同士は、盤面上どれだけ離れていてもつながる
+    if(isNamineSoraPair(t.type.key, last.type.key)){
+      selectedPath.push(t);
+      t.selected = true;
+      t.vx = 0; t.vy = 0;
+      t.el.classList.add('selected', 'namineLinkable');
+      updateRope(); updateLinkCount();
+      return;
+    }
     const dx = t.x - last.x, dy = t.y - last.y;
     const dist = Math.sqrt(dx*dx+dy*dy);
     // 隣接判定：実座標での距離がツム直径の約1.7倍以内なら「つながる」とみなす
@@ -1478,6 +1607,7 @@
       t.selected = true;
       t.vx = 0; t.vy = 0;
       t.el.classList.add('selected');
+      if(t.type.key==='namine' || t.type.key==='sora') t.el.classList.add('namineLinkable');
       updateRope(); updateLinkCount();
     }
   }
@@ -1524,7 +1654,7 @@
     if(path.length >= 3){
       resolveMatch(path);
     } else {
-      path.forEach(t=>t.el.classList.remove('selected'));
+      path.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
     }
   }
 
@@ -1593,7 +1723,7 @@
       const delay = Math.round(i*stagger);
       setTimeout(()=>{
         if(!tsums.includes(t)) return; // 既にボム等で強制終了済み
-        t.el.classList.remove('selected');
+        t.el.classList.remove('selected','namineLinkable');
         t.el.style.animationDuration = (POP_DURATION/1000)+'s';
         t.el.classList.add(popClass || 'popping');
         t.ghost = true; t.vx = 0; t.vy = 0;
@@ -1677,36 +1807,65 @@
     const effectiveN = path.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     bumpCombo();
 
-    const bonus = computeScore(path, effectiveN);
+    // ナミネのスキル効果中（ソラが存在する間）に、ナミネ・ソラを含むチェーンを消した場合のみ
+    // 周囲のツムも巻き込んで一緒に消す。スキル効果外では通常のチェーンとして扱う。
+    const hasNamineOrSora = namineActive && path.some(t=> t.type.key==='namine' || t.type.key==='sora');
+    let extraTargets = [];
+    if(hasNamineOrSora){
+      const pathIds = new Set(path.map(t=>t.id));
+      const radius = tsumRadius * NAMINE_SKILL_RANGE;
+      const centers = path.filter(t=> t.type.key==='namine' || t.type.key==='sora');
+      const nearbySet = new Set();
+      tsums.forEach(t=>{
+        if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+        for(const c of centers){
+          const dx = t.x-c.x, dy = t.y-c.y;
+          if(dx*dx+dy*dy <= radius*radius){ nearbySet.add(t); break; }
+        }
+      });
+      extraTargets = Array.from(nearbySet);
+    }
+    const extraEffectiveN = extraTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const totalEffectiveN = effectiveN + extraEffectiveN;
+
+    const bonus = computeScore(path, totalEffectiveN) + (extraTargets.length>0 ? computeScore(extraTargets, extraEffectiveN) : 0);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
 
-    const gainedCoins = coinsForChain(effectiveN);
+    // ナミネ・ソラを含むチェーンはコイン補正-2（本家のナミネ固有コイン補正）
+    const coinBonus = hasNamineOrSora ? -2 : undefined;
+    const gainedCoins = coinsForChain(totalEffectiveN, coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
 
-    if(effectiveN > maxChain) maxChain = effectiveN;
+    if(totalEffectiveN > maxChain) maxChain = totalEffectiveN;
     chainVal.textContent = maxChain;
 
     if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + effectiveN*FEVER_GAUGE_PER_TSUM);
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + totalEffectiveN*FEVER_GAUGE_PER_TSUM);
     }
 
-    const myCount = path.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
+    const myCount = path.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0)
+      + extraTargets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
     addSkillGauge(myCount);
 
-    showCombo(n, bonus, path, gainedCoins, effectiveN);
-    burstSparkles(path);
-    burstMyTsumOrbs(path);
-    if(gainedCoins>0) burstCoins(path, gainedCoins);
+    showCombo(n, bonus, path, gainedCoins, totalEffectiveN);
+    burstSparkles(path.concat(extraTargets));
+    burstMyTsumOrbs(path.concat(extraTargets));
+    if(gainedCoins>0) burstCoins(path.concat(extraTargets), gainedCoins);
 
-    const spawnBomb = effectiveN >= bombChainThreshold;
+    const spawnBomb = totalEffectiveN >= bombChainThreshold;
     const bombSpot = spawnBomb ? {x:path[path.length-1].x, y:path[path.length-1].y} : null;
+
+    // 巻き込み分は一気に（ノーウェーブで）先に消し、なぞった本体はいつも通りウェーブで消す
+    if(extraTargets.length>0){
+      popWithWave(extraTargets, null, 'popping', ()=>{}, true);
+    }
 
     // 起点→終点の順にウェーブ状で消えていく（なぞった順番のまま）。
     // 消えるまでの間は幽霊状態として物理的に居座り、上のツムの落下をせき止める。
     popWithWave(path, null, 'popping', ()=>{
-      refillIfNeeded(path.map(t=>t.x));
+      refillIfNeeded(path.concat(extraTargets).map(t=>t.x));
       checkFeverTrigger();
     }, false, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
   }
@@ -1846,7 +2005,7 @@
     updateSkillGaugeUI();
 
     if(selecting){
-      selectedPath.forEach(t=>t.el.classList.remove('selected'));
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
       selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; lastPointerPoint=null;
     }
 
@@ -1861,6 +2020,7 @@
       orange: skillDevilBomb,
       gaston: skillGastonLine,
       buzz: skillBuzzLightyear,
+      namine: skillNamine,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -2173,6 +2333,106 @@
     const p = getBoardLocalPoint(e);
     doBuzzErase(p);
   });
+
+  // ------------------------------------------------------------
+  // ナミネ：スキル効果中、盤面で2番目に多いサブツムをソラに変化させる
+  // ------------------------------------------------------------
+  const NAMINE_DURATION = 6; // 秒
+  const NAMINE_SKILL_RANGE = 3.2; // ナミネ/ソラを消す際に巻き込む範囲（ボム爆発と同程度＝ツム半径の3.2倍）
+
+  function skillNamine(){
+    // 前回のスキル効果がまだ残っている場合（ソラが元に戻る前の再発動）は、
+    // 先に前回分を即座に元の種類へ戻してから今回の判定に入る
+    if(namineActive){
+      clearTimeout(namineEndTimer);
+      const prevOriginalType = TSUM_TYPES.find(t=>t.key===namineTransformedKey);
+      if(prevOriginalType){
+        tsums.filter(t=> t.type.key==='sora' && !t.isBomb && !t.ghost)
+          .forEach(t=> transformTsumType(t, prevOriginalType));
+      }
+      namineActive = false;
+      namineTransformedKey = null;
+    }
+
+    // マイツム（ナミネ）以外のサブツムを種類ごとに集計し、2番目に多い種類を探す
+    const counts = {};
+    tsums.forEach(t=>{
+      if(t.isMine || t.isBomb || t.ghost || t.type.key==='sora') return;
+      counts[t.type.key] = (counts[t.type.key]||0) + 1;
+    });
+    const ranked = Object.entries(counts).sort((a,b)=> b[1]-a[1]);
+
+    if(ranked.length < 2){
+      // 2番目に多い種類が存在しない（サブツムが1種類以下）場合はスキルを消費せず不発扱いにする
+      showSkillLabel('メモリーチェイン！ 対象がいなかった…');
+      finishSkill();
+      return;
+    }
+
+    const targetKey = ranked[1][0];
+    const targets = tsums.filter(t=> t.type.key===targetKey && !t.isBomb && !t.ghost);
+    if(targets.length===0){
+      showSkillLabel('メモリーチェイン！ 対象がいなかった…');
+      finishSkill();
+      return;
+    }
+    namineTransformedKey = targetKey;
+    const targetName = (TSUM_TYPES.find(tt=>tt.key===targetKey)||{}).name || '';
+
+    // 変化演出中は盤面の時間を止める
+    boardFrozen = true;
+    pauseTimer(700);
+
+    const flash = document.createElement('div');
+    flash.className = 'namineTransformFlashLayer';
+    board.appendChild(flash);
+    setTimeout(()=> flash.remove(), 520);
+
+    targets.forEach(t=>{
+      t.el.classList.add('soraTransforming');
+    });
+
+    showSkillLabel(`メモリーチェイン！ ${targetName}がソラに変化`);
+
+    setTimeout(()=>{
+      targets.forEach(t=> transformTsumType(t, SORA_TYPE));
+      boardFrozen = false;
+      finishSkill();
+      namineActive = true;
+      clearTimeout(namineEndTimer);
+      namineEndTimer = setTimeout(endNamineSkill, NAMINE_DURATION*1000);
+    }, 500);
+  }
+
+  // 効果終了時、ソラを元の種類に戻す
+  function endNamineSkill(){
+    namineActive = false;
+    const soraTsums = tsums.filter(t=> t.type.key==='sora' && !t.isBomb && !t.ghost);
+    const originalType = TSUM_TYPES.find(t=>t.key===namineTransformedKey);
+    if(originalType){
+      soraTsums.forEach(t=>{
+        t.el.classList.add('soraTransforming');
+        setTimeout(()=>{
+          if(tsums.includes(t)) transformTsumType(t, originalType);
+        }, 250);
+      });
+    }
+    namineTransformedKey = null;
+  }
+
+  // ツムの種類を差し替える共通処理（座標・物理状態は維持したままDOM要素だけ作り直す）
+  function transformTsumType(t, newType){
+    t.type = newType;
+    const isMine = newType.key === myTsumKey;
+    t.isMine = isMine;
+    const size = t.r*2;
+    const newEl = createTsumEl(newType, isMine, size);
+    if(t.isBig) newEl.classList.add('bigTsum');
+    newEl.style.transform = t.el.style.transform;
+    t.el.replaceWith(newEl);
+    t.el = newEl;
+    attachHandlers(t);
+  }
 
   function doBuzzErase(p){
     const eraseRadius = tsumRadius*5; // 直径5ツム分の円
@@ -2591,6 +2851,10 @@
   // Deadlock detection & reshuffle（座標ベース：近距離クラスタで判定）
   // ------------------------------------------------------------
   function hasAnyMove(){
+    // ナミネ・ソラが盤面にいるなら、両者は距離を問わず必ずつながる特殊ペアなので即座に手ありと判定
+    const namineSoraCount = tsums.filter(t=> !t.isBomb && !t.ghost && (t.type.key==='namine' || t.type.key==='sora')).length;
+    if(namineSoraCount>=3) return true;
+
     const visited = new Set();
     for(const start of tsums){
       if(visited.has(start.id) || start.isBomb || start.ghost) continue;
@@ -2604,7 +2868,13 @@
         group.push(cur);
         for(const other of tsums){
           if(visited.has(other.id) || other.isBomb || other.ghost) continue;
-          if(other.type.key !== cur.type.key) continue;
+          if(!sameChainType(other.type.key, cur.type.key)) continue;
+          if(isNamineSoraPair(other.type.key, cur.type.key)){
+            // ナミネ⇄ソラは距離を問わず必ずつながる
+            visited.add(other.id);
+            stack.push(other);
+            continue;
+          }
           const dx = other.x-cur.x, dy = other.y-cur.y;
           const dist = Math.sqrt(dx*dx+dy*dy);
           if(dist <= cur.r*3.4){
@@ -2628,26 +2898,15 @@
   }
 
   function reshuffleTypes(){
-    // 座標は維持したまま色（type）だけをシャッフルする救済措置（ボムは対象外）
-    const targets = tsums.filter(t=>!t.isBomb && !t.ghost);
+    // 座標は維持したまま色（type）だけをシャッフルする救済措置（ボム対象外）。
+    // ナミネのスキル効果中はソラ（およびナミネ自身）の種類が壊れないよう対象から除外する。
+    const targets = tsums.filter(t=>!t.isBomb && !t.ghost && t.type.key!=='sora' && t.type.key!=='namine');
     const types = targets.map(t=>t.type);
     for(let i=types.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [types[i], types[j]] = [types[j], types[i]];
     }
-    targets.forEach((t, idx)=>{
-      const newType = types[idx];
-      t.type = newType;
-      const isMine = newType.key === myTsumKey;
-      t.isMine = isMine;
-      const size = t.r*2;
-      const newEl = createTsumEl(newType, isMine, size);
-      if(t.isBig) newEl.classList.add('bigTsum');
-      newEl.style.transform = t.el.style.transform;
-      t.el.replaceWith(newEl);
-      t.el = newEl;
-      attachHandlers(t);
-    });
+    targets.forEach((t, idx)=> transformTsumType(t, types[idx]));
   }
 
   // ------------------------------------------------------------
@@ -2709,6 +2968,9 @@
     buzzTapMode = false;
     buzzTapsLeft = 0;
     boardWrap.classList.remove('buzzTapMode');
+    namineActive = false;
+    clearTimeout(namineEndTimer);
+    namineTransformedKey = null;
 
     // アイテム反映：盤面のツム種類数／ボム出現チェーン数
     activeTsumTypes = buildActiveTsumTypes(itemFewerTypes ? 4 : 5);
@@ -2750,9 +3012,10 @@
     boardFrozen = false;
     buzzTapMode = false;
     boardWrap.classList.remove('buzzTapMode');
+    clearTimeout(namineEndTimer);
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
-      selectedPath.forEach(t=>t.el.classList.remove('selected'));
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
       selecting=false; selectedPath=[]; ropeSvg.innerHTML='';
     }
     appEl.classList.remove('fever');
