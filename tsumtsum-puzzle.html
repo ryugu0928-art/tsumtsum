@@ -2261,9 +2261,12 @@
   // ------------------------------------------------------------
   function refillIfNeeded(){
     const deficit = MAX_TSUMS - tsums.length;
+    const centerX = boardW/2;
+    const spread = Math.min(boardW*0.32, tsumRadius*3.4); // 中央から左右に広がる範囲
     for(let i=0;i<deficit;i++){
-      const x = tsumRadius + Math.random()*(boardW - tsumRadius*2);
-      const y = -tsumRadius*2 - Math.random()*tsumRadius*4*i;
+      const rawX = centerX + (Math.random()-0.5)*2*spread;
+      const x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, rawX));
+      const y = -tsumRadius*5 - Math.random()*tsumRadius*4*i; // 画面外のより高い位置から落下開始
       const t = spawnTsum(x, y, (Math.random()-0.5)*40, 0);
       t.el.classList.add('spawning');
       setTimeout(()=>t.el.classList.remove('spawning'), 340);
