@@ -1643,9 +1643,12 @@
     comboTimer = setTimeout(()=>{ comboCount = 0; }, COMBO_TIMEOUT_MS);
   }
 
+  let timerResumeTimeout = null;
+
   function pauseTimer(ms){
     clearInterval(timerHandle);
-    setTimeout(()=>{
+    clearTimeout(timerResumeTimeout); // 先に予約されていた再開処理をキャンセルし、二重にsetIntervalが走らないようにする
+    timerResumeTimeout = setTimeout(()=>{
       if(gameActive) timerHandle = setInterval(tick, 1000);
     }, ms);
   }
@@ -2518,6 +2521,7 @@
 
     gameActive = true;
     clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
     timerHandle = setInterval(tick, 1000);
   }
 
@@ -2531,6 +2535,7 @@
   function endGame(){
     gameActive = false;
     clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
     clearTimeout(feverEndTimer);
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
