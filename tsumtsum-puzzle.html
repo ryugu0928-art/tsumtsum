@@ -6,8 +6,8 @@
 <title>まるまるパズル</title>
 <style>
   :root{
-    --bg-top:#fff1f7;
-    --bg-bottom:#e8e2ff;
+    --bg-top:#5fd0f0;
+    --bg-bottom:#2fa8dc;
     --panel:#ffffffcc;
     --ink:#4a3b5c;
     --accent-pink:#ff6fa5;
@@ -76,53 +76,85 @@
   /* ---------- HUD ---------- */
   #hud{
     display:flex; align-items:center; justify-content:space-between;
-    padding:10px 14px 6px;
+    padding:14px 14px 8px;
     z-index:20;
     position:relative;
-  }
-  .hud-box{
-    background:var(--panel);
-    border-radius:16px;
-    padding:6px 14px;
-    box-shadow:var(--shadow);
-    text-align:center;
-    min-width:64px;
-    transition:background .3s ease;
-  }
-  .hud-label{
-    font-size:10px;
-    color:#9a86b8;
-    font-weight:700;
-    letter-spacing:1px;
+    gap:10px;
   }
   .hud-value{
-    font-size:20px;
     font-weight:900;
-    color:var(--accent-purple);
     line-height:1.1;
     font-variant-numeric:tabular-nums;
   }
+  #timerBox{
+    width:62px; height:62px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eaf7ff, #bfe6fb 60%, #8fd0f0 100%);
+    box-shadow:0 3px 0 rgba(20,90,120,0.35), inset 0 -4px 6px rgba(20,90,120,0.15), inset 0 3px 4px rgba(255,255,255,0.8), 0 0 0 3px rgba(255,255,255,0.6);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    transition:background .3s ease;
+  }
+  #timerBox .hud-value{ color:#2a6f8f; font-size:22px; }
+  #timerBox.warn{ background:radial-gradient(circle at 35% 30%, #fff0ea, #ffc9b0 60%, #ff8f6b 100%); }
+  #timerBox.warn .hud-value{ color:#ff2d55; animation:pulse .5s infinite; }
+  @keyframes pulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
+
+  #scorePill{
+    flex:1;
+    min-width:0;
+    background:linear-gradient(180deg,#3b6fd6,#2a52ab);
+    border-radius:26px;
+    padding:8px 18px;
+    text-align:center;
+    box-shadow:0 3px 0 rgba(15,35,90,0.4), inset 0 2px 3px rgba(255,255,255,0.25), 0 0 0 3px rgba(255,255,255,0.5);
+  }
+  #scorePill .hud-value{ color:#fff; font-size:24px; letter-spacing:0.5px; }
   #coinRow{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:3px;
-    font-size:12px;
+    gap:4px;
+    font-size:13px;
     font-weight:800;
-    color:#c9941f;
+    color:#ffe9a8;
+    margin-top:2px;
   }
   #coinRow .coinIcon{
-    width:12px;height:12px;border-radius:50%;
+    width:13px;height:13px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #fff6c0, #ffd23f 55%, #e0ac00 100%);
     display:inline-block;
+    box-shadow:0 0 0 1.5px rgba(255,255,255,0.5);
   }
-  #timerBox .hud-value{ color:var(--accent-pink); transition:color .2s; }
-  #timerBox.warn .hud-value{ color:#ff2d55; animation:pulse .5s infinite; }
-  @keyframes pulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
+
+  #pauseBtn{
+    width:56px; height:56px;
+    border-radius:50%;
+    border:none;
+    flex-shrink:0;
+    background:radial-gradient(circle at 35% 30%, #ffe27a, #ffb400 65%, #e08600 100%);
+    box-shadow:0 3px 0 #a86400, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.5);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  #pauseBtn:active{ transform:translateY(2px); box-shadow:0 1px 0 #a86400, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.5); }
+  .pauseBars{
+    position:relative;
+    width:16px; height:16px;
+  }
+  .pauseBars::before, .pauseBars::after{
+    content:'';
+    position:absolute;
+    top:0; width:5px; height:16px;
+    background:#7a4a00;
+    border-radius:2px;
+  }
+  .pauseBars::before{ left:2px; }
+  .pauseBars::after{ right:2px; }
 
   #comboDisplay{
     position:absolute;
-    top:70px; left:50%;
+    top:96px; left:50%;
     transform:translateX(-50%) scale(0.5);
     font-size:14px;
     font-weight:900;
@@ -179,13 +211,23 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:4px 10px;
+    padding:14px 18px;
     min-height:0;
     overflow:hidden;
+  }
+  #boardFrame{
+    position:absolute;
+    inset:6px 10px;
+    border-radius:36px 36px 50% 50% / 36px 36px 30% 30%;
+    background:radial-gradient(ellipse at 50% 20%, #2c4468 0%, #16233a 75%);
+    box-shadow:inset 0 6px 14px rgba(0,0,0,0.45), 0 4px 0 rgba(0,0,0,0.15), 0 0 0 6px rgba(255,255,255,0.55), 0 0 0 9px rgba(20,120,170,0.5);
+    z-index:0;
+    pointer-events:none;
   }
   #board{
     position:relative;
     touch-action:none;
+    z-index:1;
   }
   svg#ropeSvg{
     position:absolute;
@@ -519,7 +561,7 @@
 
   /* ---------- bottom bar ---------- */
   #bottomBar{
-    padding:6px 16px 12px;
+    padding:6px 16px 16px;
     display:flex;
     flex-direction:column;
     gap:6px;
@@ -527,51 +569,69 @@
   #myTsumRow{
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:12px;
   }
   #myTsumIcon{
-    width:44px; height:44px;
+    width:52px; height:52px;
     border-radius:50%;
     flex-shrink:0;
-    box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 0 0 3px rgba(255,255,255,0.6);
     position:relative;
   }
   #skillGaugeWrap{ flex:1; }
   #chainLabel{
-    font-size:10px;
-    color:#9a86b8;
-    font-weight:700;
-    text-align:center;
-    margin-bottom:2px;
+    display:none;
   }
   #skillGauge{
-    height:16px;
-    background:#e5ddf7;
-    border-radius:10px;
+    height:30px;
+    background:linear-gradient(180deg,#1c3f5c,#122a40);
+    border-radius:18px;
     overflow:hidden;
-    box-shadow:inset 0 2px 4px rgba(0,0,0,0.12);
+    box-shadow:inset 0 3px 6px rgba(0,0,0,0.5), 0 2px 0 rgba(0,0,0,0.2), 0 0 0 3px rgba(255,255,255,0.5);
     position:relative;
+    display:flex;
+    align-items:center;
   }
   #skillFill{
+    position:absolute;
+    left:0; top:0; bottom:0;
     height:100%;
     width:0%;
-    background:linear-gradient(90deg,var(--accent-blue),var(--accent-mint));
-    border-radius:10px;
+    background:linear-gradient(180deg,#ffe27a,#ffb400 60%,#e08600);
     transition:width .25s ease;
+  }
+  #skillGaugeLabel{
+    position:relative;
+    z-index:1;
+    width:100%;
+    text-align:center;
+    font-size:13px;
+    font-weight:900;
+    letter-spacing:2px;
+    color:#dfe9f2;
+    text-shadow:0 1px 2px rgba(0,0,0,0.5);
   }
   #skillBtn{
     flex-shrink:0;
-    width:56px; height:56px;
+    width:60px; height:60px;
     border-radius:50%;
     border:none;
-    background:linear-gradient(135deg,#ffd23f,#ff9640);
-    box-shadow:0 4px 0 #c97a1f;
-    font-size:11px;
-    font-weight:900;
-    color:#7a3e00;
-    opacity:0.4;
+    background:radial-gradient(circle at 35% 30%, #ffe27a, #ffb400 65%, #c97a1f 100%);
+    box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55);
+    opacity:0.45;
     pointer-events:none;
     transition:opacity .2s ease, transform .1s ease;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #skillBtnIcon{
+    width:26px; height:26px;
+    position:relative;
+  }
+  #skillBtnIcon::before{
+    content:'';
+    position:absolute; inset:0;
+    background:#7a4a00;
+    clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   }
   #skillBtn.ready{
     opacity:1;
@@ -580,8 +640,8 @@
   }
   #skillBtn:active{ transform:scale(0.92); }
   @keyframes skillReady{
-    0%,100%{ box-shadow:0 4px 0 #c97a1f, 0 0 0 0 rgba(255,210,63,0.6);}
-    50%{ box-shadow:0 4px 0 #c97a1f, 0 0 0 8px rgba(255,210,63,0);}
+    0%,100%{ box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 0 rgba(255,210,63,0.6);}
+    50%{ box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 10px rgba(255,210,63,0);}
   }
 
   /* ---------- overlays ---------- */
@@ -785,25 +845,24 @@
 <div id="app">
 
   <div id="hud">
-    <div class="hud-box">
-      <div class="hud-label">SCORE</div>
+    <div id="timerBox">
+      <div class="hud-value" id="timeVal">60</div>
+    </div>
+    <div id="scorePill">
       <div class="hud-value" id="scoreVal">0</div>
       <div id="coinRow"><span class="coinIcon"></span><span id="coinVal">0</span></div>
     </div>
-    <div class="hud-box" id="timerBox">
-      <div class="hud-label">TIME</div>
-      <div class="hud-value" id="timeVal">60</div>
-    </div>
-    <div class="hud-box">
-      <div class="hud-label">CHAIN</div>
-      <div class="hud-value" id="chainVal">0</div>
-    </div>
+    <button id="pauseBtn" aria-label="pause">
+      <span class="pauseBars"></span>
+    </button>
   </div>
+  <div id="chainVal" style="display:none;">0</div>
 
   <div id="comboDisplay"></div>
   <div id="feverBanner">FEVER!</div>
 
   <div id="boardWrap">
+    <div id="boardFrame"></div>
     <div id="feverLights"></div>
     <div id="board">
       <svg id="ropeSvg"></svg>
@@ -815,9 +874,9 @@
     <div id="myTsumRow">
       <div id="myTsumIcon"></div>
       <div id="skillGaugeWrap">
-        <div id="skillGauge"><div id="skillFill"></div></div>
+        <div id="skillGauge"><div id="skillFill"></div><span id="skillGaugeLabel">FEVER</span></div>
       </div>
-      <button id="skillBtn">SKILL</button>
+      <button id="skillBtn"><span id="skillBtnIcon"></span></button>
     </div>
   </div>
 
@@ -1080,8 +1139,11 @@
   // ------------------------------------------------------------
   function computeBoardSize(){
     const wrapRect = boardWrap.getBoundingClientRect();
-    const w = Math.floor(wrapRect.width - 8);
-    const h = Math.floor(wrapRect.height - 8);
+    const cs = getComputedStyle(boardWrap);
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const w = Math.floor(wrapRect.width - padX);
+    const h = Math.floor(wrapRect.height - padY);
     return {w, h};
   }
 
@@ -2538,7 +2600,7 @@
 
     const radius = bombTsum.r * 3.2; // 周囲を巻き込む範囲
     const affected = tsums.filter(t=>{
-      if(t.ghost) return false;
+      if(t.ghost || t.isBomb) return false;
       const dx = t.x-bombTsum.x, dy = t.y-bombTsum.y;
       return Math.sqrt(dx*dx+dy*dy) <= radius;
     });
@@ -2572,9 +2634,14 @@
     affected.forEach(t=>{ t.el.classList.add('bombPopping'); });
     affected.forEach(t=> removeTsum(t));
 
+    // 発火させたボム自身も、周囲の巻き込み対象とは別に必ず消去する
+    bombTsum.el.classList.add('bombPopping');
+    removeTsum(bombTsum);
+
     setTimeout(()=>{
       affected.forEach(t=>{ t.el.remove(); });
-      refillIfNeeded(affected.map(t=>t.x));
+      bombTsum.el.remove();
+      refillIfNeeded(affected.map(t=>t.x).concat([bombTsum.x]));
       checkFeverTrigger();
     }, 300);
   }
@@ -2680,6 +2747,10 @@
     const spacing = tsumRadius*2; // 1段内でのツム間隔（重なりすぎないように直径ぶん空ける）
     const perRow = Math.max(1, Math.floor(boardW / spacing)); // 1段に並ぶ最大数
 
+    // 画面（盤面の見える範囲＝boardH）の外に確実に隠れる開始位置。
+    // 大量消去で複数段になっても、どの段も必ずboardHより上（見えない位置）からスタートさせる。
+    const startY = -Math.max(boardH, tsumRadius*3) - tsumRadius*2;
+
     for(let i=0;i<deficit;i++){
       const rowIdx = Math.floor(i / perRow);
       const indexInRow = i % perRow;
@@ -2688,8 +2759,8 @@
       const offset = (indexInRow % 2 === 0 ? half : -half);
       const rawX = centerX + offset*spacing;
       const x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, rawX));
-      // 段が上がるほど、より高い画面外から降ってくる
-      const y = -tsumRadius*3 - rowIdx*(tsumRadius*2.2) - Math.random()*tsumRadius*0.6;
+      // 段が上がるほど、さらに高い画面外から降ってくる
+      const y = startY - rowIdx*(tsumRadius*2.2) - Math.random()*tsumRadius*0.6;
       const t = spawnTsum(x, y, (Math.random()-0.5)*20, 0);
       t.el.classList.add('spawning');
       setTimeout(()=>t.el.classList.remove('spawning'), 340);
