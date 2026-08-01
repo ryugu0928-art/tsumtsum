@@ -1,0 +1,2368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>まるまるパズル</title>
+<style>
+  :root{
+    --bg-top:#fff1f7;
+    --bg-bottom:#e8e2ff;
+    --panel:#ffffffcc;
+    --ink:#4a3b5c;
+    --accent-pink:#ff6fa5;
+    --accent-purple:#9b6bff;
+    --accent-yellow:#ffd23f;
+    --accent-mint:#4fd6c4;
+    --accent-blue:#4f9dff;
+    --accent-orange:#ff9640;
+    --rope:#ff4fa0;
+    --fever-gold:#ffcc33;
+    --shadow: 0 6px 0 rgba(0,0,0,0.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; overflow:hidden;
+    font-family:'Hiragino Maru Gothic ProN','Rounded Mplus 1c','Yu Gothic',sans-serif;
+    background:linear-gradient(180deg,var(--bg-top) 0%, var(--bg-bottom) 100%);
+    touch-action:none;
+    color:var(--ink);
+  }
+  #app{
+    position:relative;
+    width:100%;
+    max-width:480px;
+    height:100%;
+    max-height:900px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    background:linear-gradient(180deg,var(--bg-top) 0%, var(--bg-bottom) 100%);
+    box-shadow:0 0 40px rgba(80,40,100,0.25);
+    overflow:hidden;
+    transition:background .5s ease, filter .3s ease;
+  }
+  #app.fever{
+    background:linear-gradient(180deg,#3a2060 0%, #1a1035 100%);
+  }
+  #app.gastonRain{
+    background:linear-gradient(180deg,#ff9a3d 0%, #d9660f 100%);
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px 6px;
+    z-index:20;
+    position:relative;
+  }
+  .hud-box{
+    background:var(--panel);
+    border-radius:16px;
+    padding:6px 14px;
+    box-shadow:var(--shadow);
+    text-align:center;
+    min-width:64px;
+    transition:background .3s ease;
+  }
+  .hud-label{
+    font-size:10px;
+    color:#9a86b8;
+    font-weight:700;
+    letter-spacing:1px;
+  }
+  .hud-value{
+    font-size:20px;
+    font-weight:900;
+    color:var(--accent-purple);
+    line-height:1.1;
+    font-variant-numeric:tabular-nums;
+  }
+  #coinRow{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    font-size:12px;
+    font-weight:800;
+    color:#c9941f;
+  }
+  #coinRow .coinIcon{
+    width:12px;height:12px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff6c0, #ffd23f 55%, #e0ac00 100%);
+    display:inline-block;
+  }
+  #timerBox .hud-value{ color:var(--accent-pink); transition:color .2s; }
+  #timerBox.warn .hud-value{ color:#ff2d55; animation:pulse .5s infinite; }
+  @keyframes pulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
+
+  #comboDisplay{
+    position:absolute;
+    top:70px; left:50%;
+    transform:translateX(-50%) scale(0.5);
+    font-size:14px;
+    font-weight:900;
+    background:linear-gradient(135deg,var(--accent-yellow),var(--accent-orange));
+    color:#7a3e00;
+    padding:4px 16px;
+    border-radius:20px;
+    box-shadow:0 4px 0 rgba(0,0,0,0.15);
+    opacity:0;
+    z-index:30;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  #comboDisplay.show{
+    animation:comboPop .7s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes comboPop{
+    0%{opacity:0; transform:translateX(-50%) scale(0.3) rotate(-8deg);}
+    15%{opacity:1; transform:translateX(-50%) scale(1.25) rotate(3deg);}
+    30%{transform:translateX(-50%) scale(1) rotate(0deg);}
+    80%{opacity:1; transform:translateX(-50%) scale(1) rotate(0deg);}
+    100%{opacity:0; transform:translateX(-50%) scale(0.9) translateY(-10px);}
+  }
+
+  #feverBanner{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%) scale(0.3);
+    font-size:38px;
+    font-weight:900;
+    color:var(--fever-gold);
+    -webkit-text-stroke:3px #a05a00;
+    paint-order:stroke fill;
+    z-index:60;
+    opacity:0;
+    pointer-events:none;
+    letter-spacing:2px;
+  }
+  #feverBanner.show{
+    animation:feverPop 1s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes feverPop{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(0.2) rotate(-10deg);}
+    25%{opacity:1; transform:translate(-50%,-50%) scale(1.3) rotate(4deg);}
+    45%{transform:translate(-50%,-50%) scale(1) rotate(0deg);}
+    80%{opacity:1;}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1) translateY(-20px);}
+  }
+
+  /* ---------- board ---------- */
+  #boardWrap{
+    flex:1;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:4px 10px;
+    min-height:0;
+  }
+  #board{
+    position:relative;
+    touch-action:none;
+  }
+  svg#ropeSvg{
+    position:absolute;
+    top:0; left:0;
+    pointer-events:none;
+    z-index:15;
+  }
+  .tsum{
+    position:absolute;
+    top:0; left:0;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    will-change:transform;
+    user-select:none;
+  }
+  .tsum .face{
+    width:100%; height:100%;
+    border-radius:50%;
+    position:relative;
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 4px 6px rgba(0,0,0,0.15);
+    transition:transform .08s ease;
+    overflow:visible;
+  }
+  .tsum.selected .face{
+    transform:scale(1.14);
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 4px #fff, 0 0 0 7px var(--rope), 0 4px 10px rgba(0,0,0,0.2);
+  }
+  .tsum.mytsum .face{
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 3px #fff8, 0 4px 8px rgba(0,0,0,0.2);
+  }
+  .eye{
+    position:absolute;
+    background:#3a2b1a;
+    border-radius:50%;
+  }
+  .cheek{
+    position:absolute;
+    background:rgba(255,255,255,0.55);
+    border-radius:50%;
+  }
+  .motif{
+    position:absolute;
+    pointer-events:none;
+  }
+  .tsum.popping{
+    animation:popOut .42s ease-out forwards;
+    z-index:25;
+  }
+  @keyframes popOut{
+    0%{transform:scale(1); opacity:1;}
+    40%{transform:scale(1.35); opacity:1;}
+    100%{transform:scale(0); opacity:0;}
+  }
+  .tsum.bombPopping{
+    animation:bombPopOut .4s ease-out forwards;
+    z-index:26;
+  }
+  @keyframes bombPopOut{
+    0%{transform:scale(1); opacity:1;}
+    30%{transform:scale(1.5); opacity:1;}
+    100%{transform:scale(0) rotate(180deg); opacity:0;}
+  }
+  .tsum.spawning{
+    animation:spawnDrop .32s cubic-bezier(.3,1.4,.6,1);
+  }
+  @keyframes spawnDrop{
+    0%{opacity:0;}
+    100%{opacity:1;}
+  }
+  .myOrb{
+    position:absolute;
+    width:14px; height:14px;
+    margin:-7px 0 0 -7px;
+    border-radius:50%;
+    background: radial-gradient(circle, #ffffff, #ffe27a 55%, #ffb400 100%);
+    box-shadow:0 0 10px 3px rgba(255,205,80,0.8);
+    pointer-events:none;
+    z-index:40;
+    transition: transform .5s cubic-bezier(.2,.7,.3,1), opacity .5s ease;
+  }
+
+  /* ---------- ガストンのハンティングショット演出 ---------- */
+  .gastonShotLayer{
+    position:absolute;
+    left:0; width:100%; height:0;
+    pointer-events:none;
+    z-index:36;
+  }
+  .gastonGunner{
+    position:absolute;
+    left:-6px; top:-30px;
+    width:64px; height:56px;
+  }
+  .gastonBody{
+    position:absolute; left:0; top:8px;
+    width:26px; height:40px;
+    background:linear-gradient(180deg,#c98b4a,#8a5a26);
+    border-radius:10px 10px 6px 6px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  }
+  .gastonBarrel{
+    position:absolute; left:22px; top:22px;
+    width:48px; height:8px;
+    background:linear-gradient(180deg,#6b6b6b,#2b2b2b);
+    border-radius:3px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.4);
+  }
+  .gastonFlash{
+    position:absolute;
+    top:-8px;
+    width:28px; height:28px;
+    margin-left:-14px;
+    border-radius:50%;
+    background: radial-gradient(circle, #fff8d0, #ffce4d 45%, rgba(255,150,0,0) 75%);
+    animation: gastonFlashPop .22s ease-out forwards;
+  }
+  @keyframes gastonFlashPop{
+    0%{ transform:scale(0.3); opacity:1; }
+    100%{ transform:scale(1.7); opacity:0; }
+  }
+  .gastonBeam{
+    position:absolute;
+    left:0; top:-3px;
+    width:0; height:6px;
+    background: linear-gradient(90deg, rgba(255,224,130,0.9), rgba(255,150,40,0.95));
+    box-shadow:0 0 14px 4px rgba(255,180,60,0.85);
+    border-radius:3px;
+    transition: width .28s ease-out;
+  }
+  .gastonBeam.fire{ width:100%; }
+  .tsum.bomb .face{
+    background: conic-gradient(from 0deg,
+      #ff6fa5 0deg, #ffd23f 60deg, #7ee08a 120deg, #4fd6c4 150deg,
+      #4f9dff 210deg, #9b6bff 270deg, #ff9640 330deg, #ff6fa5 360deg);
+    animation: bombFaceSpin 2.4s linear infinite;
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.18), inset 0 5px 8px rgba(255,255,255,0.55),
+      0 0 0 3px #fff, 0 4px 10px rgba(0,0,0,0.25);
+  }
+  .tsum.bomb .face::before{
+    content:'';
+    position:absolute;
+    inset:26%;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #ffffff, #eef7ff 55%, #cfe6ff 100%);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.18), inset 0 -2px 4px rgba(0,0,0,0.08);
+  }
+  .tsum.bomb::after{
+    content:'';
+    position:absolute;
+    inset:-5px;
+    border-radius:50%;
+    border:2px dashed rgba(255,255,255,0.85);
+    animation:bombSpin 3.5s linear infinite reverse;
+  }
+  @keyframes bombFaceSpin{ from{transform:rotate(0);} to{transform:rotate(360deg);} }
+  @keyframes bombSpin{ from{transform:rotate(0);} to{transform:rotate(360deg);} }
+
+  .burstText{
+    position:absolute;
+    font-weight:900;
+    font-size:15px;
+    color:#fff;
+    -webkit-text-stroke:2px var(--accent-purple);
+    paint-order:stroke fill;
+    pointer-events:none;
+    z-index:40;
+    animation:burstFloat .6s ease-out forwards;
+    white-space:nowrap;
+  }
+  @keyframes burstFloat{
+    0%{transform:translate(-50%,-50%) scale(0.5); opacity:1;}
+    30%{transform:translate(-50%,-70%) scale(1.2); opacity:1;}
+    100%{transform:translate(-50%,-130%) scale(1); opacity:0;}
+  }
+  .sparkle{
+    position:absolute;
+    border-radius:50%;
+    pointer-events:none;
+    z-index:22;
+  }
+  .coinPop{
+    position:absolute;
+    width:14px;height:14px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff6c0, #ffd23f 55%, #e0ac00 100%);
+    z-index:45;
+    pointer-events:none;
+  }
+
+  /* ---------- bottom bar ---------- */
+  #bottomBar{
+    padding:6px 16px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  #myTsumRow{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  #myTsumIcon{
+    width:44px; height:44px;
+    border-radius:50%;
+    flex-shrink:0;
+    box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    position:relative;
+  }
+  #skillGaugeWrap{ flex:1; }
+  #chainLabel{
+    font-size:10px;
+    color:#9a86b8;
+    font-weight:700;
+    text-align:center;
+    margin-bottom:2px;
+  }
+  #skillGauge{
+    height:16px;
+    background:#e5ddf7;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.12);
+    position:relative;
+  }
+  #skillFill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,var(--accent-blue),var(--accent-mint));
+    border-radius:10px;
+    transition:width .25s ease;
+  }
+  #skillBtn{
+    flex-shrink:0;
+    width:56px; height:56px;
+    border-radius:50%;
+    border:none;
+    background:linear-gradient(135deg,#ffd23f,#ff9640);
+    box-shadow:0 4px 0 #c97a1f;
+    font-size:11px;
+    font-weight:900;
+    color:#7a3e00;
+    opacity:0.4;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .1s ease;
+  }
+  #skillBtn.ready{
+    opacity:1;
+    pointer-events:auto;
+    animation:skillReady 1s ease-in-out infinite;
+  }
+  #skillBtn:active{ transform:scale(0.92); }
+  @keyframes skillReady{
+    0%,100%{ box-shadow:0 4px 0 #c97a1f, 0 0 0 0 rgba(255,210,63,0.6);}
+    50%{ box-shadow:0 4px 0 #c97a1f, 0 0 0 8px rgba(255,210,63,0);}
+  }
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(60,30,70,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    backdrop-filter:blur(2px);
+  }
+  .overlay.hidden{ display:none; }
+  .card{
+    background:#fffaf5;
+    border-radius:24px;
+    padding:26px 24px;
+    width:82%;
+    max-width:320px;
+    text-align:center;
+    box-shadow:0 12px 0 rgba(0,0,0,0.15);
+    max-height:88%;
+    overflow-y:auto;
+  }
+  .card h1{
+    font-size:24px;
+    margin:0 0 6px;
+    color:var(--accent-purple);
+    font-weight:900;
+  }
+  .card p{
+    font-size:12px;
+    color:#7a6a90;
+    margin:0 0 14px;
+    line-height:1.6;
+  }
+  .bigScore{
+    font-size:38px;
+    font-weight:900;
+    color:var(--accent-pink);
+    margin:6px 0 2px;
+  }
+  .subScore{ font-size:12px; color:#9a86b8; margin-bottom:4px; }
+  .btn{
+    display:inline-block;
+    width:100%;
+    padding:14px 0;
+    border:none;
+    border-radius:16px;
+    font-size:17px;
+    font-weight:900;
+    color:#fff;
+    background:linear-gradient(135deg,var(--accent-pink),var(--accent-purple));
+    box-shadow:0 5px 0 #b0489a;
+    cursor:pointer;
+    letter-spacing:2px;
+    margin-top:10px;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 #b0489a; }
+
+  .charRow{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .charPick{
+    width:46px; height:46px; border-radius:50%;
+    box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    position:relative;
+    cursor:pointer;
+    border:3px solid transparent;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  .charPick.pickSelected{
+    border-color:#fff;
+    outline:3px solid var(--accent-purple);
+    transform:scale(1.08);
+  }
+  .charName{
+    font-size:9px;
+    text-align:center;
+    color:#7a6a90;
+    margin-top:2px;
+    font-weight:700;
+  }
+  .charCol{
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+  #startTitleTsum{
+    width:76px; height:76px;
+    margin:0 auto 6px;
+    position:relative;
+  }
+
+  .resultRow{
+    display:flex;
+    justify-content:space-around;
+    margin:10px 0 4px;
+    font-size:12px;
+    color:#9a86b8;
+  }
+  .resultRow b{ display:block; font-size:16px; color:var(--accent-purple); }
+
+  #skillInfoBox{
+    background:#f5eefe;
+    border-radius:14px;
+    padding:8px 12px;
+    margin-bottom:10px;
+    text-align:left;
+  }
+  #skillInfoBox .skName{
+    font-size:12px;
+    font-weight:900;
+    color:var(--accent-purple);
+    margin-bottom:2px;
+  }
+  #skillInfoBox .skDesc{
+    font-size:11px;
+    color:#7a6a90;
+    line-height:1.5;
+  }
+
+  /* ---------- item select screen ---------- */
+  .itemList{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:14px;
+    text-align:left;
+  }
+  .itemCard{
+    background:#f7f2ff;
+    border-radius:16px;
+    padding:10px 14px;
+    border:2px solid transparent;
+    transition:border-color .15s ease, background .15s ease;
+    cursor:pointer;
+  }
+  .itemCard.active{
+    border-color:var(--accent-purple);
+    background:#efe4ff;
+  }
+  .itemHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .itemName{
+    font-size:13px;
+    font-weight:900;
+    color:var(--ink);
+  }
+  .itemDesc{
+    font-size:11px;
+    color:#8a7aa0;
+    margin-top:3px;
+    line-height:1.5;
+  }
+  .toggleSw{
+    width:40px; height:22px;
+    border-radius:12px;
+    background:#d8cdf0;
+    position:relative;
+    flex-shrink:0;
+    transition:background .15s ease;
+  }
+  .toggleSw::after{
+    content:'';
+    position:absolute;
+    top:2px; left:2px;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:#fff;
+    box-shadow:0 2px 3px rgba(0,0,0,0.2);
+    transition:transform .15s ease;
+  }
+  .itemCard.active .toggleSw{ background:var(--accent-purple); }
+  .itemCard.active .toggleSw::after{ transform:translateX(18px); }
+  .coinSliderWrap{
+    margin-top:8px;
+    display:none;
+  }
+  .itemCard.active .coinSliderWrap{ display:block; }
+  .coinSliderWrap input[type=range]{
+    width:100%;
+    accent-color:var(--accent-purple);
+  }
+  .coinSliderVal{
+    font-size:13px;
+    font-weight:900;
+    color:var(--accent-purple);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="hud">
+    <div class="hud-box">
+      <div class="hud-label">SCORE</div>
+      <div class="hud-value" id="scoreVal">0</div>
+      <div id="coinRow"><span class="coinIcon"></span><span id="coinVal">0</span></div>
+    </div>
+    <div class="hud-box" id="timerBox">
+      <div class="hud-label">TIME</div>
+      <div class="hud-value" id="timeVal">60</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">CHAIN</div>
+      <div class="hud-value" id="chainVal">0</div>
+    </div>
+  </div>
+
+  <div id="comboDisplay"></div>
+  <div id="feverBanner">FEVER!</div>
+
+  <div id="boardWrap">
+    <div id="board">
+      <svg id="ropeSvg"></svg>
+    </div>
+  </div>
+
+  <div id="bottomBar">
+    <div id="chainLabel">つないだ数：<span id="linkCount">0</span></div>
+    <div id="myTsumRow">
+      <div id="myTsumIcon"></div>
+      <div id="skillGaugeWrap">
+        <div id="skillGauge"><div id="skillFill"></div></div>
+      </div>
+      <button id="skillBtn">SKILL</button>
+    </div>
+  </div>
+
+  <!-- Start overlay -->
+  <div class="overlay" id="startOverlay">
+    <div class="card">
+      <div id="startTitleTsum"></div>
+      <h1>まるまるパズル</h1>
+      <p>同じ仲間のツムを3個以上つなげて消そう！<br>7個以上でボム発生、フィーバーやスキルも駆使してハイスコアを狙え。</p>
+      <div class="charRow" id="charPreview"></div>
+      <div id="skillInfoBox"></div>
+      <button class="btn" id="startBtn">つぎへ</button>
+    </div>
+  </div>
+
+  <!-- Item select overlay -->
+  <div class="overlay hidden" id="itemOverlay">
+    <div class="card">
+      <h1>アイテム選択</h1>
+      <p>使いたいアイテムを選んでゲームを始めよう！</p>
+      <div class="itemList" id="itemList">
+
+        <div class="itemCard" id="item_fewer" data-item="fewer">
+          <div class="itemHead">
+            <div class="itemName">5→4</div>
+            <div class="toggleSw"></div>
+          </div>
+          <div class="itemDesc">盤面に降ってくるツムが5種類→4種類になり、チェーンしやすくなる</div>
+        </div>
+
+        <div class="itemCard" id="item_coin" data-item="coin">
+          <div class="itemHead">
+            <div class="itemName">+Coin</div>
+            <div class="toggleSw"></div>
+          </div>
+          <div class="itemDesc">獲得コインが増加する（倍率を選択）</div>
+          <div class="coinSliderWrap">
+            <input type="range" id="coinSlider" min="1" max="100" value="1" step="1">
+            <div class="coinSliderVal" id="coinSliderVal">×1.1</div>
+          </div>
+        </div>
+
+        <div class="itemCard" id="item_bomb" data-item="bomb">
+          <div class="itemHead">
+            <div class="itemName">Bomb</div>
+            <div class="toggleSw"></div>
+          </div>
+          <div class="itemDesc">ボムが出現するのに必要なチェーン数が1減る</div>
+        </div>
+
+        <div class="itemCard" id="item_time" data-item="time">
+          <div class="itemHead">
+            <div class="itemName">+Time</div>
+            <div class="toggleSw"></div>
+          </div>
+          <div class="itemDesc">制限時間が5秒プラスされる</div>
+        </div>
+
+      </div>
+      <button class="btn" id="itemStartBtn">はじめる</button>
+    </div>
+  </div>
+
+  <!-- Result overlay -->
+  <div class="overlay hidden" id="resultOverlay">
+    <div class="card">
+      <h1>タイムアップ！</h1>
+      <div class="bigScore" id="finalScore">0</div>
+      <div class="subScore">SCORE</div>
+      <div class="resultRow">
+        <div>最大チェーン<b id="finalChain">0</b></div>
+        <div>コイン<b id="finalCoin">0</b></div>
+        <div>フィーバー回数<b id="finalFever">0</b></div>
+      </div>
+      <button class="btn" id="retryBtn">もういちど</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ------------------------------------------------------------
+  // Config
+  // ------------------------------------------------------------
+  const GAME_TIME = 60;
+  const COMBO_TIMEOUT_MS = 1500;
+  const BOMB_CHAIN_THRESHOLD = 7;
+  const FEVER_GAUGE_MAX = 29;           // 通常消去で29個消すとフィーバー突入
+  const FEVER_GAUGE_PER_TSUM = 1;       // 消去したツム1個につきゲージ+1
+  const FEVER_GAUGE_DECAY_PER_SEC = 1.0; // フィーバー未突入時、時間経過でゲージが常に微減する
+  const FEVER_TIME_BONUS = 5;
+  const FEVER_DURATION = 11;
+  const FEVER_POP_SPEED_MULT = 1.5;     // フィーバー中はツムの消える速度が1.5倍
+  const SKILL_GAUGE_MAX = 100;
+
+  // 物理パラメータ（資料の「円形ヒットボックス」「重力落下」「衝突による位置の遊び」を反映）
+  const GRAVITY = 2200;          // px/s^2
+  const MAX_FALL_SPEED = 1800;   // px/s
+  const RESTITUTION = 0.12;      // 床・壁での反発係数（低めでコトッと着地する感じ）
+  const COLLISION_DAMPING = 0.55;// ツム同士の押し出し後の減衰
+  const FRICTION = 0.90;         // 横方向の摩擦（毎フレーム減衰）
+  const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
+
+  const COIN_TABLE = {3:0,4:1,5:3,6:5,7:7,8:9,9:12,10:15};
+  function coinsForChain(n){
+    if(n<3) return 0;
+    let base;
+    if(COIN_TABLE[n]!==undefined) base = COIN_TABLE[n];
+    else {
+      let last = COIN_TABLE[10];
+      for(let i=11;i<=n;i++) last += 3;
+      base = last;
+    }
+    return Math.round(base * coinMultiplier);
+  }
+
+  const TSUM_TYPES = [
+    { key:'pink',   name:'うさこ',   color:'#ff6fa5', dark:'#e0568a', motif:'ears',   score:120, skillNeed:11,
+      skillName:'ともだちイレイサー', skillDesc:'盤面のツムをランダムに広く消し去る' },
+    { key:'purple', name:'にゃんた', color:'#9b6bff', dark:'#7d4de0', motif:'cat',    score:130, skillNeed:11,
+      skillName:'なかまチェンジ',   skillDesc:'盤面のツムを一部マイツムに変える' },
+    { key:'yellow', name:'ぴよすけ', color:'#ffd23f', dark:'#e0ac00', motif:'beak',   score:100, skillNeed:11,
+      skillName:'タイムボーナス',   skillDesc:'残り時間をプラスする' },
+    { key:'mint',   name:'みんとる', color:'#4fd6c4', dark:'#2fb3a1', motif:'ribbon', score:110, skillNeed:11,
+      skillName:'ラッキータイム',   skillDesc:'数秒間スコアが2倍になる' },
+    { key:'blue',   name:'プリンス', color:'#4f9dff', dark:'#2f7ee0', motif:'crown',  score:150, skillNeed:11, isMyTsumDefault:true,
+      skillName:'ロイヤルクリア',   skillDesc:'マイツムを全て消してスコア＆コイン獲得' },
+    { key:'orange', name:'あくまる', color:'#ff9640', dark:'#e0721f', motif:'horns',  score:140, skillNeed:11,
+      skillName:'デビルボム',       skillDesc:'盤面のツムをランダムにボム化する' },
+    { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:160, skillNeed:20,
+      skillName:'ハンティングショット',
+      skillDesc:'横一列に3発撃ちぬいて消去。その後5秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
+  ];
+
+  // 盤面に実際に降ってくるツムの種類（アイテムで5種/4種に変化）
+  let activeTsumTypes = TSUM_TYPES.slice();
+
+  // ガストンのスキル後：5秒間ガストンだけが降ってくるボーナスタイム
+  let gastonRainActive = false;
+  let gastonRainTimer = null;
+
+  // ------------------------------------------------------------
+  // Items（ゲーム開始前に選ぶアイテム効果）
+  // ------------------------------------------------------------
+  let itemFewerTypes = false;   // 5→4アイテム
+  let coinMultiplier = 1;       // +Coinアイテム（1.1〜51倍）
+  let itemBombMinus1 = false;   // Bombアイテム（ボム生成チェーン-1）
+  let itemExtraTime = false;    // +Timeアイテム（+5秒）
+
+  let bombChainThreshold = BOMB_CHAIN_THRESHOLD;
+  let scoreMultiplier = 1;          // ラッキータイムなどの一時倍率
+  let scoreMultiplierEndTimer = null;
+
+  const board = document.getElementById('board');
+  const boardWrap = document.getElementById('boardWrap');
+  const ropeSvg = document.getElementById('ropeSvg');
+  const appEl = document.getElementById('app');
+  const scoreVal = document.getElementById('scoreVal');
+  const coinVal = document.getElementById('coinVal');
+  const timeVal = document.getElementById('timeVal');
+  const timerBox = document.getElementById('timerBox');
+  const chainVal = document.getElementById('chainVal');
+  const linkCountEl = document.getElementById('linkCount');
+  const comboDisplay = document.getElementById('comboDisplay');
+  const feverBanner = document.getElementById('feverBanner');
+  const skillFill = document.getElementById('skillFill');
+  const skillBtn = document.getElementById('skillBtn');
+  const myTsumIcon = document.getElementById('myTsumIcon');
+  const startOverlay = document.getElementById('startOverlay');
+  const resultOverlay = document.getElementById('resultOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const finalScore = document.getElementById('finalScore');
+  const finalChain = document.getElementById('finalChain');
+  const finalCoin = document.getElementById('finalCoin');
+  const finalFever = document.getElementById('finalFever');
+  const charPreview = document.getElementById('charPreview');
+  const skillInfoBox = document.getElementById('skillInfoBox');
+  const itemOverlay = document.getElementById('itemOverlay');
+  const itemStartBtn = document.getElementById('itemStartBtn');
+  const itemFewerEl = document.getElementById('item_fewer');
+  const itemCoinEl = document.getElementById('item_coin');
+  const itemBombEl = document.getElementById('item_bomb');
+  const itemTimeEl = document.getElementById('item_time');
+  const coinSlider = document.getElementById('coinSlider');
+  const coinSliderVal = document.getElementById('coinSliderVal');
+
+  // ------------------------------------------------------------
+  // Board geometry (連続座標のワールド。もうグリッドではない)
+  // ------------------------------------------------------------
+  let boardW = 0, boardH = 0;
+  let tsumRadius = 0; // px
+
+  let tsums = [];      // 全ツム（物理オブジェクト）の配列。grid[][]は廃止。
+  let score = 0;
+  let coins = 0;
+  let timeLeft = GAME_TIME;
+  let maxChain = 0;
+  let feverCount = 0;
+  let timerHandle = null;
+  let gameActive = false;
+  // ガストンの横ライン消去中など、盤面の物理演算ごと完全に停止させたいときに立てるフラグ
+  let boardFrozen = false;
+  let idCounter = 0;
+
+  let myTsumKey = TSUM_TYPES.find(t=>t.isMyTsumDefault).key;
+
+  let comboCount = 0;
+  let comboTimer = null;
+
+  let feverGauge = 0;
+  let inFever = false;
+  let feverEndTimer = null;
+
+  let skillGauge = 0;
+  let skillReady = false;
+  let skillActive = false;
+  let skillGaugeCarry = 0; // ゲージ満タン時にあふれた分を次のゲージへ繰り越す（ゲージ連打テクニックの再現）
+  let ghostTimers = []; // 消去演出中（幽霊状態）のツムの完了タイマー一覧。ボムで強制終了させるために保持する
+
+  let selecting = false;
+  let selectedPath = [];
+  let selectedType = null;
+
+  let rafHandle = null;
+  let lastFrameTime = 0;
+
+  // ------------------------------------------------------------
+  // Sizing
+  // ------------------------------------------------------------
+  function computeBoardSize(){
+    const wrapRect = boardWrap.getBoundingClientRect();
+    const w = Math.floor(wrapRect.width - 8);
+    const h = Math.floor(wrapRect.height - 8);
+    return {w, h};
+  }
+
+  function layoutBoard(){
+    const {w,h} = computeBoardSize();
+    boardW = w; boardH = h;
+    board.style.width = boardW+'px';
+    board.style.height = boardH+'px';
+    ropeSvg.setAttribute('width', boardW);
+    ropeSvg.setAttribute('height', boardH);
+    ropeSvg.style.width = boardW+'px';
+    ropeSvg.style.height = boardH+'px';
+    // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
+    tsumRadius = Math.max(16, Math.floor(boardW/6/2) - 2);
+    // 既存ツムの半径・要素サイズを更新
+    tsums.forEach(t=>{
+      t.r = tsumRadius;
+      const size = tsumRadius*2;
+      t.el.style.width = size+'px';
+      t.el.style.height = size+'px';
+    });
+  }
+
+  function randomType(){
+    if(gastonRainActive){
+      return TSUM_TYPES.find(t=>t.key==='gaston');
+    }
+    return activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
+  }
+
+  // マイツムを必ず含めつつ、盤面に出す種類数（4 or 5）をランダムに選ぶ
+  function buildActiveTsumTypes(count){
+    const pool = TSUM_TYPES.slice();
+    const mine = pool.find(t=>t.key===myTsumKey);
+    const rest = pool.filter(t=>t.key!==myTsumKey);
+    for(let i=rest.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    const picked = [mine, ...rest.slice(0, Math.max(0,count-1))];
+    return picked;
+  }
+
+  function lighten(hex){
+    const c = hex.replace('#','');
+    const num = parseInt(c,16);
+    let r=(num>>16)+60, g=((num>>8)&0xff)+60, b=(num&0xff)+60;
+    r=Math.min(255,r); g=Math.min(255,g); b=Math.min(255,b);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // ------------------------------------------------------------
+  // Motif drawing（キャラごとの見た目）
+  // ------------------------------------------------------------
+  function addMotif(face, type, size){
+    switch(type.motif){
+      case 'ears': {
+        [ -1, 1 ].forEach(sign=>{
+          const ear = document.createElement('div');
+          ear.className='motif';
+          ear.style.width = size*0.16+'px';
+          ear.style.height = size*0.4+'px';
+          ear.style.background = `linear-gradient(180deg, ${lighten(type.color)}, ${type.color})`;
+          ear.style.borderRadius='50% 50% 50% 50% / 60% 60% 40% 40%';
+          ear.style.left = (50+sign*22)+'%';
+          ear.style.top = '-30%';
+          ear.style.transform = `translateX(-50%) rotate(${sign*12}deg)`;
+          ear.style.boxShadow='inset 0 -3px 4px rgba(0,0,0,0.12)';
+          face.appendChild(ear);
+        });
+        break;
+      }
+      case 'cat': {
+        [ -1, 1 ].forEach(sign=>{
+          const ear = document.createElement('div');
+          ear.className='motif';
+          ear.style.width='0'; ear.style.height='0';
+          const s = size*0.22;
+          ear.style.borderLeft = (s*0.5)+'px solid transparent';
+          ear.style.borderRight = (s*0.5)+'px solid transparent';
+          ear.style.borderBottom = s+'px solid '+type.color;
+          ear.style.left = (50+sign*26)+'%';
+          ear.style.top = '-14%';
+          ear.style.transform = `translateX(-50%) rotate(${sign*8}deg)`;
+          face.appendChild(ear);
+        });
+        [ -1, 1 ].forEach(sign=>{
+          for(let i=0;i<2;i++){
+            const w = document.createElement('div');
+            w.className='motif';
+            w.style.width = size*0.22+'px';
+            w.style.height = '1.5px';
+            w.style.background = 'rgba(255,255,255,0.85)';
+            w.style.left = sign>0 ? '68%':'10%';
+            w.style.top = (58+i*6)+'%';
+            w.style.transform = `rotate(${sign*(6-i*10)}deg)`;
+            face.appendChild(w);
+          }
+        });
+        break;
+      }
+      case 'beak': {
+        const beak = document.createElement('div');
+        beak.className='motif';
+        beak.style.width='0'; beak.style.height='0';
+        const s = size*0.14;
+        beak.style.borderLeft=(s*0.6)+'px solid transparent';
+        beak.style.borderRight=(s*0.6)+'px solid transparent';
+        beak.style.borderTop=(s*0.7)+'px solid #ff9640';
+        beak.style.left='50%'; beak.style.top='48%';
+        beak.style.transform='translateX(-50%)';
+        face.appendChild(beak);
+        break;
+      }
+      case 'ribbon': {
+        const rib = document.createElement('div');
+        rib.className='motif';
+        rib.style.left='50%'; rib.style.top='-10%';
+        rib.style.transform='translateX(-50%)';
+        rib.style.width=size*0.32+'px';
+        rib.style.height=size*0.2+'px';
+        rib.style.background = `radial-gradient(circle, ${lighten(type.color)} 0%, ${type.color} 70%)`;
+        rib.style.clipPath = 'polygon(0% 20%, 40% 50%, 0% 80%, 50% 65%, 100% 80%, 60% 50%, 100% 20%, 50% 35%)';
+        face.appendChild(rib);
+        break;
+      }
+      case 'crown': {
+        const crown = document.createElement('div');
+        crown.className='motif';
+        crown.style.left='50%'; crown.style.top='-24%';
+        crown.style.transform='translateX(-50%)';
+        crown.style.width=size*0.4+'px';
+        crown.style.height=size*0.24+'px';
+        crown.style.background='linear-gradient(180deg,#ffe37a,#ffc93f)';
+        crown.style.clipPath='polygon(0% 100%, 0% 40%, 25% 70%, 50% 20%, 75% 70%, 100% 40%, 100% 100%)';
+        crown.style.filter='drop-shadow(0 2px 1px rgba(0,0,0,0.2))';
+        face.appendChild(crown);
+        break;
+      }
+      case 'horns': {
+        [ -1, 1 ].forEach(sign=>{
+          const horn = document.createElement('div');
+          horn.className='motif';
+          horn.style.width='0'; horn.style.height='0';
+          const s = size*0.2;
+          horn.style.borderLeft=(s*0.4)+'px solid transparent';
+          horn.style.borderRight=(s*0.4)+'px solid transparent';
+          horn.style.borderBottom=s+'px solid #d94a2f';
+          horn.style.left=(50+sign*20)+'%';
+          horn.style.top='-16%';
+          horn.style.transform=`translateX(-50%) rotate(${sign*20}deg)`;
+          face.appendChild(horn);
+        });
+        break;
+      }
+      case 'gun': {
+        // 立派な口ひげ
+        const mustache = document.createElement('div');
+        mustache.className='motif';
+        mustache.style.width = size*0.32+'px';
+        mustache.style.height = size*0.1+'px';
+        mustache.style.left='50%'; mustache.style.top='53%';
+        mustache.style.transform='translateX(-50%)';
+        mustache.style.background = '#3a2410';
+        mustache.style.borderRadius='0 0 60% 60% / 0 0 100% 100%';
+        mustache.style.clipPath = 'polygon(0% 0%, 100% 0%, 88% 100%, 50% 55%, 12% 100%)';
+        face.appendChild(mustache);
+        // 肩に担いだ銃身の長い猟銃
+        const gun = document.createElement('div');
+        gun.className='motif';
+        gun.style.width = size*0.62+'px';
+        gun.style.height = size*0.07+'px';
+        gun.style.left='38%'; gun.style.top='6%';
+        gun.style.transform='rotate(-18deg)';
+        gun.style.background = 'linear-gradient(180deg,#6b6b6b,#2c2c2c)';
+        gun.style.borderRadius='3px';
+        gun.style.boxShadow='0 1px 2px rgba(0,0,0,0.35)';
+        face.appendChild(gun);
+        break;
+      }
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Tsum DOM
+  // ------------------------------------------------------------
+  function createTsumEl(type, isMine, size){
+    const el = document.createElement('div');
+    el.className = 'tsum' + (isMine? ' mytsum':'');
+    el.style.width = size+'px';
+    el.style.height = size+'px';
+
+    const face = document.createElement('div');
+    face.className = 'face';
+    face.style.background = `radial-gradient(circle at 35% 28%, ${lighten(type.color)} 0%, ${type.color} 55%, ${type.dark} 100%)`;
+    el.appendChild(face);
+
+    addMotif(face, type, size);
+
+    const eyeSize = size*0.09;
+    const eyeL = document.createElement('div');
+    eyeL.className='eye';
+    eyeL.style.width = eyeSize+'px';
+    eyeL.style.height = (eyeSize*1.2)+'px';
+    eyeL.style.left = '32%';
+    eyeL.style.top = '38%';
+    const eyeR = eyeL.cloneNode();
+    eyeR.style.left = '58%';
+    face.appendChild(eyeL);
+    face.appendChild(eyeR);
+
+    const cheekSize = size*0.13;
+    const cheekL = document.createElement('div');
+    cheekL.className='cheek';
+    cheekL.style.width = cheekSize+'px';
+    cheekL.style.height = (cheekSize*0.6)+'px';
+    cheekL.style.left = '18%';
+    cheekL.style.top = '55%';
+    const cheekR = cheekL.cloneNode();
+    cheekR.style.left = '64%';
+    face.appendChild(cheekL);
+    face.appendChild(cheekR);
+
+    const mouth = document.createElement('div');
+    mouth.style.position='absolute';
+    mouth.style.left='38%';
+    mouth.style.top='52%';
+    mouth.style.width = (size*0.24)+'px';
+    mouth.style.height = (size*0.14)+'px';
+    mouth.style.borderBottom = `${Math.max(2,size*0.045)}px solid rgba(58,43,26,0.7)`;
+    mouth.style.borderRadius='50%';
+    face.appendChild(mouth);
+
+    return el;
+  }
+
+  // ------------------------------------------------------------
+  // Physics object factory
+  // ------------------------------------------------------------
+  function spawnTsum(x, y, vx, vy, forcedType){
+    const type = forcedType || randomType();
+    const isMine = type.key === myTsumKey;
+    const size = tsumRadius*2;
+    const el = createTsumEl(type, isMine, size);
+    board.appendChild(el);
+    const t = {
+      id: idCounter++,
+      type, el, isMine, isBomb:false,
+      x, y, vx, vy,
+      r: tsumRadius,
+      settled:false,
+    };
+    attachHandlers(t);
+    tsums.push(t);
+    renderTsumPosition(t);
+    return t;
+  }
+
+  function renderTsumPosition(t){
+    // 中心座標(x,y)→ CSS left/top(左上基準)に変換してtransformで描画
+    t.el.style.transform = `translate(${t.x - t.r}px, ${t.y - t.r}px)`;
+  }
+
+  // ------------------------------------------------------------
+  // Input handling（座標ベース：グリッドではなく実際の距離で判定）
+  // ------------------------------------------------------------
+  function attachHandlers(t){
+    t.el.addEventListener('pointerdown', (e)=>{
+      if(!gameActive || skillActive || t.ghost) return;
+      e.preventDefault();
+      // 暗黙のポインターキャプチャを解除し、boardのpointermoveで追跡できるようにする
+      if(e.pointerId!=null && t.el.hasPointerCapture && t.el.hasPointerCapture(e.pointerId)){
+        t.el.releasePointerCapture(e.pointerId);
+      }
+      if(t.isBomb){
+        detonateBomb(t);
+        return;
+      }
+      startSelection(t);
+    });
+  }
+
+  function getBoardLocalPoint(e){
+    const rect = board.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function findTsumNear(x, y, maxDist){
+    let best = null, bestD = Infinity;
+    for(const t of tsums){
+      if(t.isBomb || t.ghost) continue;
+      const dx = t.x - x, dy = t.y - y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if(d < maxDist && d < bestD){
+        bestD = d; best = t;
+      }
+    }
+    return best;
+  }
+
+  let lastPointerPoint = null;
+
+  board.addEventListener('pointermove', (e)=>{
+    if(!selecting || !gameActive || skillActive) return;
+    const p = getBoardLocalPoint(e);
+    if(lastPointerPoint){
+      // なぞる速度が速くフレームが飛んでも、前回座標→今回座標を線分状に
+      // サンプリングして通過したツムを拾う（弾道判定によるフレームスキップ対策）
+      const dx = p.x - lastPointerPoint.x, dy = p.y - lastPointerPoint.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const steps = Math.min(24, Math.max(1, Math.ceil(dist / (tsumRadius*0.6))));
+      for(let i=1; i<=steps; i++){
+        const sx = lastPointerPoint.x + dx*(i/steps);
+        const sy = lastPointerPoint.y + dy*(i/steps);
+        const t = findTsumNear(sx, sy, tsumRadius*1.3);
+        if(t) tryAddToSelection(t);
+      }
+    } else {
+      const t = findTsumNear(p.x, p.y, tsumRadius*1.3);
+      if(t) tryAddToSelection(t);
+    }
+    lastPointerPoint = p;
+  });
+
+  window.addEventListener('pointerup', ()=>{ if(selecting) endSelection(); });
+  window.addEventListener('pointercancel', ()=>{ if(selecting) endSelection(); });
+
+  function startSelection(t){
+    selecting = true;
+    selectedPath = [t];
+    selectedType = t.type.key;
+    lastPointerPoint = {x:t.x, y:t.y};
+    t.selected = true;
+    t.vx = 0; t.vy = 0;
+    t.el.classList.add('selected');
+    updateRope();
+    updateLinkCount();
+  }
+
+  function tryAddToSelection(t){
+    if(t.type.key !== selectedType) return;
+    const len = selectedPath.length;
+    if(len>=2 && selectedPath[len-2] === t){
+      const removed = selectedPath.pop();
+      removed.selected = false;
+      removed.el.classList.remove('selected');
+      updateRope(); updateLinkCount();
+      return;
+    }
+    if(selectedPath.includes(t)) return;
+    const last = selectedPath[selectedPath.length-1];
+    const dx = t.x - last.x, dy = t.y - last.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    // 隣接判定：実座標での距離がツム直径の約1.7倍以内なら「つながる」とみなす
+    if(dist <= t.r*3.4){
+      selectedPath.push(t);
+      t.selected = true;
+      t.vx = 0; t.vy = 0;
+      t.el.classList.add('selected');
+      updateRope(); updateLinkCount();
+    }
+  }
+
+  function updateLinkCount(){ linkCountEl.textContent = selectedPath.length; }
+
+  function updateRope(){
+    ropeSvg.innerHTML = '';
+    if(selectedPath.length<1) return;
+    let d = '';
+    selectedPath.forEach((t,i)=>{
+      d += (i===0? 'M':'L') + t.x + ' ' + t.y + ' ';
+    });
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d.trim());
+    path.setAttribute('stroke', inFever? '#ffcc33' : '#ff4fa0');
+    path.setAttribute('stroke-width', Math.max(4,tsumRadius*0.24));
+    path.setAttribute('stroke-linecap','round');
+    path.setAttribute('stroke-linejoin','round');
+    path.setAttribute('fill','none');
+    path.setAttribute('opacity','0.85');
+    ropeSvg.appendChild(path);
+
+    selectedPath.forEach((t)=>{
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx',t.x); dot.setAttribute('cy',t.y);
+      dot.setAttribute('r', Math.max(3,tsumRadius*0.12));
+      dot.setAttribute('fill','#fff');
+      dot.setAttribute('opacity','0.9');
+      ropeSvg.appendChild(dot);
+    });
+  }
+
+  function endSelection(){
+    selecting = false;
+    lastPointerPoint = null;
+    const path = selectedPath;
+    selectedPath = [];
+    selectedType = null;
+    ropeSvg.innerHTML = '';
+    linkCountEl.textContent = '0';
+    path.forEach(t=>{ t.selected = false; });
+
+    if(path.length >= 3){
+      resolveMatch(path);
+    } else {
+      path.forEach(t=>t.el.classList.remove('selected'));
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Combo timing
+  // ------------------------------------------------------------
+  function bumpCombo(){
+    comboCount++;
+    if(comboTimer) clearTimeout(comboTimer);
+    if(!inFever){
+      comboTimer = setTimeout(()=>{ comboCount = 0; }, COMBO_TIMEOUT_MS);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Score / coin computation
+  // ------------------------------------------------------------
+  function computeScore(path){
+    const n = path.length;
+    const baseChainScore = 40 * Math.pow(n, 1.55);
+    const tsumScoreSum = path.reduce((sum,t)=> sum + t.type.score, 0);
+    const comboBonus = Math.min(comboCount * 0.01, 3.0);
+    const feverMult = inFever ? 2.0 : 0;
+    const total = (baseChainScore + tsumScoreSum) * (1 + comboBonus) * (1 + feverMult) * scoreMultiplier;
+    return Math.round(total);
+  }
+
+  // ------------------------------------------------------------
+  // Match resolution
+  // ------------------------------------------------------------
+  function removeTsum(t){
+    const idx = tsums.indexOf(t);
+    if(idx>=0) tsums.splice(idx,1);
+  }
+
+  // 消去対象を時間差（ウェーブ）で消していく。消えるまでの間は「幽霊状態」として
+  // 物理的な当たり判定だけ残し、上のツムがすり抜けて落ちてこないようにする。
+  // centerPoint を渡すとそこから外側へ同心円状に、渡さなければ配列の並び順（起点→終点）で消える。
+  function popWithWave(list, centerPoint, popClass, onAllDone, instant){
+    if(list.length===0){ onAllDone && onAllDone(); return; }
+    const ordered = list.slice();
+    if(centerPoint && !instant){
+      ordered.sort((a,b)=>{
+        const da = (a.x-centerPoint.x)**2 + (a.y-centerPoint.y)**2;
+        const db = (b.x-centerPoint.x)**2 + (b.y-centerPoint.y)**2;
+        return da-db;
+      });
+    }
+    const feverSpeed = inFever ? FEVER_POP_SPEED_MULT : 1;
+    const POP_DURATION = 420 / feverSpeed;
+    const totalWave = instant ? 0 : Math.min(2200, 80*(ordered.length-1)) / feverSpeed;
+    const stagger = (!instant && ordered.length>1) ? totalWave/(ordered.length-1) : 0;
+
+    let maxFinish = 0;
+    ordered.forEach((t, i)=>{
+      const delay = Math.round(i*stagger);
+      setTimeout(()=>{
+        if(!tsums.includes(t)) return; // 既にボム等で強制終了済み
+        t.el.classList.remove('selected');
+        t.el.style.animationDuration = (POP_DURATION/1000)+'s';
+        t.el.classList.add(popClass || 'popping');
+        t.ghost = true; t.vx = 0; t.vy = 0;
+      }, delay);
+
+      const finish = delay + POP_DURATION;
+      if(finish>maxFinish) maxFinish = finish;
+      const timeoutId = setTimeout(()=>{
+        removeTsum(t);
+        t.el.remove();
+        ghostTimers = ghostTimers.filter(g=>g.t!==t);
+      }, finish);
+      ghostTimers.push({t, timeoutId});
+    });
+
+    setTimeout(()=>{ onAllDone && onAllDone(); }, maxFinish + 16);
+  }
+
+  // ボムの爆発などで、まだ消去演出中（幽霊状態）のツムを強制的に即座に消し切る
+  function forceFinishAllGhosts(){
+    if(ghostTimers.length===0) return;
+    const finishing = ghostTimers;
+    ghostTimers = [];
+    finishing.forEach(g=>{
+      clearTimeout(g.timeoutId);
+      if(tsums.includes(g.t)){
+        removeTsum(g.t);
+        g.t.el.remove();
+      }
+    });
+  }
+
+  // マイツムが消えるとき、スキルゲージへ吸い込まれていく光の玉エフェクトを飛ばす
+  // （ゲージの数値自体は消去と同時に既に加算済みで、これは視覚演出のみ＝同期ズレの再現）
+  function burstMyTsumOrbs(list){
+    const mine = list.filter(t=>t.isMine);
+    if(mine.length===0) return;
+    const boardRect = board.getBoundingClientRect();
+    const targetRect = skillBtn.getBoundingClientRect();
+    const tx = targetRect.left + targetRect.width/2 - boardRect.left;
+    const ty = targetRect.top + targetRect.height/2 - boardRect.top;
+    mine.forEach(t=>{
+      const orb = document.createElement('div');
+      orb.className = 'myOrb';
+      orb.style.left = t.x+'px';
+      orb.style.top = t.y+'px';
+      board.appendChild(orb);
+      requestAnimationFrame(()=>{
+        orb.style.transform = `translate(${tx-t.x}px, ${ty-t.y}px) scale(0.2)`;
+        orb.style.opacity = '0';
+      });
+      setTimeout(()=> orb.remove(), 520);
+    });
+  }
+
+  function resolveMatch(path){
+    if(!gameActive) return;
+    const n = path.length;
+    bumpCombo();
+
+    const bonus = computeScore(path);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+
+    const gainedCoins = coinsForChain(n);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+
+    if(n > maxChain) maxChain = n;
+    chainVal.textContent = maxChain;
+
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + n*FEVER_GAUGE_PER_TSUM);
+    }
+
+    const myCount = path.filter(t=>t.isMine).length;
+    addSkillGauge(myCount);
+
+    showCombo(n, bonus, path, gainedCoins);
+    burstSparkles(path);
+    burstMyTsumOrbs(path);
+    if(gainedCoins>0) burstCoins(path, gainedCoins);
+
+    const spawnBomb = n >= bombChainThreshold;
+    const bombSpot = spawnBomb ? {x:path[path.length-1].x, y:path[path.length-1].y} : null;
+
+    // 起点→終点の順にウェーブ状で消えていく（なぞった順番のまま）。
+    // 消えるまでの間は幽霊状態として物理的に居座り、上のツムの落下をせき止める。
+    popWithWave(path, null, 'popping', ()=>{
+      if(bombSpot) spawnBombNear(bombSpot);
+      refillIfNeeded();
+      checkFeverTrigger();
+    });
+  }
+
+  function checkFeverTrigger(){
+    if(inFever) return;
+    if(feverGauge >= FEVER_GAUGE_MAX){
+      enterFever();
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Fever state machine
+  // ------------------------------------------------------------
+  function enterFever(){
+    inFever = true;
+    feverGauge = 0;
+    feverCount++;
+    appEl.classList.add('fever');
+    feverBanner.classList.remove('show');
+    void feverBanner.offsetWidth;
+    feverBanner.classList.add('show');
+
+    pauseTimer(700);
+
+    timeLeft += FEVER_TIME_BONUS;
+    timeVal.textContent = timeLeft;
+
+    if(comboTimer) clearTimeout(comboTimer);
+
+    clearTimeout(feverEndTimer);
+    feverEndTimer = setTimeout(exitFever, FEVER_DURATION*1000);
+  }
+
+  function exitFever(){
+    inFever = false;
+    appEl.classList.remove('fever');
+    comboTimer = setTimeout(()=>{ comboCount = 0; }, COMBO_TIMEOUT_MS);
+  }
+
+  function pauseTimer(ms){
+    clearInterval(timerHandle);
+    setTimeout(()=>{
+      if(gameActive) timerHandle = setInterval(tick, 1000);
+    }, ms);
+  }
+
+  // ------------------------------------------------------------
+  // Skill
+  // ------------------------------------------------------------
+  function updateSkillGaugeUI(){
+    const pct = Math.min(100, (skillGauge/SKILL_GAUGE_MAX)*100);
+    skillFill.style.width = pct+'%';
+    if(skillGauge >= SKILL_GAUGE_MAX && !skillReady){
+      skillReady = true;
+      skillBtn.classList.add('ready');
+    }
+  }
+
+  // マイツム消去分をスキルゲージへ加算。満タンをあふれた分は次のゲージへ繰り越す
+  // （本家の「ゲージ連打」テクニックを、演出待ちなしで自動的に再現したもの）
+  function currentSkillNeed(){
+    const hero = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    return (hero && hero.skillNeed) || 11;
+  }
+
+  function addSkillGauge(myCount){
+    if(myCount<=0) return;
+    // ガストンのハンティングショット後5秒間は、ガストンを消してもゲージが溜まらない
+    if(gastonRainActive) return;
+    const gain = myCount*(SKILL_GAUGE_MAX/currentSkillNeed());
+    if(skillReady){
+      skillGaugeCarry += gain;
+      return;
+    }
+    const raw = skillGauge + gain;
+    if(raw >= SKILL_GAUGE_MAX){
+      skillGaugeCarry += raw - SKILL_GAUGE_MAX;
+      skillGauge = SKILL_GAUGE_MAX;
+    } else {
+      skillGauge = raw;
+    }
+    updateSkillGaugeUI();
+  }
+
+  skillBtn.addEventListener('click', ()=>{
+    if(!skillReady || !gameActive || skillActive) return;
+    activateSkill();
+  });
+
+  function activateSkill(){
+    skillActive = true;
+    skillReady = false;
+    skillGauge = Math.min(SKILL_GAUGE_MAX, skillGaugeCarry); // あふれていた分を繰り越し
+    skillGaugeCarry = 0;
+    skillBtn.classList.remove('ready');
+    updateSkillGaugeUI();
+
+    if(selecting){
+      selectedPath.forEach(t=>t.el.classList.remove('selected'));
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; lastPointerPoint=null;
+    }
+
+    pauseTimer(650);
+
+    const skillFns = {
+      pink: skillEraser,
+      purple: skillFriendChange,
+      yellow: skillTimeBonus,
+      mint: skillLuckyTime,
+      blue: skillRoyalClear,
+      orange: skillDevilBomb,
+      gaston: skillGastonLine,
+    };
+    (skillFns[myTsumKey] || skillRoyalClear)();
+  }
+
+  function finishSkill(){ skillActive = false; }
+
+  function showSkillLabel(text){
+    comboDisplay.textContent = text;
+    comboDisplay.classList.remove('show');
+    void comboDisplay.offsetWidth;
+    comboDisplay.classList.add('show');
+  }
+
+  // プリンス：マイツムを全消しして大量スコア＆コイン
+  function skillRoyalClear(){
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb);
+    if(myTsums.length===0){ finishSkill(); return; }
+
+    const bonus = computeScore(myTsums);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(myTsums.length);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(myTsums.length > maxChain) maxChain = myTsums.length;
+    chainVal.textContent = maxChain;
+
+    showSkillLabel(`ロイヤルクリア！ マイツム${myTsums.length}個消去 +${bonus}`);
+    burstSparkles(myTsums);
+    burstMyTsumOrbs(myTsums);
+    if(gainedCoins>0) burstCoins(myTsums, gainedCoins);
+
+    // 消去系スキルは中心点から外側へ同心円状（ウェーブ）に消えていく
+    const center = {x:boardW/2, y:boardH/2};
+    const spawnBomb = myTsums.length >= bombChainThreshold;
+    const bombSpot = spawnBomb ? myTsums[myTsums.length-1] : null;
+    popWithWave(myTsums, center, 'popping', ()=>{
+      if(bombSpot) spawnBombNear(bombSpot);
+      refillIfNeeded();
+      finishSkill();
+      checkFeverTrigger();
+    }, true);
+  }
+
+  // うさこ：種類を問わず盤面のツムを広範囲にランダム消去
+  function skillEraser(){
+    const candidates = tsums.filter(t=>!t.isBomb);
+    if(candidates.length===0){ finishSkill(); return; }
+    shuffleArr(candidates);
+    const count = Math.min(candidates.length, Math.max(6, Math.round(candidates.length*0.35)));
+    const targets = candidates.slice(0, count);
+
+    const bonus = computeScore(targets);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(targets.length);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(targets.length > maxChain) maxChain = targets.length;
+    chainVal.textContent = maxChain;
+
+    showSkillLabel(`ともだちイレイサー！ ${targets.length}個消去 +${bonus}`);
+    burstSparkles(targets);
+    burstMyTsumOrbs(targets);
+    if(gainedCoins>0) burstCoins(targets, gainedCoins);
+
+    const center = {x:boardW/2, y:boardH/2};
+    const spawnBomb = targets.length >= bombChainThreshold;
+    const bombSpot = spawnBomb ? targets[targets.length-1] : null;
+    popWithWave(targets, center, 'popping', ()=>{
+      if(bombSpot) spawnBombNear(bombSpot);
+      refillIfNeeded();
+      finishSkill();
+      checkFeverTrigger();
+    }, true);
+  }
+
+  // にゃんた：盤面のツムの一部をマイツムに変化（消さずにチェーンしやすくする）
+  function skillFriendChange(){
+    const others = tsums.filter(t=>!t.isMine && !t.isBomb);
+    if(others.length===0){ finishSkill(); return; }
+    shuffleArr(others);
+    const count = Math.min(others.length, 8);
+    const targets = others.slice(0, count);
+    const myType = TSUM_TYPES.find(t=>t.key===myTsumKey);
+
+    targets.forEach(t=>{
+      t.type = myType;
+      t.isMine = true;
+      const size = t.r*2;
+      const newEl = createTsumEl(myType, true, size);
+      newEl.style.transform = t.el.style.transform;
+      t.el.replaceWith(newEl);
+      t.el = newEl;
+      attachHandlers(t);
+    });
+
+    showSkillLabel(`なかまチェンジ！ ${targets.length}個がマイツムに`);
+    burstSparkles(targets);
+    setTimeout(()=>{ finishSkill(); }, 320);
+  }
+
+  // ぴよすけ：残り時間をプラス
+  function skillTimeBonus(){
+    const addSec = 8;
+    timeLeft += addSec;
+    timeVal.textContent = timeLeft;
+    timerBox.classList.remove('warn');
+    showSkillLabel(`タイムボーナス！ +${addSec}秒`);
+    setTimeout(()=>{ finishSkill(); }, 320);
+  }
+
+  // みんとる：数秒間スコアが2倍になる
+  function skillLuckyTime(){
+    scoreMultiplier = 2;
+    if(scoreMultiplierEndTimer) clearTimeout(scoreMultiplierEndTimer);
+    scoreMultiplierEndTimer = setTimeout(()=>{ scoreMultiplier = 1; }, 6000);
+    showSkillLabel('ラッキータイム！ 6秒間スコア2倍');
+    setTimeout(()=>{ finishSkill(); }, 320);
+  }
+
+  // あくまる：盤面のツムをランダムにボム化する
+  function skillDevilBomb(){
+    const candidates = tsums.filter(t=>!t.isBomb);
+    if(candidates.length===0){ finishSkill(); return; }
+    shuffleArr(candidates);
+    const count = Math.min(candidates.length, 3);
+    const targets = candidates.slice(0, count);
+    targets.forEach(t=> markAsBomb(t));
+
+    showSkillLabel(`デビルボム！ ボムが${targets.length}個出現`);
+    burstSparkles(targets);
+    setTimeout(()=>{ finishSkill(); }, 320);
+  }
+
+  function shuffleArr(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  // ガストン：横一列に3発撃ちぬいてツムを消去する（銃を構えたシルエット＋マズルフラッシュ演出）
+  function skillGastonLine(){
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
+    if(myTsums.length===0){ finishSkill(); return; }
+
+    // 銃撃〜消去演出が終わるまで、盤面の物理演算とゲーム内タイマーを完全に停止する
+    boardFrozen = true;
+    pauseTimer(1300);
+
+    // マイツム（ガストン）が集まっている高さを狙って一列を決める
+    const bandY = myTsums.reduce((s,t)=>s+t.y, 0) / myTsums.length;
+    const bandHalf = tsumRadius*3.0; // 約3列分の縦幅
+    const targets = tsums
+      .filter(t=> !t.isBomb && !t.ghost && Math.abs(t.y-bandY) <= bandHalf)
+      .sort((a,b)=> a.x - b.x); // 左から右へ順に消えるように並べておく
+
+    showGastonShots(bandY, bandHalf, ()=>{
+      if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
+
+      const bonus = computeScore(targets);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(targets.length);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(targets.length > maxChain) maxChain = targets.length;
+      chainVal.textContent = maxChain;
+
+      showSkillLabel(`ハンティングショット！ ${targets.length}個消去 +${bonus}`);
+      burstSparkles(targets);
+      burstMyTsumOrbs(targets);
+      if(gainedCoins>0) burstCoins(targets, gainedCoins);
+
+      // レーザーが走るように左から右へ時間差で消えていく
+      const spawnBomb = targets.length >= bombChainThreshold;
+      const bombSpot = spawnBomb ? targets[targets.length-1] : null;
+      startGastonRain(); // 横ライン消去が発生した瞬間にガストン降臨タイムを開始
+      popWithWave(targets, null, 'popping', ()=>{
+        boardFrozen = false; // 演出が終わったら盤面の時間を再開
+        if(bombSpot) spawnBombNear(bombSpot);
+        refillIfNeeded();
+        finishSkill();
+        checkFeverTrigger();
+      }, true);
+    });
+  }
+
+  // 横を向いて銃身の長い銃を構え、3発のマズルフラッシュを発生させてからビームで薙ぎ払う演出
+  function showGastonShots(bandY, bandHalf, onDone){
+    const layer = document.createElement('div');
+    layer.className = 'gastonShotLayer';
+    layer.style.top = bandY+'px';
+    board.appendChild(layer);
+
+    const gunner = document.createElement('div');
+    gunner.className = 'gastonGunner';
+    const body = document.createElement('div');
+    body.className = 'gastonBody';
+    const barrel = document.createElement('div');
+    barrel.className = 'gastonBarrel';
+    gunner.appendChild(body);
+    gunner.appendChild(barrel);
+    layer.appendChild(gunner);
+
+    const beamThickness = Math.max(6, bandHalf*2);
+    const beam = document.createElement('div');
+    beam.className = 'gastonBeam';
+    beam.style.height = beamThickness+'px';
+    beam.style.top = (-beamThickness/2)+'px';
+    layer.appendChild(beam);
+
+    const flashXs = [0.18, 0.5, 0.82].map(p=> boardW*p);
+    flashXs.forEach((x, i)=>{
+      setTimeout(()=>{
+        const flash = document.createElement('div');
+        flash.className = 'gastonFlash';
+        flash.style.left = x+'px';
+        layer.appendChild(flash);
+        setTimeout(()=> flash.remove(), 240);
+      }, i*150);
+    });
+
+    setTimeout(()=>{ beam.classList.add('fire'); }, 460);
+
+    setTimeout(()=>{
+      layer.remove();
+      onDone && onDone();
+    }, 740);
+  }
+
+  // ハンティングショットの後、5秒間はガストンだけが降ってくるボーナスタイム
+  // （背景がオレンジに変化。この間はガストンを消してもスキルゲージは溜まらない）
+  function startGastonRain(){
+    gastonRainActive = true;
+    appEl.classList.add('gastonRain');
+    clearTimeout(gastonRainTimer);
+    gastonRainTimer = setTimeout(()=>{
+      gastonRainActive = false;
+      appEl.classList.remove('gastonRain');
+    }, 5000);
+  }
+
+  // ------------------------------------------------------------
+  // Bomb
+  // ------------------------------------------------------------
+  function createBombEl(size){
+    const el = document.createElement('div');
+    el.className = 'tsum bomb';
+    el.style.width = size+'px';
+    el.style.height = size+'px';
+    const face = document.createElement('div');
+    face.className = 'face';
+    el.appendChild(face);
+    return el;
+  }
+
+  function markAsBomb(t){
+    t.isBomb = true;
+    const size = t.r*2;
+    const newEl = createBombEl(size);
+    newEl.style.transform = t.el.style.transform;
+    t.el.replaceWith(newEl);
+    t.el = newEl;
+    attachHandlers(t);
+  }
+
+  function spawnBombNear(spot){
+    // 指定座標に最も近い（まだボムでない）ツムをボム化する
+    let best = null, bestD = Infinity;
+    for(const t of tsums){
+      if(t.isBomb || t.ghost) continue;
+      const dx = t.x-spot.x, dy = t.y-spot.y;
+      const d = dx*dx+dy*dy;
+      if(d < bestD){ bestD = d; best = t; }
+    }
+    if(best) markAsBomb(best);
+  }
+
+  function detonateBomb(bombTsum){
+    if(!gameActive || skillActive) return;
+    // ボムの爆発は、盤面上で消去演出待ち（幽霊状態）のツムを強制的に0フレームで消し切り、
+    // 詰まっていた落下を即座に再開させる（ボムキャンセル）
+    forceFinishAllGhosts();
+
+    const radius = bombTsum.r * 3.2; // 周囲を巻き込む範囲
+    const affected = tsums.filter(t=>{
+      const dx = t.x-bombTsum.x, dy = t.y-bombTsum.y;
+      return Math.sqrt(dx*dx+dy*dy) <= radius;
+    });
+    const n = affected.length;
+    if(n===0) return;
+    bumpCombo();
+    const bonus = computeScore(affected);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(n);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(n > maxChain) maxChain = n;
+    chainVal.textContent = maxChain;
+
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + n*FEVER_GAUGE_PER_TSUM);
+    }
+    const myCount = affected.filter(t=>t.isMine).length;
+    addSkillGauge(myCount);
+
+    comboDisplay.textContent = `ボム爆発！ +${bonus}`;
+    comboDisplay.classList.remove('show');
+    void comboDisplay.offsetWidth;
+    comboDisplay.classList.add('show');
+
+    burstSparkles(affected);
+    burstMyTsumOrbs(affected);
+    if(gainedCoins>0) burstCoins(affected, gainedCoins);
+
+    affected.forEach(t=>{ t.el.classList.add('bombPopping'); });
+    affected.forEach(t=> removeTsum(t));
+
+    setTimeout(()=>{
+      affected.forEach(t=>{ t.el.remove(); });
+      refillIfNeeded();
+      checkFeverTrigger();
+    }, 300);
+  }
+
+  // ------------------------------------------------------------
+  // Effects
+  // ------------------------------------------------------------
+  function showCombo(n, bonus, path, gainedCoins){
+    let label;
+    const coinTxt = gainedCoins>0 ? ` (+${gainedCoins}コイン)`:'';
+    if(n>=bombChainThreshold) label = `ボム出現！ ${n}チェーン +${bonus}${coinTxt}`;
+    else if(n>=5) label = `ナイス！ ${n}チェーン +${bonus}${coinTxt}`;
+    else label = `${n}チェーン +${bonus}${coinTxt}`;
+    comboDisplay.textContent = label;
+    comboDisplay.classList.remove('show');
+    void comboDisplay.offsetWidth;
+    comboDisplay.classList.add('show');
+
+    const last = path[path.length-1];
+    const txt = document.createElement('div');
+    txt.className = 'burstText';
+    txt.textContent = '+'+bonus;
+    txt.style.left = last.x+'px';
+    txt.style.top = last.y+'px';
+    txt.style.color = last.type.color;
+    txt.style.webkitTextStroke = '2px #fff';
+    board.appendChild(txt);
+    setTimeout(()=>txt.remove(), 650);
+  }
+
+  function burstSparkles(path){
+    path.forEach(t=>{
+      for(let i=0;i<4;i++){
+        const s = document.createElement('div');
+        s.className='sparkle';
+        const size = tsumRadius*(0.16+Math.random()*0.16);
+        s.style.width = size+'px';
+        s.style.height = size+'px';
+        s.style.background = i%2===0? '#fff': t.type.color;
+        s.style.left = t.x+'px';
+        s.style.top = t.y+'px';
+        board.appendChild(s);
+        const angle = Math.random()*Math.PI*2;
+        const dist = tsumRadius*(1.2+Math.random()*1.6);
+        const dx = Math.cos(angle)*dist;
+        const dy = Math.sin(angle)*dist;
+        s.animate([
+          { transform:'translate(-50%,-50%) scale(1)', opacity:1 },
+          { transform:`translate(${dx-size/2}px, ${dy-size/2}px) scale(0.2)`, opacity:0 }
+        ], { duration: 450+Math.random()*150, easing:'cubic-bezier(.2,.6,.4,1)' });
+        setTimeout(()=>s.remove(), 620);
+      }
+    });
+  }
+
+  function burstCoins(path, count){
+    const showCount = Math.min(count, 6);
+    for(let i=0;i<showCount;i++){
+      const t = path[i % path.length];
+      const coin = document.createElement('div');
+      coin.className='coinPop';
+      coin.style.left = t.x+'px';
+      coin.style.top = t.y+'px';
+      board.appendChild(coin);
+      const dx = (Math.random()-0.5)*tsumRadius*3;
+      coin.animate([
+        { transform:'translate(-50%,-50%) scale(1)', opacity:1 },
+        { transform:`translate(${dx}px, ${-tsumRadius*3.6}px) scale(0.6)`, opacity:0 }
+      ], { duration:600, easing:'cubic-bezier(.2,.6,.3,1)' });
+      setTimeout(()=>coin.remove(), 650);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Refill（消去後、盤面の個数がMAX_TSUMSを下回っていたら上から補充）
+  // 資料仕様：盤面充填数の上限を超えないようスポーンを制御
+  // ------------------------------------------------------------
+  function refillIfNeeded(){
+    const deficit = MAX_TSUMS - tsums.length;
+    for(let i=0;i<deficit;i++){
+      const x = tsumRadius + Math.random()*(boardW - tsumRadius*2);
+      const y = -tsumRadius*2 - Math.random()*tsumRadius*4*i;
+      const t = spawnTsum(x, y, (Math.random()-0.5)*40, 0);
+      t.el.classList.add('spawning');
+      setTimeout(()=>t.el.classList.remove('spawning'), 340);
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Physics simulation loop
+  // ------------------------------------------------------------
+  function physicsStep(dt){
+    // dtは秒単位。大きすぎる場合はクランプ（タブ非アクティブ復帰対策）
+    dt = Math.min(dt, 1/30);
+
+    // 1) 重力・移動の積分（選択中／消去演出中のツムは物理演算をスキップし、その場に留まる＝幽霊状態）
+    for(const t of tsums){
+      if(t.selected || t.ghost) continue;
+      t.vy = Math.min(t.vy + GRAVITY*dt, MAX_FALL_SPEED);
+      t.vx *= FRICTION;
+      t.x += t.vx*dt;
+      t.y += t.vy*dt;
+    }
+
+    // 2) 壁・床の境界処理
+    for(const t of tsums){
+      if(t.x - t.r < 0){ t.x = t.r; t.vx = -t.vx*RESTITUTION; }
+      if(t.x + t.r > boardW){ t.x = boardW - t.r; t.vx = -t.vx*RESTITUTION; }
+      if(t.y + t.r > boardH){
+        t.y = boardH - t.r;
+        if(t.vy > 0) t.vy = -t.vy*RESTITUTION;
+        if(Math.abs(t.vy) < 20) t.vy = 0;
+      }
+      if(t.y - t.r < 0){ t.y = t.r; if(t.vy<0) t.vy = 0; }
+    }
+
+    // 3) ツム同士の円形衝突（資料の「衝突により位置の遊びが発生する」を反映）
+    //    簡易反復ソルバー：数回繰り返して安定させる
+    const n = tsums.length;
+    const ITER = 6;
+    for(let iter=0; iter<ITER; iter++){
+      for(let i=0;i<n;i++){
+        const a = tsums[i];
+        for(let j=i+1;j<n;j++){
+          const b = tsums[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          let dist = Math.sqrt(dx*dx+dy*dy);
+          const minDist = a.r + b.r;
+          if(dist < minDist){
+            let nx, ny;
+            if(dist < 0.01){
+              // 完全に重なっている場合はランダムな方向へ逃がす
+              const ang = Math.random()*Math.PI*2;
+              nx = Math.cos(ang); ny = Math.sin(ang);
+              dist = 0.01;
+            } else {
+              nx = dx/dist; ny = dy/dist;
+            }
+            const overlap = (minDist - dist);
+            // 選択中（指に固定）／消去演出中（幽霊状態）のツムは動かさない。相手だけ押し出す。
+            const aFixed = !!a.selected || !!a.ghost, bFixed = !!b.selected || !!b.ghost;
+            if(aFixed && bFixed){
+              // 両方固定なら何もしない
+            } else if(aFixed){
+              b.x += nx*overlap; b.y += ny*overlap;
+            } else if(bFixed){
+              a.x -= nx*overlap; a.y -= ny*overlap;
+            } else {
+              const push = overlap/2;
+              a.x -= nx*push; a.y -= ny*push;
+              b.x += nx*push; b.y += ny*push;
+            }
+            // 簡易反発：押し出し方向の速度成分を減衰させつつ交換
+            const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
+            const relDot = relVx*nx+relVy*ny;
+            if(relDot < 0){
+              const impulse = -relDot*COLLISION_DAMPING;
+              if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
+              if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+            }
+          }
+        }
+      }
+      // 境界を反復ごとに再チェック（押し出しで壁の外に出ることがあるため）
+      for(const t of tsums){
+        if(t.x - t.r < 0) t.x = t.r;
+        if(t.x + t.r > boardW) t.x = boardW - t.r;
+        if(t.y + t.r > boardH) t.y = boardH - t.r;
+        if(t.y - t.r < 0) t.y = t.r;
+      }
+    }
+
+    // 4) 選択中のなぞりロープをツムの動きに追従して再描画
+    if(selecting && selectedPath.length>0){
+      updateRope();
+    }
+
+    // 5) DOM反映
+    for(const t of tsums){
+      renderTsumPosition(t);
+    }
+  }
+
+  function frameLoop(now){
+    if(!lastFrameTime) lastFrameTime = now;
+    const dt = (now - lastFrameTime)/1000;
+    lastFrameTime = now;
+    if(!boardFrozen && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
+      physicsStep(dt);
+    }
+    // フィーバーゲージは時間経過で常に少しずつ減少する（フィーバー中・満タン後・盤面停止中は減衰させない）
+    if(gameActive && !inFever && !boardFrozen && feverGauge>0){
+      feverGauge = Math.max(0, feverGauge - FEVER_GAUGE_DECAY_PER_SEC*Math.min(dt,1/30));
+    }
+    rafHandle = requestAnimationFrame(frameLoop);
+  }
+
+  // ------------------------------------------------------------
+  // Deadlock detection & reshuffle（座標ベース：近距離クラスタで判定）
+  // ------------------------------------------------------------
+  function hasAnyMove(){
+    const visited = new Set();
+    for(const start of tsums){
+      if(visited.has(start.id) || start.isBomb || start.ghost) continue;
+      const stack = [start];
+      visited.add(start.id);
+      let count = 0;
+      const group = [];
+      while(stack.length){
+        const cur = stack.pop();
+        count++;
+        group.push(cur);
+        for(const other of tsums){
+          if(visited.has(other.id) || other.isBomb || other.ghost) continue;
+          if(other.type.key !== cur.type.key) continue;
+          const dx = other.x-cur.x, dy = other.y-cur.y;
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          if(dist <= cur.r*3.4){
+            visited.add(other.id);
+            stack.push(other);
+          }
+        }
+      }
+      if(count>=3) return true;
+    }
+    return false;
+  }
+
+  function ensurePlayable(){
+    if(!gameActive || skillActive) return;
+    let attempts = 0;
+    while(!hasAnyMove() && attempts<20){
+      reshuffleTypes();
+      attempts++;
+    }
+  }
+
+  function reshuffleTypes(){
+    // 座標は維持したまま色（type）だけをシャッフルする救済措置（ボムは対象外）
+    const targets = tsums.filter(t=>!t.isBomb && !t.ghost);
+    const types = targets.map(t=>t.type);
+    for(let i=types.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [types[i], types[j]] = [types[j], types[i]];
+    }
+    targets.forEach((t, idx)=>{
+      const newType = types[idx];
+      t.type = newType;
+      const isMine = newType.key === myTsumKey;
+      t.isMine = isMine;
+      const size = t.r*2;
+      const newEl = createTsumEl(newType, isMine, size);
+      newEl.style.transform = t.el.style.transform;
+      t.el.replaceWith(newEl);
+      t.el = newEl;
+      attachHandlers(t);
+    });
+  }
+
+  // ------------------------------------------------------------
+  // Grid init（初期配置：上空からランダムに降らせて自然に積もらせる）
+  // ------------------------------------------------------------
+  function initBoard(){
+    board.querySelectorAll('.tsum').forEach(n=>n.remove());
+    board.querySelectorAll('.burstText,.sparkle,.coinPop').forEach(n=>n.remove());
+    tsums = [];
+
+    const count = MAX_TSUMS;
+    // 初期分散を良くするため、擬似的な列に分けてからランダムオフセットを加える
+    // （完全ランダムだと偏りが生じ衝突解決の反復負荷が増えるため）
+    const perRow = Math.max(3, Math.floor(boardW / (tsumRadius*2.1)));
+    for(let i=0;i<count;i++){
+      const col = i % perRow;
+      const rowIdx = Math.floor(i / perRow);
+      const jitterX = (Math.random()-0.5)*tsumRadius*0.6;
+      const x = tsumRadius + col*((boardW - tsumRadius*2)/(perRow-1||1)) + jitterX;
+      const y = -tsumRadius*2 - rowIdx*(tsumRadius*2.05) - Math.random()*tsumRadius;
+      spawnTsum(Math.max(tsumRadius, Math.min(boardW-tsumRadius, x)), y, (Math.random()-0.5)*20, 0);
+    }
+  }
+
+  // 初期落下を高速に収束させてからプレイ開始する（積みあがるまで待つのは体験として悪いため、
+  // 開始直後に数百msぶん物理を先送りしてシミュレートしておく）
+  function presimulate(totalMs){
+    const step = 1/120;
+    let remaining = totalMs/1000;
+    while(remaining>0){
+      physicsStep(step);
+      remaining -= step;
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Timer / game flow
+  // ------------------------------------------------------------
+  function startGame(){
+    score = 0; coins = 0; maxChain = 0; feverCount = 0;
+    timeLeft = GAME_TIME + (itemExtraTime ? 5 : 0);
+    comboCount = 0;
+    if(comboTimer) clearTimeout(comboTimer);
+    feverGauge = 0; inFever = false;
+    skillGauge = 0; skillReady = false; skillActive = false; skillGaugeCarry = 0;
+    ghostTimers.forEach(g=> clearTimeout(g.timeoutId));
+    ghostTimers = [];
+    clearTimeout(feverEndTimer);
+    appEl.classList.remove('fever');
+    skillBtn.classList.remove('ready');
+
+    scoreMultiplier = 1;
+    if(scoreMultiplierEndTimer) clearTimeout(scoreMultiplierEndTimer);
+    gastonRainActive = false;
+    clearTimeout(gastonRainTimer);
+    appEl.classList.remove('gastonRain');
+    boardFrozen = false;
+
+    // アイテム反映：盤面のツム種類数／ボム出現チェーン数
+    activeTsumTypes = buildActiveTsumTypes(itemFewerTypes ? 4 : 5);
+    bombChainThreshold = Math.max(3, BOMB_CHAIN_THRESHOLD - (itemBombMinus1 ? 1 : 0));
+
+    scoreVal.textContent = '0';
+    coinVal.textContent = '0';
+    chainVal.textContent = '0';
+    timeVal.textContent = timeLeft;
+    skillFill.style.width = '0%';
+    timerBox.classList.remove('warn');
+    startOverlay.classList.add('hidden');
+    resultOverlay.classList.add('hidden');
+
+    renderMyTsumIcon();
+    layoutBoard();
+    initBoard();
+    presimulate(1800);
+    ensurePlayable();
+
+    gameActive = true;
+    clearInterval(timerHandle);
+    timerHandle = setInterval(tick, 1000);
+  }
+
+  function tick(){
+    timeLeft--;
+    timeVal.textContent = timeLeft;
+    if(timeLeft<=10) timerBox.classList.add('warn');
+    if(timeLeft<=0) endGame();
+  }
+
+  function endGame(){
+    gameActive = false;
+    clearInterval(timerHandle);
+    clearTimeout(feverEndTimer);
+    if(comboTimer) clearTimeout(comboTimer);
+    if(selecting){
+      selectedPath.forEach(t=>t.el.classList.remove('selected'));
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML='';
+    }
+    appEl.classList.remove('fever');
+    finalScore.textContent = score.toLocaleString();
+    finalChain.textContent = maxChain;
+    finalCoin.textContent = coins.toLocaleString();
+    finalFever.textContent = feverCount;
+    setTimeout(()=>{ resultOverlay.classList.remove('hidden'); }, 400);
+  }
+
+  // ------------------------------------------------------------
+  // My-tsum selection UI (start screen)
+  // ------------------------------------------------------------
+  function renderMyTsumIcon(){
+    myTsumIcon.innerHTML = '';
+    const type = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    const el = createTsumEl(type, true, 44);
+    el.style.position='relative'; el.style.left='0'; el.style.top='0'; el.style.transform='none';
+    el.style.pointerEvents='none';
+    myTsumIcon.appendChild(el);
+  }
+
+  function buildStartPreview(){
+    const titleWrap = document.getElementById('startTitleTsum');
+    const heroType = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    titleWrap.innerHTML = '';
+    const el = createTsumEl(heroType, true, 76);
+    el.style.position='relative';
+    el.style.left='0'; el.style.top='0'; el.style.transform='none';
+    titleWrap.appendChild(el);
+
+    charPreview.innerHTML = '';
+    TSUM_TYPES.forEach(t=>{
+      const col = document.createElement('div');
+      col.className = 'charCol';
+
+      const pickEl = createTsumEl(t, false, 46);
+      pickEl.style.position='relative';
+      pickEl.style.left='0'; pickEl.style.top='0'; pickEl.style.transform='none';
+      pickEl.style.width='46px'; pickEl.style.height='46px';
+      pickEl.classList.add('charPick');
+      if(t.key===myTsumKey) pickEl.classList.add('pickSelected');
+      pickEl.addEventListener('click', ()=>{
+        myTsumKey = t.key;
+        buildStartPreview();
+        renderMyTsumIcon();
+      });
+      col.appendChild(pickEl);
+
+      const label = document.createElement('div');
+      label.className='charName';
+      label.textContent = t.name;
+      col.appendChild(label);
+
+      charPreview.appendChild(col);
+    });
+
+    skillInfoBox.innerHTML =
+      `<div class="skName">${heroType.name}のスキル：${heroType.skillName}</div>`+
+      `<div class="skDesc">${heroType.skillDesc}</div>`;
+  }
+
+  // ------------------------------------------------------------
+  // Events
+  // ------------------------------------------------------------
+  // キャラ選択 → アイテム選択 → ゲーム開始 の3段階フロー
+  startBtn.addEventListener('click', ()=>{
+    startOverlay.classList.add('hidden');
+    itemOverlay.classList.remove('hidden');
+  });
+  itemStartBtn.addEventListener('click', ()=>{
+    itemOverlay.classList.add('hidden');
+    startGame();
+  });
+  retryBtn.addEventListener('click', ()=>{
+    resultOverlay.classList.add('hidden');
+    startOverlay.classList.remove('hidden');
+    buildStartPreview();
+  });
+
+  function toggleItem(el){
+    el.classList.toggle('active');
+  }
+  itemFewerEl.addEventListener('click', ()=>{
+    toggleItem(itemFewerEl);
+    itemFewerTypes = itemFewerEl.classList.contains('active');
+  });
+  itemBombEl.addEventListener('click', ()=>{
+    toggleItem(itemBombEl);
+    itemBombMinus1 = itemBombEl.classList.contains('active');
+  });
+  itemTimeEl.addEventListener('click', ()=>{
+    toggleItem(itemTimeEl);
+    itemExtraTime = itemTimeEl.classList.contains('active');
+  });
+  itemCoinEl.addEventListener('click', (e)=>{
+    if(e.target===coinSlider) return;
+    toggleItem(itemCoinEl);
+    updateCoinMultiplier();
+  });
+  coinSlider.addEventListener('click', (e)=> e.stopPropagation());
+  coinSlider.addEventListener('input', updateCoinMultiplier);
+
+  function updateCoinMultiplier(){
+    // スライダー(1〜100) を 1.1倍〜51倍に対応させる
+    const v = Number(coinSlider.value);
+    const mult = 1.1 + (v-1) * (51 - 1.1) / 99;
+    const rounded = Math.round(mult*10)/10;
+    coinSliderVal.textContent = `×${rounded}`;
+    coinMultiplier = itemCoinEl.classList.contains('active') ? rounded : 1;
+  }
+  updateCoinMultiplier();
+
+  let resizeTimeout;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(()=>{ if(boardW>0) layoutBoard(); }, 120);
+  });
+
+  tsumRadius = 24;
+  layoutBoard();
+  buildStartPreview();
+  renderMyTsumIcon();
+
+  rafHandle = requestAnimationFrame(frameLoop);
+
+})();
+</script>
+</body>
+</html>
