@@ -551,6 +551,28 @@
     pointer-events:none;
     z-index:22;
   }
+  #chainCountBadge{
+    position:absolute;
+    top:0; left:0;
+    transform:translate(-50%,-50%) scale(0.6);
+    min-width:26px;
+    height:26px;
+    padding:0 6px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#ff6fa5,#ff4fa0);
+    color:#fff;
+    font-weight:900;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 3px 0 rgba(0,0,0,0.2), 0 0 0 2px #fff;
+    z-index:41;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .1s ease;
+  }
+  #chainCountBadge.show{ opacity:1; }
   .coinPop{
     position:absolute;
     width:14px;height:14px;border-radius:50%;
@@ -866,6 +888,7 @@
     <div id="feverLights"></div>
     <div id="board">
       <svg id="ropeSvg"></svg>
+      <div id="chainCountBadge"></div>
     </div>
   </div>
 
@@ -1070,6 +1093,7 @@
   const timerBox = document.getElementById('timerBox');
   const chainVal = document.getElementById('chainVal');
   const linkCountEl = document.getElementById('linkCount');
+  const chainCountBadge = document.getElementById('chainCountBadge');
   const comboDisplay = document.getElementById('comboDisplay');
   const feverBanner = document.getElementById('feverBanner');
   const skillFill = document.getElementById('skillFill');
@@ -1674,7 +1698,18 @@
     }
   }
 
-  function updateLinkCount(){ linkCountEl.textContent = selectedPath.length; }
+  function updateLinkCount(){
+    linkCountEl.textContent = selectedPath.length;
+    if(selectedPath.length>0){
+      const last = selectedPath[selectedPath.length-1];
+      chainCountBadge.textContent = selectedPath.length;
+      chainCountBadge.style.left = last.x+'px';
+      chainCountBadge.style.top = (last.y-last.r-4)+'px';
+      chainCountBadge.classList.add('show');
+    } else {
+      chainCountBadge.classList.remove('show');
+    }
+  }
 
   function updateRope(){
     ropeSvg.innerHTML = '';
@@ -1711,6 +1746,7 @@
     selectedType = null;
     ropeSvg.innerHTML = '';
     linkCountEl.textContent = '0';
+    chainCountBadge.classList.remove('show');
     path.forEach(t=>{ t.selected = false; });
 
     if(path.length >= 3){
@@ -2068,7 +2104,7 @@
 
     if(selecting){
       selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
-      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; lastPointerPoint=null;
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; chainCountBadge.classList.remove('show'); lastPointerPoint=null;
     }
 
     pauseTimer(650);
@@ -2899,6 +2935,9 @@
     // 4) 選択中のなぞりロープをツムの動きに追従して再描画
     if(selecting && selectedPath.length>0){
       updateRope();
+      const last = selectedPath[selectedPath.length-1];
+      chainCountBadge.style.left = last.x+'px';
+      chainCountBadge.style.top = (last.y-last.r-4)+'px';
     }
 
     // 5) DOM反映
@@ -3087,7 +3126,7 @@
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
       selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
-      selecting=false; selectedPath=[]; ropeSvg.innerHTML='';
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; chainCountBadge.classList.remove('show');
     }
     appEl.classList.remove('fever');
     feverLights.classList.remove('show');
