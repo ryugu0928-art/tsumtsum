@@ -43,10 +43,34 @@
     transition:background .5s ease, filter .3s ease;
   }
   #app.fever{
-    background:linear-gradient(180deg,#3a2060 0%, #1a1035 100%);
+    background:#000;
   }
   #app.gastonRain{
     background:linear-gradient(180deg,#ff9a3d 0%, #d9660f 100%);
+  }
+
+  /* ---------- フィーバー中のゲーミングイルミネーション枠 ---------- */
+  #feverLights{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:12;
+    opacity:0;
+    transition:opacity .4s ease;
+  }
+  #feverLights.show{ opacity:1; }
+  #feverLights .bulb{
+    position:absolute;
+    width:9px; height:9px;
+    border-radius:50%;
+    margin:-4.5px 0 0 -4.5px;
+    box-shadow:0 0 6px 2px currentColor, 0 0 2px 1px #fff;
+    background:radial-gradient(circle at 35% 30%, #fff, currentColor 70%);
+    animation:bulbTwinkle 1s ease-in-out infinite;
+  }
+  @keyframes bulbTwinkle{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.35; transform:scale(0.78); }
   }
 
   /* ---------- HUD ---------- */
@@ -157,6 +181,7 @@
     justify-content:center;
     padding:4px 10px;
     min-height:0;
+    overflow:hidden;
   }
   #board{
     position:relative;
@@ -213,8 +238,8 @@
     z-index:25;
   }
   @keyframes popOut{
-    0%{transform:scale(1); opacity:1;}
-    40%{transform:scale(1.35); opacity:1;}
+    0%{transform:scale(1); opacity:0.2;}
+    40%{transform:scale(1.35); opacity:0.2;}
     100%{transform:scale(0); opacity:0;}
   }
   .tsum.bombPopping{
@@ -222,12 +247,15 @@
     z-index:26;
   }
   @keyframes bombPopOut{
-    0%{transform:scale(1); opacity:1;}
-    30%{transform:scale(1.5); opacity:1;}
+    0%{transform:scale(1); opacity:0.2;}
+    30%{transform:scale(1.5); opacity:0.2;}
     100%{transform:scale(0) rotate(180deg); opacity:0;}
   }
   .tsum.spawning{
     animation:spawnDrop .32s cubic-bezier(.3,1.4,.6,1);
+  }
+  .tsum.bigTsum .face{
+    box-shadow: inset 0 -8px 14px rgba(0,0,0,0.18), inset 0 6px 10px rgba(255,255,255,0.55), 0 0 0 3px #fff9, 0 0 16px 4px rgba(255,210,80,0.55), 0 6px 10px rgba(0,0,0,0.22);
   }
   @keyframes spawnDrop{
     0%{opacity:0;}
@@ -747,6 +775,7 @@
   <div id="feverBanner">FEVER!</div>
 
   <div id="boardWrap">
+    <div id="feverLights"></div>
     <div id="board">
       <svg id="ropeSvg"></svg>
     </div>
@@ -852,7 +881,7 @@
   const BOMB_CHAIN_THRESHOLD = 7;
   const FEVER_GAUGE_MAX = 29;           // 通常消去で29個消すとフィーバー突入
   const FEVER_GAUGE_PER_TSUM = 1;       // 消去したツム1個につきゲージ+1
-  const FEVER_GAUGE_DECAY_PER_SEC = 1.0; // フィーバー未突入時、時間経過でゲージが常に微減する
+  const FEVER_GAUGE_DECAY_PER_SEC = 1.0; // (未使用) 以前は時間経過でゲージが減衰していたが、現在は合計消去数のみでフィーバー突入を判定する
   const FEVER_TIME_BONUS = 5;
   const FEVER_DURATION = 11;
   const FEVER_POP_SPEED_MULT = 1.5;     // フィーバー中はツムの消える速度が1.5倍
@@ -863,39 +892,45 @@
   const MAX_FALL_SPEED = 1800;   // px/s
   const RESTITUTION = 0.12;      // 床・壁での反発係数（低めでコトッと着地する感じ）
   const COLLISION_DAMPING = 0.55;// ツム同士の押し出し後の減衰
+  const TSUM_FRICTION = 0.18;    // ツム同士が接触した際の摩擦（接線方向の滑りを抑える）
   const FRICTION = 0.90;         // 横方向の摩擦（毎フレーム減衰）
+  const FEVER_GRAVITY_MULT = 1.35; // フィーバー中は重力を強めて落下を速くする
   const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
 
-  const COIN_TABLE = {3:0,4:1,5:3,6:5,7:7,8:9,9:12,10:15};
-  function coinsForChain(n){
+  // 消去数(1〜45)ごとの獲得コイン数テーブル（本家ツムツム仕様のコイン補正表に準拠）
+  // インデックス0は消去数1個目に対応（45個消去まで対応、以降は範囲外として最後の値を使う）
+  const COIN_TABLE_NORMAL = [0,0,0,1,3,5,7,10,13,16,21,26,31,36,46,56,66,76,86,96,106,116,126,136,146,156,166,176,186,198,210,222,234,246,258,270,282,294,306,318,330,342,354,366,378];
+  const COIN_TABLE_MINUS1 = [0,0,0,1,2,3,4,5,6,7,8,9,10,11,16,21,26,31,36,41,46,51,56,61,66,71,76,81,86,93,100,107,114,121,128,135,142,149,156,163,170,177,184,191,198];
+
+  // coinBonus: そのツム固有のコイン補正値（現状 0 または -1 のみ使用）。
+  // ガストン・キャプテンライトイヤーのスキル発動中消去は-1補正、それ以外（通常のチェーン・ボム消去含む）は補正無し。
+  function coinsForChain(n, coinBonus){
     if(n<3) return 0;
-    let base;
-    if(COIN_TABLE[n]!==undefined) base = COIN_TABLE[n];
-    else {
-      let last = COIN_TABLE[10];
-      for(let i=11;i<=n;i++) last += 3;
-      base = last;
-    }
+    const table = (coinBonus===-1) ? COIN_TABLE_MINUS1 : COIN_TABLE_NORMAL;
+    const idx = Math.min(n, table.length) - 1;
+    const base = table[idx];
     return Math.round(base * coinMultiplier);
   }
 
+  // colorGroup: 見分けにくい色同士（同系色）をグルーピングしておき、
+  // 同じ盤面には同系色グループから1種類までしか選ばれないようにする（配色の法則）
   const TSUM_TYPES = [
-    { key:'pink',   name:'うさこ',   color:'#ff6fa5', dark:'#e0568a', motif:'ears',   score:120, skillNeed:11,
+    { key:'pink',   name:'うさこ',   color:'#ff6fa5', dark:'#e0568a', motif:'ears',   score:120, skillNeed:11, colorGroup:'redPink',
       skillName:'ともだちイレイサー', skillDesc:'盤面のツムをランダムに広く消し去る' },
-    { key:'purple', name:'にゃんた', color:'#9b6bff', dark:'#7d4de0', motif:'cat',    score:130, skillNeed:11,
+    { key:'purple', name:'にゃんた', color:'#9b6bff', dark:'#7d4de0', motif:'cat',    score:130, skillNeed:11, colorGroup:'purple',
       skillName:'なかまチェンジ',   skillDesc:'盤面のツムを一部マイツムに変える' },
-    { key:'yellow', name:'ぴよすけ', color:'#ffd23f', dark:'#e0ac00', motif:'beak',   score:100, skillNeed:11,
+    { key:'yellow', name:'ぴよすけ', color:'#ffd23f', dark:'#e0ac00', motif:'beak',   score:100, skillNeed:11, colorGroup:'yellowOrange',
       skillName:'タイムボーナス',   skillDesc:'残り時間をプラスする' },
-    { key:'mint',   name:'みんとる', color:'#4fd6c4', dark:'#2fb3a1', motif:'ribbon', score:110, skillNeed:11,
+    { key:'mint',   name:'みんとる', color:'#4fd6c4', dark:'#2fb3a1', motif:'ribbon', score:110, skillNeed:11, colorGroup:'mintGreen',
       skillName:'ラッキータイム',   skillDesc:'数秒間スコアが2倍になる' },
-    { key:'blue',   name:'プリンス', color:'#4f9dff', dark:'#2f7ee0', motif:'crown',  score:150, skillNeed:11, isMyTsumDefault:true,
+    { key:'blue',   name:'プリンス', color:'#4f9dff', dark:'#2f7ee0', motif:'crown',  score:150, skillNeed:11, isMyTsumDefault:true, colorGroup:'blue',
       skillName:'ロイヤルクリア',   skillDesc:'マイツムを全て消してスコア＆コイン獲得' },
-    { key:'orange', name:'あくまる', color:'#ff9640', dark:'#e0721f', motif:'horns',  score:140, skillNeed:11,
+    { key:'orange', name:'あくまる', color:'#ff9640', dark:'#e0721f', motif:'horns',  score:140, skillNeed:11, colorGroup:'yellowOrange',
       skillName:'デビルボム',       skillDesc:'盤面のツムをランダムにボム化する' },
-    { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:160, skillNeed:20,
+    { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:160, skillNeed:20, colorGroup:'brown', coinBonus:-1,
       skillName:'ハンティングショット',
       skillDesc:'横一列に3発撃ちぬいて消去。その後5秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
-    { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:170, skillNeed:16,
+    { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:170, skillNeed:16, colorGroup:'blue', coinBonus:-1,
       skillName:'ネヴァー・ギブアップ',
       skillDesc:'腕のビームで狙う敵がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径5ツム分の範囲を消去（5回まで）' },
   ];
@@ -923,6 +958,7 @@
 
   const board = document.getElementById('board');
   const boardWrap = document.getElementById('boardWrap');
+  const feverLights = document.getElementById('feverLights');
   const ropeSvg = document.getElementById('ropeSvg');
   const appEl = document.getElementById('app');
   const scoreVal = document.getElementById('scoreVal');
@@ -1015,11 +1051,12 @@
     ropeSvg.style.width = boardW+'px';
     ropeSvg.style.height = boardH+'px';
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(16, Math.floor(boardW/6/2) - 2);
-    // 既存ツムの半径・要素サイズを更新
+    tsumRadius = Math.max(13, Math.floor(boardW/6/2*0.8) - 2);
+    // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
-      t.r = tsumRadius;
-      const size = tsumRadius*2;
+      t.baseR = tsumRadius;
+      t.r = t.isBig ? Math.round(tsumRadius*BIG_TSUM_SCALE) : tsumRadius;
+      const size = t.r*2;
       t.el.style.width = size+'px';
       t.el.style.height = size+'px';
     });
@@ -1032,16 +1069,34 @@
     return activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
   }
 
-  // マイツムを必ず含めつつ、盤面に出す種類数（4 or 5）をランダムに選ぶ
+  // マイツムを必ず含めつつ、盤面に出す種類数（4 or 5）をランダムに選ぶ。
+  // 配色の法則：同系色グループ（colorGroup）からは1種類までしか選ばない（視認性の確保）
   function buildActiveTsumTypes(count){
-    const pool = TSUM_TYPES.slice();
-    const mine = pool.find(t=>t.key===myTsumKey);
-    const rest = pool.filter(t=>t.key!==myTsumKey);
+    const mine = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    const usedGroups = new Set([mine.colorGroup]);
+    const picked = [mine];
+
+    const rest = TSUM_TYPES.filter(t=>t.key!==myTsumKey);
     for(let i=rest.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [rest[i], rest[j]] = [rest[j], rest[i]];
     }
-    const picked = [mine, ...rest.slice(0, Math.max(0,count-1))];
+
+    // 第1パス：まだ使われていない色グループからのみ選ぶ
+    for(const t of rest){
+      if(picked.length>=count) break;
+      if(!usedGroups.has(t.colorGroup)){
+        picked.push(t);
+        usedGroups.add(t.colorGroup);
+      }
+    }
+    // 種類数が色グループの数より多く必要な場合のみ、やむを得ず同系色も許容して埋める
+    if(picked.length<count){
+      for(const t of rest){
+        if(picked.length>=count) break;
+        if(!picked.includes(t)) picked.push(t);
+      }
+    }
     return picked;
   }
 
@@ -1285,17 +1340,30 @@
   // ------------------------------------------------------------
   // Physics object factory
   // ------------------------------------------------------------
-  function spawnTsum(x, y, vx, vy, forcedType){
+  const BIG_TSUM_CHANCE = 0.015;   // 大ツム（デカツム）出現確率：約1.5%
+  const BIG_TSUM_SCALE = 1.7;      // 通常の半径に対する大ツムの倍率
+  const BIG_TSUM_COUNT_WEIGHT = 5; // 大ツムはチェーン数・スコア・ゲージ計算上「ツム5個分」として扱う
+
+  function spawnTsum(x, y, vx, vy, forcedType, forceBig){
     const type = forcedType || randomType();
     const isMine = type.key === myTsumKey;
-    const size = tsumRadius*2;
+    // 大ツムはガストンレイン中・ボム・幽霊は対象外。自然発生は低確率のランダム。
+    const isBig = forceBig!==undefined ? forceBig :
+      (!gastonRainActive && Math.random() < BIG_TSUM_CHANCE);
+    const r = isBig ? Math.round(tsumRadius*BIG_TSUM_SCALE) : tsumRadius;
+    const size = r*2;
     const el = createTsumEl(type, isMine, size);
+    if(isBig) el.classList.add('bigTsum');
     board.appendChild(el);
     const t = {
       id: idCounter++,
       type, el, isMine, isBomb:false,
       x, y, vx, vy,
-      r: tsumRadius,
+      r,
+      baseR: tsumRadius,
+      isBig,
+      rot: (Math.random()-0.5)*60,       // 落下開始時のランダムな初期回転角度（度）
+      rotSpeed: (Math.random()-0.5)*260, // 落下中の回転速度（度/秒）
       settled:false,
     };
     attachHandlers(t);
@@ -1305,8 +1373,13 @@
   }
 
   function renderTsumPosition(t){
+    // 変化がなければDOM書き込みをスキップ（静止したツムを毎フレーム書き換えるのを防ぎ負荷を減らす）
+    if(t._lastX===t.x && t._lastY===t.y && t._lastRot===t.rot) return;
+    t._lastX = t.x; t._lastY = t.y; t._lastRot = t.rot;
     // 中心座標(x,y)→ CSS left/top(左上基準)に変換してtransformで描画
-    t.el.style.transform = `translate(${t.x - t.r}px, ${t.y - t.r}px)`;
+    // 落下中は回転させ、着地後は徐々に角度を0へ戻して安定させる（お互いにぶつかりながら転がる演出）
+    const rotPart = t.rot ? ` rotate(${t.rot}deg)` : '';
+    t.el.style.transform = `translate(${t.x - t.r}px, ${t.y - t.r}px)${rotPart}`;
   }
 
   // ------------------------------------------------------------
@@ -1469,10 +1542,10 @@
   // ------------------------------------------------------------
   // Score / coin computation
   // ------------------------------------------------------------
-  function computeScore(path){
-    const n = path.length;
+  function computeScore(path, effectiveN){
+    const n = effectiveN!==undefined ? effectiveN : path.length;
     const baseChainScore = 40 * Math.pow(n, 1.55);
-    const tsumScoreSum = path.reduce((sum,t)=> sum + t.type.score, 0);
+    const tsumScoreSum = path.reduce((sum,t)=> sum + t.type.score * (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     const comboBonus = Math.min(comboCount * 0.01, 3.0);
     const feverMult = inFever ? 2.0 : 0;
     const total = (baseChainScore + tsumScoreSum) * (1 + comboBonus) * (1 + feverMult) * scoreMultiplier;
@@ -1490,7 +1563,7 @@
   // 消去対象を時間差（ウェーブ）で消していく。消えるまでの間は「幽霊状態」として
   // 物理的な当たり判定だけ残し、上のツムがすり抜けて落ちてこないようにする。
   // centerPoint を渡すとそこから外側へ同心円状に、渡さなければ配列の並び順（起点→終点）で消える。
-  function popWithWave(list, centerPoint, popClass, onAllDone, instant){
+  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady){
     if(list.length===0){ onAllDone && onAllDone(); return; }
     const ordered = list.slice();
     if(centerPoint && !instant){
@@ -1504,6 +1577,16 @@
     const POP_DURATION = 420 / feverSpeed;
     const totalWave = instant ? 0 : Math.min(2200, 80*(ordered.length-1)) / feverSpeed;
     const stagger = (!instant && ordered.length>1) ? totalWave/(ordered.length-1) : 0;
+
+    // このウェーブ全体で共有する状態。ボムキャン（forceFinishAllGhosts）で個々のタイマーを
+    // 途中キャンセルしても、このgroupを介してonBombReady/onAllDoneを確実に一度だけ発火させる。
+    const group = {
+      remaining: ordered.length,
+      bombFired: false,
+      allDoneFired: false,
+      onBombReady,
+      onAllDone,
+    };
 
     let maxFinish = 0;
     ordered.forEach((t, i)=>{
@@ -1522,15 +1605,32 @@
         removeTsum(t);
         t.el.remove();
         ghostTimers = ghostTimers.filter(g=>g.t!==t);
-        refillIfNeeded(); // 消えたツムはこの時点ですぐに1個分を補充する（まとめて後から降らせない）
+        finishOne(group, t);
       }, finish);
-      ghostTimers.push({t, timeoutId});
+      ghostTimers.push({t, timeoutId, group});
     });
 
-    setTimeout(()=>{ onAllDone && onAllDone(); }, maxFinish + 16);
+    group.total = ordered.length;
   }
 
-  // ボムの爆発などで、まだ消去演出中（幽霊状態）のツムを強制的に即座に消し切る
+  // ウェーブ内の1個のツムが消え終わったときに呼ぶ。通常経路でもボムキャンによる強制終了でも
+  // 必ずここを通すことで、全部消え終わった瞬間にonBombReady→(次フレームで)onAllDoneを発火させる。
+  function finishOne(group, t){
+    group.remaining--;
+    if(!group.bombFired && group.remaining<=0){
+      group.bombFired = true;
+      group.onBombReady && group.onBombReady();
+    }
+    if(group.remaining<=0 && !group.allDoneFired){
+      group.allDoneFired = true;
+      // 補充などの後処理は同フレームの他処理と衝突しないよう1フレーム遅らせる
+      setTimeout(()=>{ group.onAllDone && group.onAllDone(); }, 16);
+    }
+  }
+
+  // ボムの爆発などで、まだ消去演出中（幽霊状態）のツムを強制的に即座に消し切る（ボムキャンセル）。
+  // 強制終了させたツムそれぞれについても、本来のタイマーが実行するはずだった完了処理
+  // （ボム生成判定・補充など）を必ず一度だけ実行してあげる。
   function forceFinishAllGhosts(){
     if(ghostTimers.length===0) return;
     const finishing = ghostTimers;
@@ -1541,14 +1641,17 @@
         removeTsum(g.t);
         g.t.el.remove();
       }
+      finishOne(g.group, g.t);
     });
   }
 
   // マイツムが消えるとき、スキルゲージへ吸い込まれていく光の玉エフェクトを飛ばす
   // （ゲージの数値自体は消去と同時に既に加算済みで、これは視覚演出のみ＝同期ズレの再現）
   function burstMyTsumOrbs(list){
-    const mine = list.filter(t=>t.isMine);
+    let mine = list.filter(t=>t.isMine);
     if(mine.length===0) return;
+    const MAX_ORBS = 16;
+    if(mine.length > MAX_ORBS) mine = sampleEvenly(mine, MAX_ORBS);
     const boardRect = board.getBoundingClientRect();
     const targetRect = skillBtn.getBoundingClientRect();
     const tx = targetRect.left + targetRect.width/2 - boardRect.left;
@@ -1570,41 +1673,42 @@
   function resolveMatch(path){
     if(!gameActive) return;
     const n = path.length;
+    // 大ツムは「ツム5つ分」として扱う（スコア・コイン・チェーン記録・ゲージ計算の実質個数）
+    const effectiveN = path.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     bumpCombo();
 
-    const bonus = computeScore(path);
+    const bonus = computeScore(path, effectiveN);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
 
-    const gainedCoins = coinsForChain(n);
+    const gainedCoins = coinsForChain(effectiveN);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
 
-    if(n > maxChain) maxChain = n;
+    if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
 
     if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + n*FEVER_GAUGE_PER_TSUM);
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + effectiveN*FEVER_GAUGE_PER_TSUM);
     }
 
-    const myCount = path.filter(t=>t.isMine).length;
+    const myCount = path.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
     addSkillGauge(myCount);
 
-    showCombo(n, bonus, path, gainedCoins);
+    showCombo(n, bonus, path, gainedCoins, effectiveN);
     burstSparkles(path);
     burstMyTsumOrbs(path);
     if(gainedCoins>0) burstCoins(path, gainedCoins);
 
-    const spawnBomb = n >= bombChainThreshold;
+    const spawnBomb = effectiveN >= bombChainThreshold;
     const bombSpot = spawnBomb ? {x:path[path.length-1].x, y:path[path.length-1].y} : null;
 
     // 起点→終点の順にウェーブ状で消えていく（なぞった順番のまま）。
     // 消えるまでの間は幽霊状態として物理的に居座り、上のツムの落下をせき止める。
     popWithWave(path, null, 'popping', ()=>{
-      if(bombSpot) spawnBombNear(bombSpot);
-      refillIfNeeded();
+      refillIfNeeded(path.map(t=>t.x));
       checkFeverTrigger();
-    });
+    }, false, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
   }
 
   function checkFeverTrigger(){
@@ -1617,6 +1721,39 @@
   // ------------------------------------------------------------
   // Fever state machine
   // ------------------------------------------------------------
+  // フィーバー突入時、盤面(#board)の外枠に沿ってゲーミングイルミネーション用の
+  // 電球を等間隔配置する。boardWrap基準の座標系で、boardの矩形の縁をぐるっと一周させる。
+  const FEVER_BULB_COLORS = ['#ff4fa0','#ffd23f','#4fd6c4','#4f9dff','#ff9640','#9b6bff','#ff2d55'];
+  function buildFeverLights(){
+    feverLights.innerHTML = '';
+    if(boardW<=0 || boardH<=0) return;
+
+    const offsetX = board.offsetLeft;
+    const offsetY = board.offsetTop;
+    const spacing = 26; // 電球同士の間隔（px）
+    const perimeter = 2*(boardW+boardH);
+    const count = Math.max(8, Math.round(perimeter/spacing));
+
+    for(let i=0;i<count;i++){
+      const d = (i/count) * perimeter;
+      let x, y;
+      if(d < boardW){ x = d; y = 0; }
+      else if(d < boardW+boardH){ x = boardW; y = d-boardW; }
+      else if(d < boardW*2+boardH){ x = boardW-(d-(boardW+boardH)); y = boardH; }
+      else { x = 0; y = boardH-(d-(boardW*2+boardH)); }
+
+      const bulb = document.createElement('div');
+      bulb.className = 'bulb';
+      bulb.style.left = (offsetX+x)+'px';
+      bulb.style.top = (offsetY+y)+'px';
+      const color = FEVER_BULB_COLORS[i % FEVER_BULB_COLORS.length];
+      bulb.style.color = color;
+      bulb.style.animationDelay = (Math.random()*1)+'s';
+      bulb.style.animationDuration = (0.7+Math.random()*0.6)+'s';
+      feverLights.appendChild(bulb);
+    }
+  }
+
   function enterFever(){
     inFever = true;
     feverGauge = 0;
@@ -1625,6 +1762,9 @@
     feverBanner.classList.remove('show');
     void feverBanner.offsetWidth;
     feverBanner.classList.add('show');
+
+    buildFeverLights();
+    feverLights.classList.add('show');
 
     pauseTimer(700);
 
@@ -1640,6 +1780,7 @@
   function exitFever(){
     inFever = false;
     appEl.classList.remove('fever');
+    feverLights.classList.remove('show');
     comboTimer = setTimeout(()=>{ comboCount = 0; }, COMBO_TIMEOUT_MS);
   }
 
@@ -1735,13 +1876,14 @@
 
   // プリンス：マイツムを全消しして大量スコア＆コイン
   function skillRoyalClear(){
-    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb);
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
     if(myTsums.length===0){ finishSkill(); return; }
 
     const bonus = computeScore(myTsums);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(myTsums.length);
+    const myTsumType = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    const gainedCoins = coinsForChain(myTsums.length, myTsumType.coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
     if(myTsums.length > maxChain) maxChain = myTsums.length;
@@ -1757,16 +1899,15 @@
     const spawnBomb = myTsums.length >= bombChainThreshold;
     const bombSpot = spawnBomb ? myTsums[myTsums.length-1] : null;
     popWithWave(myTsums, center, 'popping', ()=>{
-      if(bombSpot) spawnBombNear(bombSpot);
-      refillIfNeeded();
+      refillIfNeeded(myTsums.map(t=>t.x));
       finishSkill();
       checkFeverTrigger();
-    }, true);
+    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
   }
 
   // うさこ：種類を問わず盤面のツムを広範囲にランダム消去
   function skillEraser(){
-    const candidates = tsums.filter(t=>!t.isBomb);
+    const candidates = tsums.filter(t=>!t.isBomb && !t.ghost);
     if(candidates.length===0){ finishSkill(); return; }
     shuffleArr(candidates);
     const count = Math.min(candidates.length, Math.max(6, Math.round(candidates.length*0.35)));
@@ -1775,7 +1916,7 @@
     const bonus = computeScore(targets);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(targets.length);
+    const gainedCoins = coinsForChain(targets.length, TSUM_TYPES.find(t=>t.key===myTsumKey).coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
     if(targets.length > maxChain) maxChain = targets.length;
@@ -1790,16 +1931,15 @@
     const spawnBomb = targets.length >= bombChainThreshold;
     const bombSpot = spawnBomb ? targets[targets.length-1] : null;
     popWithWave(targets, center, 'popping', ()=>{
-      if(bombSpot) spawnBombNear(bombSpot);
-      refillIfNeeded();
+      refillIfNeeded(targets.map(t=>t.x));
       finishSkill();
       checkFeverTrigger();
-    }, true);
+    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
   }
 
   // にゃんた：盤面のツムの一部をマイツムに変化（消さずにチェーンしやすくする）
   function skillFriendChange(){
-    const others = tsums.filter(t=>!t.isMine && !t.isBomb);
+    const others = tsums.filter(t=>!t.isMine && !t.isBomb && !t.ghost);
     if(others.length===0){ finishSkill(); return; }
     shuffleArr(others);
     const count = Math.min(others.length, 8);
@@ -1843,7 +1983,7 @@
 
   // あくまる：盤面のツムをランダムにボム化する
   function skillDevilBomb(){
-    const candidates = tsums.filter(t=>!t.isBomb);
+    const candidates = tsums.filter(t=>!t.isBomb && !t.ghost);
     if(candidates.length===0){ finishSkill(); return; }
     shuffleArr(candidates);
     const count = Math.min(candidates.length, 3);
@@ -1885,13 +2025,7 @@
       const bonus = computeScore(targets);
       score += bonus;
       scoreVal.textContent = score.toLocaleString();
-      const gainedCoins = coinsForChain(targets.length);
-      coins += gainedCoins;
-      coinVal.textContent = coins.toLocaleString();
-      if(targets.length > maxChain) maxChain = targets.length;
-      chainVal.textContent = maxChain;
-
-      showSkillLabel(`ハンティングショット！ ${targets.length}個消去 +${bonus}`);
+      const gainedCoins = coinsForChain(targets.length, -1);
       burstSparkles(targets);
       burstMyTsumOrbs(targets);
       if(gainedCoins>0) burstCoins(targets, gainedCoins);
@@ -1902,11 +2036,10 @@
       startGastonRain(); // 横ライン消去が発生した瞬間にガストン降臨タイムを開始
       popWithWave(targets, null, 'popping', ()=>{
         boardFrozen = false; // 演出が終わったら盤面の時間を再開
-        if(bombSpot) spawnBombNear(bombSpot);
-        refillIfNeeded();
+        refillIfNeeded(targets.map(t=>t.x));
         finishSkill();
         checkFeverTrigger();
-      }, true);
+      }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
     });
   }
 
@@ -2062,7 +2195,7 @@
     const bonus = computeScore(targets);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(targets.length);
+    const gainedCoins = coinsForChain(targets.length, -1);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
     if(targets.length > maxChain) maxChain = targets.length;
@@ -2075,10 +2208,9 @@
     const spawnBomb = targets.length >= bombChainThreshold;
     const bombSpot = spawnBomb ? targets[targets.length-1] : null;
     popWithWave(targets, p, 'popping', ()=>{
-      if(bombSpot) spawnBombNear(bombSpot);
-      refillIfNeeded();
+      refillIfNeeded(targets.map(t=>t.x));
       if(buzzTapsLeft<=0) endBuzzTapMode();
-    }, true);
+    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
   }
 
   function updateBuzzLabel(){
@@ -2146,6 +2278,7 @@
 
     const radius = bombTsum.r * 3.2; // 周囲を巻き込む範囲
     const affected = tsums.filter(t=>{
+      if(t.ghost) return false;
       const dx = t.x-bombTsum.x, dy = t.y-bombTsum.y;
       return Math.sqrt(dx*dx+dy*dy) <= radius;
     });
@@ -2181,7 +2314,7 @@
 
     setTimeout(()=>{
       affected.forEach(t=>{ t.el.remove(); });
-      refillIfNeeded();
+      refillIfNeeded(affected.map(t=>t.x));
       checkFeverTrigger();
     }, 300);
   }
@@ -2189,12 +2322,13 @@
   // ------------------------------------------------------------
   // Effects
   // ------------------------------------------------------------
-  function showCombo(n, bonus, path, gainedCoins){
+  function showCombo(n, bonus, path, gainedCoins, effectiveN){
+    const displayN = effectiveN!==undefined ? effectiveN : n;
     let label;
     const coinTxt = gainedCoins>0 ? ` (+${gainedCoins}コイン)`:'';
-    if(n>=bombChainThreshold) label = `ボム出現！ ${n}チェーン +${bonus}${coinTxt}`;
-    else if(n>=5) label = `ナイス！ ${n}チェーン +${bonus}${coinTxt}`;
-    else label = `${n}チェーン +${bonus}${coinTxt}`;
+    if(displayN>=bombChainThreshold) label = `ボム出現！ ${displayN}チェーン +${bonus}${coinTxt}`;
+    else if(displayN>=5) label = `ナイス！ ${displayN}チェーン +${bonus}${coinTxt}`;
+    else label = `${displayN}チェーン +${bonus}${coinTxt}`;
     comboDisplay.textContent = label;
     comboDisplay.classList.remove('show');
     void comboDisplay.offsetWidth;
@@ -2212,8 +2346,26 @@
     setTimeout(()=>txt.remove(), 650);
   }
 
+  // 配列から等間隔にn個をサンプリングする（順序は維持）
+  function sampleEvenly(arr, n){
+    if(arr.length<=n) return arr;
+    const result = [];
+    const step = arr.length / n;
+    for(let i=0;i<n;i++){
+      result.push(arr[Math.floor(i*step)]);
+    }
+    return result;
+  }
+
   function burstSparkles(path){
-    path.forEach(t=>{
+    // ロングチェーン／ボム巻き込みで一度に大量のツムが対象になると、
+    // 1体あたり4個×アニメーションのDOM生成が同フレームで積み重なり重くなるため、
+    // 対象数が多いときは間引いて生成数の上限を設ける（見た目の密度はほぼ変わらない）。
+    const MAX_SPARKLE_TARGETS = 16;
+    const targets = path.length > MAX_SPARKLE_TARGETS
+      ? sampleEvenly(path, MAX_SPARKLE_TARGETS)
+      : path;
+    targets.forEach(t=>{
       for(let i=0;i<4;i++){
         const s = document.createElement('div');
         s.className='sparkle';
@@ -2257,17 +2409,28 @@
 
   // ------------------------------------------------------------
   // Refill（消去後、盤面の個数がMAX_TSUMSを下回っていたら上から補充）
-  // 資料仕様：盤面充填数の上限を超えないようスポーンを制御
+  // 中央優先の法則：消えた分は一気に生成し、盤面中央を軸に左右へ並べて1段を作る。
+  // 1段に収まらない数が消えたときは、その上にさらに段を重ねていく。
   // ------------------------------------------------------------
-  function refillIfNeeded(){
+  function refillIfNeeded(sourceXs){
     const deficit = MAX_TSUMS - tsums.length;
+    if(deficit<=0) return;
+
     const centerX = boardW/2;
-    const spread = Math.min(boardW*0.32, tsumRadius*3.4); // 中央から左右に広がる範囲
+    const spacing = tsumRadius*2; // 1段内でのツム間隔（重なりすぎないように直径ぶん空ける）
+    const perRow = Math.max(1, Math.floor(boardW / spacing)); // 1段に並ぶ最大数
+
     for(let i=0;i<deficit;i++){
-      const rawX = centerX + (Math.random()-0.5)*2*spread;
+      const rowIdx = Math.floor(i / perRow);
+      const indexInRow = i % perRow;
+      // 中央優先：0, +1, -1, +2, -2 ... の順で軸から外側へ広がるオフセットを算出
+      const half = Math.ceil(indexInRow/2);
+      const offset = (indexInRow % 2 === 0 ? half : -half);
+      const rawX = centerX + offset*spacing;
       const x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, rawX));
-      const y = -tsumRadius*5 - Math.random()*tsumRadius*4*i; // 画面外のより高い位置から落下開始
-      const t = spawnTsum(x, y, (Math.random()-0.5)*40, 0);
+      // 段が上がるほど、より高い画面外から降ってくる
+      const y = -tsumRadius*3 - rowIdx*(tsumRadius*2.2) - Math.random()*tsumRadius*0.6;
+      const t = spawnTsum(x, y, (Math.random()-0.5)*20, 0);
       t.el.classList.add('spawning');
       setTimeout(()=>t.el.classList.remove('spawning'), 340);
     }
@@ -2281,12 +2444,24 @@
     dt = Math.min(dt, 1/30);
 
     // 1) 重力・移動の積分（選択中／消去演出中のツムは物理演算をスキップし、その場に留まる＝幽霊状態）
+    // フィーバー時の重力変化：フィーバー中は重力を強めて落下を速くする
+    const gravityNow = inFever ? GRAVITY * FEVER_GRAVITY_MULT : GRAVITY;
     for(const t of tsums){
       if(t.selected || t.ghost) continue;
-      t.vy = Math.min(t.vy + GRAVITY*dt, MAX_FALL_SPEED);
+      t.vy = Math.min(t.vy + gravityNow*dt, MAX_FALL_SPEED);
       t.vx *= FRICTION;
       t.x += t.vx*dt;
       t.y += t.vy*dt;
+      // 落下中は回転させ、速度がほぼ止まったら着地とみなして回転を落ち着かせる（お互いにぶつかりながら転がる演出）
+      const isMoving = Math.abs(t.vx) > 8 || Math.abs(t.vy) > 8;
+      t.settled = !isMoving;
+      if(!t.settled){
+        t.rot += t.rotSpeed*dt;
+      } else {
+        // 着地後は角度をゆっくり0へ戻して見た目を安定させる
+        t.rot *= 0.85;
+        if(Math.abs(t.rot) < 0.5) t.rot = 0;
+      }
     }
 
     // 2) 壁・床の境界処理
@@ -2302,48 +2477,80 @@
     }
 
     // 3) ツム同士の円形衝突（資料の「衝突により位置の遊びが発生する」を反映）
-    //    簡易反復ソルバー：数回繰り返して安定させる
+    //    空間分割グリッドで近傍ペアのみ抽出してから反復ソルバーで安定させる（全探索O(n^2)を回避し軽量化）
+    // 盤面が完全に静止していて（誰も動いておらず、指で選択中のツムも無い）場合は衝突解決自体が不要なのでスキップする
+    const anyActive = tsums.some(t=> t.selected || (!t.ghost && !t.settled));
     const n = tsums.length;
     const ITER = 6;
+    const cellSize = tsumRadius*2.2;
+    if(anyActive){
     for(let iter=0; iter<ITER; iter++){
+      // グリッドを毎回組み直す（押し出しでセルを跨ぐ可能性があるため）
+      const grid = new Map();
+      for(let i=0;i<n;i++){
+        const t = tsums[i];
+        const cx = Math.floor(t.x/cellSize), cy = Math.floor(t.y/cellSize);
+        const key = cx+','+cy;
+        let arr = grid.get(key);
+        if(!arr){ arr=[]; grid.set(key, arr); }
+        arr.push(i);
+      }
+      const checked = new Set();
       for(let i=0;i<n;i++){
         const a = tsums[i];
-        for(let j=i+1;j<n;j++){
-          const b = tsums[j];
-          const dx = b.x - a.x, dy = b.y - a.y;
-          let dist = Math.sqrt(dx*dx+dy*dy);
-          const minDist = a.r + b.r;
-          if(dist < minDist){
-            let nx, ny;
-            if(dist < 0.01){
-              // 完全に重なっている場合はランダムな方向へ逃がす
-              const ang = Math.random()*Math.PI*2;
-              nx = Math.cos(ang); ny = Math.sin(ang);
-              dist = 0.01;
-            } else {
-              nx = dx/dist; ny = dy/dist;
-            }
-            const overlap = (minDist - dist);
-            // 選択中（指に固定）／消去演出中（幽霊状態）のツムは動かさない。相手だけ押し出す。
-            const aFixed = !!a.selected || !!a.ghost, bFixed = !!b.selected || !!b.ghost;
-            if(aFixed && bFixed){
-              // 両方固定なら何もしない
-            } else if(aFixed){
-              b.x += nx*overlap; b.y += ny*overlap;
-            } else if(bFixed){
-              a.x -= nx*overlap; a.y -= ny*overlap;
-            } else {
-              const push = overlap/2;
-              a.x -= nx*push; a.y -= ny*push;
-              b.x += nx*push; b.y += ny*push;
-            }
-            // 簡易反発：押し出し方向の速度成分を減衰させつつ交換
-            const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
-            const relDot = relVx*nx+relVy*ny;
-            if(relDot < 0){
-              const impulse = -relDot*COLLISION_DAMPING;
-              if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
-              if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+        const cx = Math.floor(a.x/cellSize), cy = Math.floor(a.y/cellSize);
+        for(let ox=-1; ox<=1; ox++){
+          for(let oy=-1; oy<=1; oy++){
+            const arr = grid.get((cx+ox)+','+(cy+oy));
+            if(!arr) continue;
+            for(const j of arr){
+              if(j<=i) continue;
+              const pairKey = i*100000+j;
+              if(checked.has(pairKey)) continue;
+              checked.add(pairKey);
+              const b = tsums[j];
+              const dx = b.x - a.x, dy = b.y - a.y;
+              let dist = Math.sqrt(dx*dx+dy*dy);
+              const minDist = a.r + b.r;
+              if(dist < minDist){
+                let nx, ny;
+                if(dist < 0.01){
+                  // 完全に重なっている場合はランダムな方向へ逃がす
+                  const ang = Math.random()*Math.PI*2;
+                  nx = Math.cos(ang); ny = Math.sin(ang);
+                  dist = 0.01;
+                } else {
+                  nx = dx/dist; ny = dy/dist;
+                }
+                const overlap = (minDist - dist);
+                // 選択中（指に固定）／消去演出中（幽霊状態）のツムは動かさない。相手だけ押し出す。
+                const aFixed = !!a.selected || !!a.ghost, bFixed = !!b.selected || !!b.ghost;
+                if(aFixed && bFixed){
+                  // 両方固定なら何もしない
+                } else if(aFixed){
+                  b.x += nx*overlap; b.y += ny*overlap;
+                } else if(bFixed){
+                  a.x -= nx*overlap; a.y -= ny*overlap;
+                } else {
+                  const push = overlap/2;
+                  a.x -= nx*push; a.y -= ny*push;
+                  b.x += nx*push; b.y += ny*push;
+                }
+                // 簡易反発：押し出し方向の速度成分を減衰させつつ交換
+                const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
+                const relDot = relVx*nx+relVy*ny;
+                if(relDot < 0){
+                  const impulse = -relDot*COLLISION_DAMPING;
+                  if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
+                  if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+                }
+                // ツム同士の摩擦：接線方向（滑る方向）の相対速度も少し減衰させる
+                const tx = -ny, ty = nx;
+                const relTangent = relVx*tx + relVy*ty;
+                const frictionImpulse = relTangent*TSUM_FRICTION;
+                if(!aFixed){ a.vx += tx*frictionImpulse*0.5; a.vy += ty*frictionImpulse*0.5; }
+                if(!bFixed){ b.vx -= tx*frictionImpulse*0.5; b.vy -= ty*frictionImpulse*0.5; }
+              }
             }
           }
         }
@@ -2356,6 +2563,7 @@
         if(t.y - t.r < 0) t.y = t.r;
       }
     }
+    } // end if(anyActive)
 
     // 4) 選択中のなぞりロープをツムの動きに追従して再描画
     if(selecting && selectedPath.length>0){
@@ -2375,10 +2583,7 @@
     if(!boardFrozen && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
       physicsStep(dt);
     }
-    // フィーバーゲージは時間経過で常に少しずつ減少する（フィーバー中・満タン後・盤面停止中は減衰させない）
-    if(gameActive && !inFever && !boardFrozen && feverGauge>0){
-      feverGauge = Math.max(0, feverGauge - FEVER_GAUGE_DECAY_PER_SEC*Math.min(dt,1/30));
-    }
+    // フィーバーゲージは合計で消したツム数のみで増える（時間経過による減衰はしない）
     rafHandle = requestAnimationFrame(frameLoop);
   }
 
@@ -2437,6 +2642,7 @@
       t.isMine = isMine;
       const size = t.r*2;
       const newEl = createTsumEl(newType, isMine, size);
+      if(t.isBig) newEl.classList.add('bigTsum');
       newEl.style.transform = t.el.style.transform;
       t.el.replaceWith(newEl);
       t.el = newEl;
@@ -2462,7 +2668,7 @@
       const jitterX = (Math.random()-0.5)*tsumRadius*0.6;
       const x = tsumRadius + col*((boardW - tsumRadius*2)/(perRow-1||1)) + jitterX;
       const y = -tsumRadius*2 - rowIdx*(tsumRadius*2.05) - Math.random()*tsumRadius;
-      spawnTsum(Math.max(tsumRadius, Math.min(boardW-tsumRadius, x)), y, (Math.random()-0.5)*20, 0);
+      spawnTsum(Math.max(tsumRadius, Math.min(boardW-tsumRadius, x)), y, (Math.random()-0.5)*20, 0, false);
     }
   }
 
@@ -2491,6 +2697,7 @@
     ghostTimers = [];
     clearTimeout(feverEndTimer);
     appEl.classList.remove('fever');
+    feverLights.classList.remove('show');
     skillBtn.classList.remove('ready');
 
     scoreMultiplier = 1;
@@ -2540,12 +2747,16 @@
     clearInterval(timerHandle);
     clearTimeout(timerResumeTimeout);
     clearTimeout(feverEndTimer);
+    boardFrozen = false;
+    buzzTapMode = false;
+    boardWrap.classList.remove('buzzTapMode');
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
       selectedPath.forEach(t=>t.el.classList.remove('selected'));
       selecting=false; selectedPath=[]; ropeSvg.innerHTML='';
     }
     appEl.classList.remove('fever');
+    feverLights.classList.remove('show');
     finalScore.textContent = score.toLocaleString();
     finalChain.textContent = maxChain;
     finalCoin.textContent = coins.toLocaleString();
@@ -2659,7 +2870,10 @@
   let resizeTimeout;
   window.addEventListener('resize', ()=>{
     clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(()=>{ if(boardW>0) layoutBoard(); }, 120);
+    resizeTimeout = setTimeout(()=>{
+      if(boardW>0) layoutBoard();
+      if(inFever) buildFeverLights();
+    }, 120);
   });
 
   tsumRadius = 24;
