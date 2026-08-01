@@ -294,6 +294,114 @@
     transition: width .28s ease-out;
   }
   .gastonBeam.fire{ width:100%; }
+
+  /* ---------- キャプテンライトイヤーのカットイン演出 ---------- */
+  .buzzCutinLayer{
+    position:absolute;
+    inset:0;
+    z-index:50;
+    overflow:hidden;
+    pointer-events:none;
+    background:rgba(10,15,40,0);
+    transition:background .28s ease;
+  }
+  .buzzCutinLayer.enter{ background:rgba(10,15,40,0.55); }
+  .buzzCutinLayer.exit{ background:rgba(10,15,40,0); }
+  .buzzCutinFlash{
+    position:absolute; inset:0;
+    background:radial-gradient(circle at 70% 40%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%);
+    opacity:0;
+    animation:buzzFlashPop .5s ease-out forwards;
+  }
+  @keyframes buzzFlashPop{
+    0%{opacity:0;}
+    15%{opacity:0.9;}
+    100%{opacity:0;}
+  }
+  .buzzFoe{
+    position:absolute;
+    top:18%;
+    right:-60%;
+    width:46%;
+    max-width:170px;
+    transition:right .45s cubic-bezier(.2,.8,.3,1);
+  }
+  .buzzCutinLayer.enter .buzzFoe{ right:4%; }
+  .buzzCutinLayer.exit .buzzFoe{ right:-70%; transition:right .34s ease-in; }
+  .buzzFoeHead{
+    width:60%;
+    aspect-ratio:1/1;
+    margin:0 auto;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #6b7480, #2a2f38 75%);
+    box-shadow:0 0 0 4px #14161c, 0 6px 16px rgba(0,0,0,0.45);
+    position:relative;
+  }
+  .buzzFoeHead::after{
+    content:'';
+    position:absolute;
+    left:18%; top:32%;
+    width:64%; height:26%;
+    border-radius:50%;
+    background:linear-gradient(180deg, rgba(255,90,90,0.9), rgba(120,0,0,0.7));
+    box-shadow:0 0 8px 2px rgba(255,60,60,0.7);
+  }
+  .buzzFoeArm{
+    position:absolute;
+    left:-38%; top:58%;
+    width:70%; height:14px;
+    background:linear-gradient(90deg,#3a3f47,#14161c);
+    border-radius:7px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.4);
+  }
+  .buzzFoeBeam{
+    position:absolute;
+    left:0; top:50%;
+    width:0; height:5px;
+    margin-top:-2.5px;
+    background:linear-gradient(90deg, rgba(255,80,80,0.95), rgba(255,180,180,0.9));
+    box-shadow:0 0 12px 4px rgba(255,70,70,0.85);
+    border-radius:3px;
+    transform:scaleX(-1);
+    transform-origin:right center;
+    transition:width .3s ease-out;
+  }
+  .buzzFoeBeam.fire{ width:220%; }
+  .buzzCutinLine{
+    position:absolute;
+    left:50%; bottom:16%;
+    transform:translateX(-50%) scale(0.7);
+    font-size:15px;
+    font-weight:900;
+    color:#ffe9e9;
+    background:linear-gradient(135deg,#d63a3a,#7a1414);
+    padding:6px 18px;
+    border-radius:20px;
+    box-shadow:0 4px 0 rgba(0,0,0,0.3);
+    opacity:0;
+    white-space:nowrap;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .buzzCutinLayer.enter .buzzCutinLine{ opacity:1; transform:translateX(-50%) scale(1); }
+  .buzzCutinLayer.exit .buzzCutinLine{ opacity:0; }
+
+  /* タップ範囲消去モード中のカーソルと範囲エフェクト */
+  #boardWrap.buzzTapMode #board{ cursor:crosshair; }
+  .buzzTapCircle{
+    position:absolute;
+    border-radius:50%;
+    border:3px solid rgba(90,140,255,0.9);
+    background:radial-gradient(circle, rgba(140,190,255,0.35), rgba(90,140,255,0.05) 70%);
+    box-shadow:0 0 14px 3px rgba(90,140,255,0.6);
+    pointer-events:none;
+    z-index:37;
+    animation:buzzCircleFade .42s ease-out forwards;
+  }
+  @keyframes buzzCircleFade{
+    0%{ transform:scale(0.4); opacity:0.95; }
+    60%{ transform:scale(1); opacity:0.8; }
+    100%{ transform:scale(1.08); opacity:0; }
+  }
   .tsum.bomb .face{
     background: conic-gradient(from 0deg,
       #ff6fa5 0deg, #ffd23f 60deg, #7ee08a 120deg, #4fd6c4 150deg,
@@ -787,6 +895,9 @@
     { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:160, skillNeed:20,
       skillName:'ハンティングショット',
       skillDesc:'横一列に3発撃ちぬいて消去。その後5秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
+    { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:170, skillNeed:16,
+      skillName:'ネヴァー・ギブアップ',
+      skillDesc:'腕のビームで狙う敵がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径5ツム分の範囲を消去（5回まで）' },
   ];
 
   // 盤面に実際に降ってくるツムの種類（アイテムで5種/4種に変化）
@@ -795,6 +906,8 @@
   // ガストンのスキル後：5秒間ガストンだけが降ってくるボーナスタイム
   let gastonRainActive = false;
   let gastonRainTimer = null;
+  let buzzTapMode = false;
+  let buzzTapsLeft = 0;
 
   // ------------------------------------------------------------
   // Items（ゲーム開始前に選ぶアイテム効果）
@@ -1067,6 +1180,50 @@
         gun.style.borderRadius='3px';
         gun.style.boxShadow='0 1px 2px rgba(0,0,0,0.35)';
         face.appendChild(gun);
+        break;
+      }
+      case 'wing': {
+        // 宇宙ヘルメットのバイザー
+        const visor = document.createElement('div');
+        visor.className='motif';
+        visor.style.left='50%'; visor.style.top='14%';
+        visor.style.transform='translateX(-50%)';
+        visor.style.width=size*0.68+'px';
+        visor.style.height=size*0.26+'px';
+        visor.style.background='linear-gradient(180deg, rgba(255,255,255,0.85), rgba(140,220,255,0.55))';
+        visor.style.borderRadius='50% 50% 45% 45%/70% 70% 30% 30%';
+        visor.style.boxShadow='inset 0 -2px 3px rgba(0,90,150,0.35)';
+        face.appendChild(visor);
+        // 左右の羽根（宇宙服の翼）
+        [ -1, 1 ].forEach(sign=>{
+          const wing = document.createElement('div');
+          wing.className='motif';
+          wing.style.width='0'; wing.style.height='0';
+          const s = size*0.26;
+          wing.style.borderTop=(s*0.5)+'px solid transparent';
+          wing.style.borderBottom=(s*0.5)+'px solid transparent';
+          if(sign>0){
+            wing.style.borderLeft = s+'px solid #7ee08a';
+            wing.style.left='84%';
+          } else {
+            wing.style.borderRight = s+'px solid #7ee08a';
+            wing.style.left='-10%';
+          }
+          wing.style.top='40%';
+          wing.style.filter='drop-shadow(0 1px 1px rgba(0,0,0,0.2))';
+          face.appendChild(wing);
+        });
+        // 胸のボタン
+        const btn = document.createElement('div');
+        btn.className='motif';
+        btn.style.width=size*0.1+'px';
+        btn.style.height=size*0.1+'px';
+        btn.style.left='50%'; btn.style.top='70%';
+        btn.style.transform='translateX(-50%)';
+        btn.style.background='radial-gradient(circle, #fff, #7ee08a 70%)';
+        btn.style.borderRadius='50%';
+        btn.style.boxShadow='0 0 3px rgba(0,0,0,0.3)';
+        face.appendChild(btn);
         break;
       }
     }
@@ -1558,6 +1715,7 @@
       blue: skillRoyalClear,
       orange: skillDevilBomb,
       gaston: skillGastonLine,
+      buzz: skillBuzzLightyear,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -1801,6 +1959,143 @@
       gastonRainActive = false;
       appEl.classList.remove('gastonRain');
     }, 5000);
+  }
+
+  // キャプテンライトイヤー：狙撃してくる敵のカットインで足止め→
+  // タップした場所を中心に直径5ツム分の円範囲を消去（5回まで）
+  function skillBuzzLightyear(){
+    boardFrozen = true;
+    pauseTimer(1500);
+    showBuzzCutin(()=>{
+      boardFrozen = false;
+      startBuzzTapMode();
+    });
+  }
+
+  // 腕のビームでこちらを狙う敵のシルエットがカットインしてくる演出
+  function showBuzzCutin(onDone){
+    const layer = document.createElement('div');
+    layer.className = 'buzzCutinLayer';
+
+    const flash = document.createElement('div');
+    flash.className = 'buzzCutinFlash';
+    layer.appendChild(flash);
+
+    const foe = document.createElement('div');
+    foe.className = 'buzzFoe';
+    const foeHead = document.createElement('div');
+    foeHead.className = 'buzzFoeHead';
+    const foeArm = document.createElement('div');
+    foeArm.className = 'buzzFoeArm';
+    const foeBeam = document.createElement('div');
+    foeBeam.className = 'buzzFoeBeam';
+    foeArm.appendChild(foeBeam);
+    foe.appendChild(foeHead);
+    foe.appendChild(foeArm);
+    layer.appendChild(foe);
+
+    const line = document.createElement('div');
+    line.className = 'buzzCutinLine';
+    line.textContent = 'ビームロックオン！';
+    layer.appendChild(line);
+
+    board.appendChild(layer);
+
+    requestAnimationFrame(()=>{ layer.classList.add('enter'); });
+
+    setTimeout(()=>{ foeBeam.classList.add('fire'); }, 500);
+
+    setTimeout(()=>{
+      layer.classList.add('exit');
+      setTimeout(()=>{
+        layer.remove();
+        onDone && onDone();
+      }, 380);
+    }, 1100);
+  }
+
+  // タップ範囲消去モードを開始（残り5回）
+  function startBuzzTapMode(){
+    buzzTapsLeft = 5;
+    buzzTapMode = true;
+    boardWrap.classList.add('buzzTapMode');
+    showSkillLabel(`タップして敵を一掃！ 残り${buzzTapsLeft}回`);
+  }
+
+  function endBuzzTapMode(){
+    buzzTapMode = false;
+    boardWrap.classList.remove('buzzTapMode');
+    refillIfNeeded();
+    finishSkill();
+    checkFeverTrigger();
+  }
+
+  board.addEventListener('pointerdown', (e)=>{
+    if(!buzzTapMode || !gameActive || buzzTapsLeft<=0) return;
+    e.preventDefault();
+    const p = getBoardLocalPoint(e);
+    doBuzzErase(p);
+  });
+
+  function doBuzzErase(p){
+    const eraseRadius = tsumRadius*5; // 直径5ツム分の円
+    showBuzzTapCircle(p, eraseRadius);
+
+    const targets = tsums.filter(t=>{
+      if(t.isBomb || t.ghost) return false;
+      const dx = t.x-p.x, dy = t.y-p.y;
+      return (dx*dx+dy*dy) <= eraseRadius*eraseRadius;
+    });
+
+    buzzTapsLeft--;
+    updateBuzzLabel();
+
+    if(targets.length===0){
+      if(buzzTapsLeft<=0) endBuzzTapMode();
+      return;
+    }
+
+    const bonus = computeScore(targets);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(targets.length);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(targets.length > maxChain) maxChain = targets.length;
+    chainVal.textContent = maxChain;
+
+    burstSparkles(targets);
+    burstMyTsumOrbs(targets);
+    if(gainedCoins>0) burstCoins(targets, gainedCoins);
+
+    const spawnBomb = targets.length >= bombChainThreshold;
+    const bombSpot = spawnBomb ? targets[targets.length-1] : null;
+    popWithWave(targets, p, 'popping', ()=>{
+      if(bombSpot) spawnBombNear(bombSpot);
+      refillIfNeeded();
+      if(buzzTapsLeft<=0) endBuzzTapMode();
+    }, true);
+  }
+
+  function updateBuzzLabel(){
+    if(buzzTapsLeft>0){
+      showSkillLabel(`敵を一掃！ 残り${buzzTapsLeft}回`);
+    } else {
+      showSkillLabel('ネヴァー・ギブアップ！');
+    }
+  }
+
+  // タップした位置に一瞬だけ消去範囲の円を表示する
+  function showBuzzTapCircle(p, radius){
+    const circle = document.createElement('div');
+    circle.className = 'buzzTapCircle';
+    const size = radius*2;
+    circle.style.width = size+'px';
+    circle.style.height = size+'px';
+    circle.style.left = (p.x-radius)+'px';
+    circle.style.top = (p.y-radius)+'px';
+    board.appendChild(circle);
+    setTimeout(()=> circle.remove(), 420);
   }
 
   // ------------------------------------------------------------
@@ -2197,6 +2492,9 @@
     clearTimeout(gastonRainTimer);
     appEl.classList.remove('gastonRain');
     boardFrozen = false;
+    buzzTapMode = false;
+    buzzTapsLeft = 0;
+    boardWrap.classList.remove('buzzTapMode');
 
     // アイテム反映：盤面のツム種類数／ボム出現チェーン数
     activeTsumTypes = buildActiveTsumTypes(itemFewerTypes ? 4 : 5);
