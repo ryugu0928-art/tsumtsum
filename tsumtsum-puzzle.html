@@ -1522,6 +1522,7 @@
         removeTsum(t);
         t.el.remove();
         ghostTimers = ghostTimers.filter(g=>g.t!==t);
+        refillIfNeeded(); // 消えたツムはこの時点ですぐに1個分を補充する（まとめて後から降らせない）
       }, finish);
       ghostTimers.push({t, timeoutId});
     });
