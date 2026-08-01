@@ -1181,7 +1181,7 @@
     ropeSvg.style.width = boardW+'px';
     ropeSvg.style.height = boardH+'px';
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 1.1));
+    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 1.21));
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
@@ -3249,7 +3249,7 @@
     }, 120);
   });
 
-  tsumRadius = 26;
+  tsumRadius = 29;
   layoutBoard();
   buildStartPreview();
   renderMyTsumIcon();
