@@ -1803,7 +1803,7 @@
     }
     const feverSpeed = inFever ? FEVER_POP_SPEED_MULT : 1;
     const POP_DURATION = 420 / feverSpeed;
-    const totalWave = instant ? 0 : Math.min(2200, 80*(ordered.length-1)) / feverSpeed;
+    const totalWave = instant ? 0 : Math.min(2200, 104*(ordered.length-1)) / feverSpeed;
     const stagger = (!instant && ordered.length>1) ? totalWave/(ordered.length-1) : 0;
 
     // このウェーブ全体で共有する状態。ボムキャン（forceFinishAllGhosts）で個々のタイマーを
