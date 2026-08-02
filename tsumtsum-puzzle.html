@@ -2849,7 +2849,7 @@
     // 盤面が完全に静止していて（誰も動いておらず、指で選択中のツムも無い）場合は衝突解決自体が不要なのでスキップする
     const anyActive = tsums.some(t=> t.selected || (!t.ghost && !t.settled));
     const n = tsums.length;
-    const ITER = 6;
+    const ITER = 10;
     const cellSize = tsumRadius*2.2;
     if(anyActive){
     for(let iter=0; iter<ITER; iter++){
@@ -2879,7 +2879,7 @@
               const b = tsums[j];
               const dx = b.x - a.x, dy = b.y - a.y;
               let dist = Math.sqrt(dx*dx+dy*dy);
-              const minDist = (a.r + b.r) * 0.97;
+              const minDist = (a.r + b.r) * 1.0;
               if(dist < minDist){
                 let nx, ny;
                 if(dist < 0.01){
@@ -2900,7 +2900,7 @@
                 } else if(bFixed){
                   a.x -= nx*overlap; a.y -= ny*overlap;
                 } else {
-                  const push = overlap/2;
+                  const push = overlap/2*1.4;
                   a.x -= nx*push; a.y -= ny*push;
                   b.x += nx*push; b.y += ny*push;
                 }
