@@ -1181,7 +1181,7 @@
     ropeSvg.style.width = boardW+'px';
     ropeSvg.style.height = boardH+'px';
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 1.05));
+    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85));
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
@@ -2849,7 +2849,7 @@
     // 盤面が完全に静止していて（誰も動いておらず、指で選択中のツムも無い）場合は衝突解決自体が不要なのでスキップする
     const anyActive = tsums.some(t=> t.selected || (!t.ghost && !t.settled));
     const n = tsums.length;
-    const ITER = 10;
+    const ITER = 7;
     const cellSize = tsumRadius*2.2;
     if(anyActive){
     for(let iter=0; iter<ITER; iter++){
@@ -2900,7 +2900,7 @@
                 } else if(bFixed){
                   a.x -= nx*overlap; a.y -= ny*overlap;
                 } else {
-                  const push = overlap/2*1.4;
+                  const push = overlap/2;
                   a.x -= nx*push; a.y -= ny*push;
                   b.x += nx*push; b.y += ny*push;
                 }
@@ -3252,7 +3252,7 @@
     }, 120);
   });
 
-  tsumRadius = 25;
+  tsumRadius = 20;
   layoutBoard();
   buildStartPreview();
   renderMyTsumIcon();
