@@ -1001,9 +1001,9 @@
   // 物理パラメータ（資料の「円形ヒットボックス」「重力落下」「衝突による位置の遊び」を反映）
   const GRAVITY = 2200;          // px/s^2
   const MAX_FALL_SPEED = 1800;   // px/s
-  const RESTITUTION = 0.12;      // 床・壁での反発係数（低めでコトッと着地する感じ）
-  const COLLISION_DAMPING = 0.55;// ツム同士の押し出し後の減衰
-  const TSUM_FRICTION = 0.18;    // ツム同士が接触した際の摩擦（接線方向の滑りを抑える）
+  const RESTITUTION = 0.06;      // 床・壁での反発係数（低めでコトッと着地する感じ）
+  const COLLISION_DAMPING = 0.22;// ツム同士の押し出し後の減衰
+  const TSUM_FRICTION = 0.12;    // ツム同士が接触した際の摩擦（接線方向の滑りを抑える）
   const FRICTION = 0.90;         // 横方向の摩擦（毎フレーム減衰）
   const FEVER_GRAVITY_MULT = 1.35; // フィーバー中は重力を強めて落下を速くする
   const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
@@ -2817,6 +2817,7 @@
       if(t.selected || t.ghost) continue;
       t.vy = Math.min(t.vy + gravityNow*dt, MAX_FALL_SPEED);
       t.vx *= FRICTION;
+      t.vy *= 0.995;
       t.x += t.vx*dt;
       t.y += t.vy*dt;
       // 落下中は回転させ、速度がほぼ止まったら着地とみなして回転を落ち着かせる（お互いにぶつかりながら転がる演出）
@@ -2903,20 +2904,22 @@
                   a.x -= nx*push; a.y -= ny*push;
                   b.x += nx*push; b.y += ny*push;
                 }
-                // 簡易反発：押し出し方向の速度成分を減衰させつつ交換
-                const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
-                const relDot = relVx*nx+relVy*ny;
-                if(relDot < 0){
-                  const impulse = -relDot*COLLISION_DAMPING;
-                  if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
-                  if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+                // 簡易反発：押し出し方向の速度成分を減衰させつつ交換（反復ごとの過剰な加速を防ぐため最終反復のみ適用）
+                if(iter === ITER-1){
+                  const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
+                  const relDot = relVx*nx+relVy*ny;
+                  if(relDot < 0){
+                    const impulse = -relDot*COLLISION_DAMPING;
+                    if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
+                    if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+                  }
+                  // ツム同士の摩擦：接線方向（滑る方向）の相対速度も少し減衰させる
+                  const tx = -ny, ty = nx;
+                  const relTangent = relVx*tx + relVy*ty;
+                  const frictionImpulse = relTangent*TSUM_FRICTION;
+                  if(!aFixed){ a.vx += tx*frictionImpulse*0.5; a.vy += ty*frictionImpulse*0.5; }
+                  if(!bFixed){ b.vx -= tx*frictionImpulse*0.5; b.vy -= ty*frictionImpulse*0.5; }
                 }
-                // ツム同士の摩擦：接線方向（滑る方向）の相対速度も少し減衰させる
-                const tx = -ny, ty = nx;
-                const relTangent = relVx*tx + relVy*ty;
-                const frictionImpulse = relTangent*TSUM_FRICTION;
-                if(!aFixed){ a.vx += tx*frictionImpulse*0.5; a.vy += ty*frictionImpulse*0.5; }
-                if(!bFixed){ b.vx -= tx*frictionImpulse*0.5; b.vy -= ty*frictionImpulse*0.5; }
               }
             }
           }
