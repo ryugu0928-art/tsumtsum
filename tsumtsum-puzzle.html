@@ -300,8 +300,8 @@
     box-shadow: inset 0 -8px 14px rgba(0,0,0,0.18), inset 0 6px 10px rgba(255,255,255,0.55), 0 0 0 3px #fff9, 0 0 16px 4px rgba(255,210,80,0.55), 0 6px 10px rgba(0,0,0,0.22);
   }
   @keyframes spawnDrop{
-    0%{opacity:0;}
-    100%{opacity:1;}
+    0%{opacity:1; transform-origin:center; filter:brightness(1.15);}
+    100%{opacity:1; filter:brightness(1);}
   }
   .myOrb{
     position:absolute;
@@ -573,6 +573,43 @@
     transition:opacity .1s ease;
   }
   #chainCountBadge.show{ opacity:1; }
+  /* 消去数表示：消去した場所の中心から画面中心寄りに表示。
+     出現直後は少し小さめから始まり、じわじわ拡大しながらフェードアウトする。
+     0.8秒の表示時間ぶんアニメーション時間を合わせてある。 */
+  .eraseCountLabel{
+    position:absolute;
+    left:0; top:0;
+    transform:translate(-50%,-50%) scale(0.85);
+    font-weight:900;
+    font-size:34px;
+    color:#fff;
+    -webkit-text-stroke:2.5px rgba(0,0,0,0.55);
+    paint-order:stroke fill;
+    text-shadow:0 2px 4px rgba(0,0,0,0.35);
+    z-index:60;
+    pointer-events:none;
+    white-space:nowrap;
+    animation:eraseCountPop 0.8s ease-out forwards;
+  }
+  @keyframes eraseCountPop{
+    0%{ transform:translate(-50%,-50%) scale(0.85); opacity:1; }
+    60%{ transform:translate(-50%,-50%) scale(1.25); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(1.5); opacity:0; }
+  }
+  /* 30消去以上：文字を虹色グラデーション＋光るアニメーションにする */
+  .eraseCountLabel.rainbow{
+    background:linear-gradient(90deg,#ff3b3b,#ff9c3b,#f7e34c,#4ce06a,#4ca8ff,#7a5cff,#ff5cd6,#ff3b3b);
+    background-size:300% 100%;
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    -webkit-text-stroke:2.5px rgba(0,0,0,0.5);
+    animation:eraseCountPop 0.8s ease-out forwards, eraseRainbowShift 0.8s linear forwards;
+  }
+  @keyframes eraseRainbowShift{
+    0%{ background-position:0% 50%; }
+    100%{ background-position:150% 50%; }
+  }
   .coinPop{
     position:absolute;
     width:14px;height:14px;border-radius:50%;
@@ -1002,8 +1039,8 @@
   const GRAVITY = 2200;          // px/s^2
   const MAX_FALL_SPEED = 1800;   // px/s
   const RESTITUTION = 0.06;      // 床・壁での反発係数（低めでコトッと着地する感じ）
-  const COLLISION_DAMPING = 0.22;// ツム同士の押し出し後の減衰
-  const TSUM_FRICTION = 0.12;    // ツム同士が接触した際の摩擦（接線方向の滑りを抑える）
+  const COLLISION_DAMPING = 0.14;// ツム同士の押し出し後の減衰（値を下げて反発を穏やかにし、暴れを抑える）
+  const TSUM_FRICTION = 0.4;     // ツム同士が接触した際の摩擦（接線方向の滑りを抑える。強めにして山への滑り込み・無理な割り込みを抑制）
   const FRICTION = 0.90;         // 横方向の摩擦（毎フレーム減衰）
   const FEVER_GRAVITY_MULT = 1.35; // フィーバー中は重力を強めて落下を速くする
   const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
@@ -1181,7 +1218,7 @@
     ropeSvg.style.width = boardW+'px';
     ropeSvg.style.height = boardH+'px';
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85));
+    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2));
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
@@ -1562,6 +1599,7 @@
       rot: (Math.random()-0.5)*60,       // 落下開始時のランダムな初期回転角度（度）
       rotSpeed: (Math.random()-0.5)*260, // 落下中の回転速度（度/秒）
       settled:false,
+      enteredBoard: (y - r >= 0), // 画面外上空(y<r)から生成された場合はfalse。降ってきて盤面に入ったらtrueになる
     };
     attachHandlers(t);
     tsums.push(t);
@@ -1948,6 +1986,7 @@
     addSkillGauge(myCount);
 
     showCombo(n, bonus, path, gainedCoins, totalEffectiveN);
+    showEraseCount(path.concat(extraTargets), totalEffectiveN, path[path.length-1]);
     burstSparkles(path.concat(extraTargets));
     burstMyTsumOrbs(path.concat(extraTargets));
     if(gainedCoins>0) burstCoins(path.concat(extraTargets), gainedCoins);
@@ -2148,6 +2187,7 @@
     chainVal.textContent = maxChain;
 
     showSkillLabel(`ロイヤルクリア！ マイツム${myTsums.length}個消去 +${bonus}`);
+    showEraseCount(myTsums, myTsums.length);
     burstSparkles(myTsums);
     burstMyTsumOrbs(myTsums);
     if(gainedCoins>0) burstCoins(myTsums, gainedCoins);
@@ -2181,6 +2221,7 @@
     chainVal.textContent = maxChain;
 
     showSkillLabel(`ともだちイレイサー！ ${targets.length}個消去 +${bonus}`);
+    showEraseCount(targets, targets.length);
     burstSparkles(targets);
     burstMyTsumOrbs(targets);
     if(gainedCoins>0) burstCoins(targets, gainedCoins);
@@ -2289,6 +2330,7 @@
       burstSparkles(targets);
       burstMyTsumOrbs(targets);
       if(gainedCoins>0) burstCoins(targets, gainedCoins);
+      showEraseCount(targets, targets.length);
 
       // レーザーが走るように左から右へ時間差で消えていく
       const spawnBomb = targets.length >= bombChainThreshold;
@@ -2564,6 +2606,7 @@
     burstSparkles(targets);
     burstMyTsumOrbs(targets);
     if(gainedCoins>0) burstCoins(targets, gainedCoins);
+    showEraseCount(targets, targets.length);
 
     const spawnBomb = targets.length >= bombChainThreshold;
     const bombSpot = spawnBomb ? targets[targets.length-1] : null;
@@ -2687,6 +2730,43 @@
   // ------------------------------------------------------------
   // Effects
   // ------------------------------------------------------------
+  // 消去数を表示する。
+  // list: 消去されたツムの配列
+  // count: 表示する数値
+  // endPoint: 指定した場合、そのツムの座標に重ねて表示する（チェーンの終端など）。
+  //           省略時は list の座標平均＝「消去したところの中心」から画面中心寄りにオフセットして表示する。
+  function showEraseCount(list, count, endPoint){
+    if(!list || list.length===0) return;
+    let px, py;
+    if(endPoint){
+      // チェーンの終端ツムに重ねて表示するので、寄せの計算は不要
+      px = endPoint.x; py = endPoint.y;
+    } else {
+      // 消去された全ツムの座標の平均＝「消去したところの中心」
+      let cx = 0, cy = 0;
+      for(const t of list){ cx += t.x; cy += t.y; }
+      cx /= list.length; cy /= list.length;
+
+      // 画面（盤面）の中心へ向かう方向へ、ツム1個分ほど寄せて表示する。
+      // これにより、盤面の端で消したときにラベルが盤面の外へはみ出しにくくなり、
+      // 見やすい位置（中心寄り）に表示される。
+      const boardCx = boardW/2, boardCy = boardH/2;
+      let dx = boardCx - cx, dy = boardCy - cy;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const pull = Math.min(dist, tsumRadius*1.6); // 中心に十分近い場合は寄せすぎない
+      if(dist > 0.001){ dx = dx/dist*pull; dy = dy/dist*pull; } else { dx = 0; dy = 0; }
+      px = cx+dx; py = cy+dy;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'eraseCountLabel' + (count>=30 ? ' rainbow' : '');
+    label.textContent = count;
+    label.style.left = px+'px';
+    label.style.top = py+'px';
+    board.appendChild(label);
+    setTimeout(()=> label.remove(), 800);
+  }
+
   function showCombo(n, bonus, path, gainedCoins, effectiveN){
     const displayN = effectiveN!==undefined ? effectiveN : n;
     let label;
@@ -2786,8 +2866,11 @@
     const perRow = Math.max(1, Math.floor(boardW / spacing)); // 1段に並ぶ最大数
 
     // 画面（盤面の見える範囲＝boardH）の外に確実に隠れる開始位置。
-    // 大量消去で複数段になっても、どの段も必ずboardHより上（見えない位置）からスタートさせる。
-    const startY = -Math.max(boardH, tsumRadius*3) - tsumRadius*2;
+    // 以前は boardH 丸ごと分（画面の高さ全部）も上から降らせていたため、
+    // 生成されてから見え始めるまでの待ち時間が長すぎた。
+    // ツム直径の数個分だけ画面外に隠せば「上空から降ってくる」演出としては十分なので、
+    // その最低限の高さまで開始位置を下げる。
+    const startY = -tsumRadius*3;
 
     for(let i=0;i<deficit;i++){
       const rowIdx = Math.floor(i / perRow);
@@ -2817,11 +2900,37 @@
     const gravityNow = inFever ? GRAVITY * FEVER_GRAVITY_MULT : GRAVITY;
     for(const t of tsums){
       if(t.selected || t.ghost) continue;
-      t.vy = Math.min(t.vy + gravityNow*dt, MAX_FALL_SPEED);
-      t.vx *= FRICTION;
-      t.vy *= 0.995;
-      t.x += t.vx*dt;
-      t.y += t.vy*dt;
+      // 他のツムに乗っかって静止しているとみなせる場合は重力・移動の積分自体をスキップする。
+      //
+      // 【設計の経緯】
+      // 1. 当初「深い重なりが残っている間は常に重力を止める」処理を入れたところ、
+      //    横一列に並んで軽く接触しているだけのツムまで重力が止まってしまい、
+      //    重なりが解消されない→重力停止が続く→永久に動かない、というデッドロックになった。
+      // 2. そこで重力停止をやめて resting のときだけ止める形に戻したが、
+      //    今度は「下に支えがあって深く重なっている最中」のツムにもフル重力がかかり続け、
+      //    押し出しの解消より沈み込みが早くて埋もれが再発した。
+      //
+      // 正しい判定基準は「重なっているかどうか」ではなく「下方向に支え(supportedBelow)があるかどうか」。
+      // 支えが無い（横や上でしか接触していない）ツムは自由落下すべきなので通常どおりフル重力をかけ、
+      // 支えがある（＝下のツムに乗ろうとしている）ツムだけ、深い重なりの間は重力を弱めて
+      // 押し出しソルバーが沈み込みに負けないようにする。
+      if(t.resting){
+        t.vx = 0; t.vy = 0;
+      } else if(t.supportedBelow && t.hasDeepOverlap){
+        // 支えの上で深くめり込んでいる最中：重力を弱め、下向きの新規加速を止める。
+        // 完全ゼロにはせず既存の速度は残す（横滑りの慣性で自然に隙間へ収まる余地を残す）ため、
+        // 「これ以上加速させない」だけに留める。
+        t.vy = Math.min(t.vy, 0);
+        t.vx *= FRICTION;
+        t.x += t.vx*dt;
+        t.y += t.vy*dt;
+      } else {
+        t.vy = Math.min(t.vy + gravityNow*dt, MAX_FALL_SPEED);
+        t.vx *= FRICTION;
+        t.vy *= 0.995;
+        t.x += t.vx*dt;
+        t.y += t.vy*dt;
+      }
       // 落下中は回転させ、速度がほぼ止まったら着地とみなして回転を落ち着かせる（お互いにぶつかりながら転がる演出）
       const isMoving = Math.abs(t.vx) > 8 || Math.abs(t.vy) > 8;
       t.settled = !isMoving;
@@ -2843,21 +2952,43 @@
         if(t.vy > 0) t.vy = -t.vy*RESTITUTION;
         if(Math.abs(t.vy) < 20) t.vy = 0;
       }
-      if(t.y - t.r < 0){ t.y = t.r; if(t.vy<0) t.vy = 0; }
+      // 【重要】上端の境界処理は「一度盤面内に入ったことがあるツム」にだけ適用する。
+      // refillIfNeeded は演出のため、わざと boardH よりずっと上（画面外上空）にツムを生成し、
+      // そこから重力で落ちてくる様子を見せている。だが以前はここで無条件に
+      // 「t.y - t.r < 0 なら t.y = t.r にスナップ」させていたため、
+      // スポーン直後の次フレームで即座に画面上端へワープしてしまい、
+      // 「画面外上空から降ってくる」演出が実質無効化されていた。
+      // t.enteredBoard フラグを使い、一度でも画面内(y - r >= 0)に到達したツムだけ
+      // 以後は天井として扱う（＝盤面に入ってから上に飛び出すのは防ぐが、降ってくる途中は妨げない）。
+      if(!t.enteredBoard){
+        if(t.y - t.r >= 0) t.enteredBoard = true;
+      } else {
+        if(t.y - t.r < 0){ t.y = t.r; if(t.vy<0) t.vy = 0; }
+      }
     }
 
     // 3) ツム同士の円形衝突（資料の「衝突により位置の遊びが発生する」を反映）
     //    空間分割グリッドで近傍ペアのみ抽出してから反復ソルバーで安定させる（全探索O(n^2)を回避し軽量化）
-    // 盤面が完全に静止していて（誰も動いておらず、指で選択中のツムも無い）場合は衝突解決自体が不要なのでスキップする
+    // 【重要】以前は「盤面が完全に静止している間は衝突解決を丸ごとスキップ」していたが、
+    // これだと静止中に生じたわずかな重なりが解消されずに放置され、新しいツムが降ってきて
+    // anyActive が再び true になった瞬間に、蓄積した重なりが一気に押し出されて
+    // 「いきなりツムが弾き飛ぶ」という現象を引き起こしていた。
+    // そのため、静止中でも重なり解消（位置の押し出し）自体は常に行い、
+    // 速度に影響する反発・摩擦の適用だけを anyActive の時に限定する。
     const anyActive = tsums.some(t=> t.selected || (!t.ghost && !t.settled));
     const n = tsums.length;
-    const ITER = 7;
+    const ITER = 10; // ツム拡大に伴い密度が上がるため反復回数を増やして押し出しをより安定させる
     // セルサイズは盤面上の最大半径（大ツム＝デカツムを含む）を基準にする。
     // 通常半径だけを基準にすると、大ツム同士の衝突判定距離(最大 r_big*2)がセルサイズを超えてしまい、
     // 隣接1セル分しか見ない近傍探索では検出漏れ（すり抜けて重なった後に急に弾かれ暴れる）が起きるため。
     const maxR = tsumRadius * BIG_TSUM_SCALE;
     const cellSize = maxR*2.2;
-    if(anyActive){
+    // 「下に支えがあるか」「深い重なりが残っているか」を毎フレーム再判定するため、まずリセットする
+    for(const t of tsums){
+      t.supportedBelow = (t.y + t.r >= boardH - 0.5); // 床に接地していればそれ自体が支え
+      t.hasDeepOverlap = false;
+    }
+    {
     for(let iter=0; iter<ITER; iter++){
       // グリッドを毎回組み直す（押し出しでセルを跨ぐ可能性があるため）
       const grid = new Map();
@@ -2896,11 +3027,38 @@
                 } else {
                   nx = dx/dist; ny = dy/dist;
                 }
-                const overlap = (minDist - dist);
-                // 選択中（指に固定）／消去演出中（幽霊状態）のツムは動かさない。相手だけ押し出す。
-                const aFixed = !!a.selected || !!a.ghost, bFixed = !!b.selected || !!b.ghost;
+                const overlapRaw = (minDist - dist);
+                // 深い重なり（半径の12%超）が残っている間は、まだ「安定して乗っている」とは言えないため、
+                // resting 化を保留して押し出しが働き続けるようにフラグを立てる。
+                if(overlapRaw > tsumRadius*0.12){
+                  a.hasDeepOverlap = true;
+                  b.hasDeepOverlap = true;
+                }
+                // 【重要】1回の反復で押し出せる量に上限を設ける（クランプ）。
+                // これまでは overlap（重なりの深さ）をそのまま一発で押し出していたため、
+                // 深くめり込んだ瞬間（新しいツムが降ってきて着地直後など）に
+                // 半径に近い量が1フレームでワープするように適用され、
+                // 「瞬間移動」「埋もれてから急に飛び出す」の直接原因になっていた。
+                // 上限を設けることで、深い重なりは複数フレーム・複数反復に分けてじわじわ解消され、
+                // 見た目上なめらかに押し出されるようになる。
+                const MAX_PUSH_PER_ITER = tsumRadius * 0.35;
+                const overlap = Math.min(overlapRaw, MAX_PUSH_PER_ITER);
+                // 選択中（指に固定）／消去演出中（幽霊状態）／resting（積まれて静止済み）のツムは
+                // 「押し込まれて動かされない」ように扱う。resting も実質的に固定物とみなすことで、
+                // 上から降ってくるツムが積み上がった山を無理やり押しのけて隙間に割り込む、という
+                // 不自然な動きを防ぎ、降ってきた側だけが押し返される（＝山の上や横で受け止められる）ようにする。
+                const aFixed = !!a.selected || !!a.ghost || !!a.resting;
+                const bFixed = !!b.selected || !!b.ghost || !!b.resting;
                 if(aFixed && bFixed){
-                  // 両方固定なら何もしない
+                  // 両方固定（選択中／幽霊／resting）の場合は基本的に何もしないが、
+                  // 例外として「両方 resting（選択中でも幽霊でもない）」かつ実際に重なっている場合だけは、
+                  // このまま固まって重なりが残り続けるのを防ぐため、ごく少量だけ押し出す救済処理を行う。
+                  const bothJustResting = a.resting && b.resting && !a.selected && !a.ghost && !b.selected && !b.ghost;
+                  if(bothJustResting){
+                    const rescuePush = overlap*0.5;
+                    a.x -= nx*rescuePush; a.y -= ny*rescuePush;
+                    b.x += nx*rescuePush; b.y += ny*rescuePush;
+                  }
                 } else if(aFixed){
                   b.x += nx*overlap; b.y += ny*overlap;
                 } else if(bFixed){
@@ -2911,20 +3069,35 @@
                   b.x += nx*push; b.y += ny*push;
                 }
                 // 簡易反発：押し出し方向の速度成分を減衰させつつ交換（反復ごとの過剰な加速を防ぐため最終反復のみ適用）
+                // anyActive が false（盤面が完全に静止）の間は速度をいじらない。
+                // 位置の押し出しだけ行うことで、静止中の微小な重なりは音も無くじわっと解消される。
                 if(iter === ITER-1){
-                  const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
-                  const relDot = relVx*nx+relVy*ny;
-                  if(relDot < 0){
-                    const impulse = -relDot*COLLISION_DAMPING;
-                    if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
-                    if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+                  if(anyActive){
+                    const relVx = b.vx-a.vx, relVy = b.vy-a.vy;
+                    const relDot = relVx*nx+relVy*ny;
+                    if(relDot < 0){
+                      const impulse = -relDot*COLLISION_DAMPING;
+                      if(!aFixed){ a.vx -= nx*impulse*0.5; a.vy -= ny*impulse*0.5; }
+                      if(!bFixed){ b.vx += nx*impulse*0.5; b.vy += ny*impulse*0.5; }
+                    }
+                    // ツム同士の摩擦：接線方向（滑る方向）の相対速度を強めに減衰させる。
+                    // これを強くすることで、上から落ちてきたツムが下の山の表面を滑って
+                    // 隙間に無理やり入り込む（＝押しのけて重なりを作る）のを防ぎ、
+                    // 山の斜面で滑りが止まって素直に乗っかるようにする。
+                    const tx = -ny, ty = nx;
+                    const relTangent = relVx*tx + relVy*ty;
+                    const frictionImpulse = relTangent*TSUM_FRICTION;
+                    if(!aFixed){ a.vx += tx*frictionImpulse*0.5; a.vy += ty*frictionImpulse*0.5; }
+                    if(!bFixed){ b.vx -= tx*frictionImpulse*0.5; b.vy -= ty*frictionImpulse*0.5; }
                   }
-                  // ツム同士の摩擦：接線方向（滑る方向）の相対速度も少し減衰させる
-                  const tx = -ny, ty = nx;
-                  const relTangent = relVx*tx + relVy*ty;
-                  const frictionImpulse = relTangent*TSUM_FRICTION;
-                  if(!aFixed){ a.vx += tx*frictionImpulse*0.5; a.vy += ty*frictionImpulse*0.5; }
-                  if(!bFixed){ b.vx -= tx*frictionImpulse*0.5; b.vy -= ty*frictionImpulse*0.5; }
+                  // 「乗っかっている」関係を記録する：相手が自分より下(ny>0方向)にいて、
+                  // ほぼ真下～斜め下からの接触なら、自分は相手に支えられているとみなす。
+                  // これを使って resting 判定（下に支えがあり静止していれば重力積分を止める）を行い、
+                  // 重力と押し出しのせめぎ合いによる微振動＝「暴れ」を防ぐ。
+                  // ※ anyActive に関わらず常に記録する（静止中でも支持関係は維持されるため）。
+                  const SUPPORT_COS = 0.5; // 接触方向が鉛直から60度以内なら支持とみなす
+                  if(ny > SUPPORT_COS) a.supportedBelow = true; // b が a の下にいる
+                  if(ny < -SUPPORT_COS) b.supportedBelow = true; // a が b の下にいる
                 }
               }
             }
@@ -2932,14 +3105,31 @@
         }
       }
       // 境界を反復ごとに再チェック（押し出しで壁の外に出ることがあるため）
+      // ※ 上端は enteredBoard（一度盤面内に入ったか）を見て、画面外上空から降ってくる途中の
+      //    ツムをここで画面内へワープさせてしまわないようにする（理由は上のコメント参照）。
       for(const t of tsums){
         if(t.x - t.r < 0) t.x = t.r;
         if(t.x + t.r > boardW) t.x = boardW - t.r;
         if(t.y + t.r > boardH) t.y = boardH - t.r;
-        if(t.y - t.r < 0) t.y = t.r;
+        if(t.enteredBoard && t.y - t.r < 0) t.y = t.r;
       }
     }
-    } // end if(anyActive)
+    } // end 衝突解決ブロック（常時実行）
+
+    // 3.5) resting（乗っかって静止）判定
+    // 「下に支えがある」かつ「ほぼ動いていない」ツムは resting=true にし、
+    // 次フレームの重力積分をスキップして完全に静止させる。
+    // こうしないと、支えられているツムにも毎フレーム重力がかかり続け、
+    // 押し出しとの綱引きで微振動＝「暴れ」が発生し続けてしまう。
+    // 【重要】速度だけで判定すると、着地直後でまだ深くめり込んでいる状態でも
+    // すぐに resting=true（＝押し出しに対して実質固定）になってしまい、
+    // 「埋もれたまま動かない」状態が固定化する原因になっていた。
+    // そのため、速度に加えて「他のツムと有意な重なりが残っていないこと」も条件に加える。
+    for(const t of tsums){
+      if(t.selected || t.ghost) continue;
+      const almostStill = Math.abs(t.vx) < 4 && Math.abs(t.vy) < 4;
+      t.resting = !!(t.supportedBelow && almostStill && !t.hasDeepOverlap);
+    }
 
     // 4) 選択中のなぞりロープをツムの動きに追従して再描画
     if(selecting && selectedPath.length>0){
