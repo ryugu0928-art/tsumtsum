@@ -229,6 +229,26 @@
     touch-action:none;
     z-index:1;
   }
+  /* 最終決戦フック船長：斜め切り〜成長アニメーション中、盤面全体を薄暗くする演出。
+     怒ったフック船長自身は class="hookSpotlight" を付与して、このオーバーレイより
+     手前(z-index)に表示することで、暗くならず明るいまま浮き上がって見えるようにする。 */
+  #board::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+    opacity:0;
+    pointer-events:none;
+    z-index:56;
+    transition:opacity 0.25s ease;
+  }
+  #app.hookAnimDimmed #board::after{
+    opacity:1;
+  }
+  #app.hookAnimDimmed .tsum.hookSpotlight{
+    position:relative;
+    z-index:57;
+  }
   svg#ropeSvg{
     position:absolute;
     top:0; left:0;
@@ -346,6 +366,60 @@
   /* 怒ったフック船長・フック船長本体は種類が違っても繋げられることを示す特別なリンク色の縁取り */
   .tsum.hookLinkable .face{
     box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 10px 3px rgba(192,57,43,0.9), 0 4px 6px rgba(0,0,0,0.15);
+  }
+
+  /* ---------- 最終決戦フック船長：斜めに切るアニメーション ---------- */
+  .hookSlashLayer{
+    position:absolute;
+    left:0; top:0;
+    width:140%; height:8px;
+    background:linear-gradient(90deg, transparent, #fff8dd 15%, #fff 50%, #fff8dd 85%, transparent);
+    box-shadow:0 0 14px 4px rgba(255,255,255,0.9);
+    transform-origin:left center;
+    pointer-events:none;
+    z-index:58;
+    opacity:0;
+  }
+  .hookSlashLayer.play{
+    animation: hookSlashSweep 0.9s ease-out forwards;
+  }
+  @keyframes hookSlashSweep{
+    0%{ opacity:0; transform:rotate(var(--hookSlashAngle, -68deg)) scaleX(0.2); }
+    25%{ opacity:1; }
+    70%{ opacity:1; transform:rotate(var(--hookSlashAngle, -68deg)) scaleX(1); }
+    100%{ opacity:0; transform:rotate(var(--hookSlashAngle, -68deg)) scaleX(1); }
+  }
+  /* 怒ったフック船長が消去の瞬間、自分のフックで切る仕草をする軽いモーション */
+  .tsum.hookSlashing{
+    animation: hookSlashMotion 0.9s ease-out;
+    z-index:59;
+  }
+  @keyframes hookSlashMotion{
+    0%{ transform:rotate(0deg) scale(1); }
+    35%{ transform:rotate(-18deg) scale(1.05); }
+    65%{ transform:rotate(10deg) scale(1.08); }
+    100%{ transform:rotate(0deg) scale(1); }
+  }
+  /* 消去後、怒ったフック船長が大きくなるアニメーション */
+  .tsum.hookGrowing{
+    animation: hookGrowPulse 0.85s cubic-bezier(.3,1.4,.5,1);
+    z-index:59;
+  }
+  @keyframes hookGrowPulse{
+    0%{ filter:brightness(1); }
+    40%{ filter:brightness(1.6); }
+    100%{ filter:brightness(1); }
+  }
+  /* スキル効果時間終了：怒ったフック船長が元のフック船長本体へ戻るアニメーション */
+  .tsum.hookReverting{
+    animation: hookRevertPulse 0.7s cubic-bezier(.3,1.2,.4,1);
+    z-index:59;
+  }
+  @keyframes hookRevertPulse{
+    0%{ filter:brightness(1) saturate(1); transform:scale(1) rotate(0deg); }
+    40%{ filter:brightness(2.2) saturate(0); transform:scale(1.15) rotate(-8deg); }
+    70%{ filter:brightness(1.6) saturate(0.4); transform:scale(0.9) rotate(4deg); }
+    100%{ filter:brightness(1) saturate(1); transform:scale(1) rotate(0deg); }
   }
 
   /* ---------- ガストンのハンティングショット演出 ---------- */
@@ -1121,9 +1195,18 @@
   // 最終決戦フック船長：スキル効果中は「怒ったフック船長」が盤面に出現し、
   // フック船長本体と繋ぐたびに斜めライン消去が発生、消去範囲がどんどん拡大していく。
   let hookActive = false;
-  let hookEndTimer = null;
-  let hookRangeLevel = 1; // 現在の消去範囲レベル（繋ぐたびに増加）
+  let hookRemainingMs = 0; // スキル効果の残り時間（ミリ秒）。boardFrozen中は減らさないことで、時間停止中は効果時間も止まる。
+  let hookAnimFreeze = false; // フック船長の斜め切り〜成長演出中フラグ。ツムの物理は止めず、ゲームタイマー・スキル効果時間だけを止める。
+  let hookPhysicsPause = false; // 斜めライン消去が終わった瞬間〜画面の薄暗い演出(#board::after)が消えきるまでの間、ツムの物理演算そのものを止めるフラグ。
+  let hookAnimGhostRef = null; // 斜め切り〜成長演出中の「怒ったフック船長」自身への参照。演出中は他のツムと一切干渉させないために使う。
+  const HOOK_DIM_FADE_MS = 250; // #board::after の opacity transition時間（CSSの transition:opacity 0.25s ease と合わせる）
   const HOOK_DURATION = 2; // スキル効果時間（秒）。原作同様、非常に短い。
+  const HOOK_RETURN_TO_CENTER_MS = 120; // 怒ったフック船長が画面中央へ戻るアニメーションの時間（.tsumのtransform transitionに合わせて少し余裕を持たせる）
+  const HOOK_CUT_ANIM_MS = 900;   // 斜めに切るアニメーションの時間
+  const HOOK_GROW_ANIM_MS = 850;  // 消去後、怒ったフック船長が大きくなるアニメーションの時間
+  const HOOK_LINE_ANGLE_DEG = 22; // 斜めラインの角度（鉛直から何度傾けるか）。小さいほど縦寄りになる。
+  let HOOK_ANGRY_INITIAL_R = 0;   // 怒ったフック船長の出現直後（初期）の半径。成長比率の基準にする。
+  let HOOK_BAND_BASE = 0;         // 初期半径のときの消去帯の半幅（初期基準値）。成長比率と同じ比率で拡大させる。
 
   // ------------------------------------------------------------
   // Items（ゲーム開始前に選ぶアイテム効果）
@@ -1198,7 +1281,8 @@
 
   let feverGauge = 0;
   let inFever = false;
-  let feverEndTimer = null;
+  let feverEndTimer = null; // 互換用（未使用化）。フィーバーの残り時間は feverRemainingMs で管理する。
+  let feverRemainingMs = 0; // フィーバー終了までの残り時間（ミリ秒）。frameLoop内で、時間停止中（hookAnimFreeze・boardFrozen）は減らさない。
 
   let skillGauge = 0;
   let skillReady = false;
@@ -1701,7 +1785,7 @@
   // ------------------------------------------------------------
   function attachHandlers(t){
     t.el.addEventListener('pointerdown', (e)=>{
-      if(!gameActive || skillActive || t.ghost) return;
+      if(!gameActive || skillActive || t.ghost || hookAnimFreeze) return;
       e.preventDefault();
       // 暗黙のポインターキャプチャを解除し、boardのpointermoveで追跡できるようにする
       if(e.pointerId!=null && t.el.hasPointerCapture && t.el.hasPointerCapture(e.pointerId)){
@@ -1720,12 +1804,17 @@
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  function findTsumNear(x, y, maxDist){
+  // maxDistRatio: そのツム自身の半径(t.r)に対する割合で判定距離を決める。
+  // 1.0に近いほど「ツムの見た目のふちギリギリまで」なぞり判定に含まれる。
+  function findTsumNear(x, y, maxDistRatio){
     let best = null, bestD = Infinity;
     for(const t of tsums){
       if(t.isBomb || t.ghost) continue;
       const dx = t.x - x, dy = t.y - y;
       const d = Math.sqrt(dx*dx + dy*dy);
+      // 大ツムや成長した怒ったフック船長など、ツムごとに実際の大きさ(t.r)が違うため、
+      // 固定距離ではなく各ツム自身の半径を基準にした判定距離を使う。
+      const maxDist = t.r * maxDistRatio;
       if(d < maxDist && d < bestD){
         bestD = d; best = t;
       }
@@ -1736,7 +1825,7 @@
   let lastPointerPoint = null;
 
   board.addEventListener('pointermove', (e)=>{
-    if(!selecting || !gameActive || skillActive) return;
+    if(!selecting || !gameActive || skillActive || hookAnimFreeze) return;
     const p = getBoardLocalPoint(e);
     if(lastPointerPoint){
       // なぞる速度が速くフレームが飛んでも、前回座標→今回座標を線分状に
@@ -1747,11 +1836,12 @@
       for(let i=1; i<=steps; i++){
         const sx = lastPointerPoint.x + dx*(i/steps);
         const sy = lastPointerPoint.y + dy*(i/steps);
-        const t = findTsumNear(sx, sy, tsumRadius*1.3);
+        // 中心付近だけでなく、ツムの見た目のほぼ全体（半径の92%まで）をなぞり判定に含める
+        const t = findTsumNear(sx, sy, 0.92);
         if(t) tryAddToSelection(t);
       }
     } else {
-      const t = findTsumNear(p.x, p.y, tsumRadius*1.3);
+      const t = findTsumNear(p.x, p.y, 0.92);
       if(t) tryAddToSelection(t);
     }
     lastPointerPoint = p;
@@ -1871,6 +1961,16 @@
     linkCountEl.textContent = '0';
     chainCountBadge.classList.remove('show');
     path.forEach(t=>{ t.selected = false; });
+
+    // 最終決戦フック船長スキル中：怒ったフック船長とフック船長本体のペアを含み、
+    // 怒ったフック船長自身を含めて3つ以上つないだ場合にのみ、斜めライン消去が発動する専用フローへ進む。
+    // hookActive を見ているのは、スキル効果時間が終わっている（＝怒ったフック船長が元に戻るべき）のに
+    // 斜め消去だけがいつまでも発動し続けてしまう不具合を防ぐため。
+    const hasHookPair = hookActive && path.some(t=> t.type.key==='hookAngry') && path.some(t=> t.type.key==='hook');
+    if(hasHookPair && path.length>=3){
+      resolveHookChain(path);
+      return;
+    }
 
     if(path.length >= 3){
       resolveMatch(path);
@@ -2031,10 +2131,6 @@
     // ナミネのスキル効果中（ソラが存在する間）に、ナミネ・ソラを含むチェーンを消した場合のみ
     // 周囲のツムも巻き込んで一緒に消す。スキル効果外では通常のチェーンとして扱う。
     const hasNamineOrSora = namineActive && path.some(t=> t.type.key==='namine' || t.type.key==='sora');
-    // 最終決戦フック船長のスキル効果中（怒ったフック船長が存在する間）に、
-    // 怒ったフック船長・フック船長本体を含むチェーンを消した場合、斜めラインを巻き込んで消去する。
-    // 繋ぐたびに hookRangeLevel が増加し、次はより広い斜めラインを巻き込むようになる（原作の「繋ぐと大きくなる」再現）。
-    const hasHookPair = hookActive && path.some(t=> t.type.key==='hook' || t.type.key==='hookAngry');
     let extraTargets = [];
     if(hasNamineOrSora){
       const pathIds = new Set(path.map(t=>t.id));
@@ -2049,23 +2145,6 @@
         }
       });
       extraTargets = Array.from(nearbySet);
-    } else if(hasHookPair){
-      const pathIds = new Set(path.map(t=>t.id));
-      // 斜めライン消去：怒ったフック船長を中心に、右肩上がりの斜め45度方向の帯状範囲を巻き込む。
-      // hookRangeLevel が上がるほど帯の幅（太さ）が広がり、より多くのツムを巻き込める。
-      const center = path.find(t=> t.type.key==='hookAngry') || path[path.length-1];
-      const bandHalf = tsumRadius * (1.1 + hookRangeLevel*0.55); // レベルが上がるごとに帯を太くする
-      // 斜め45度の直線 y - cy = -(x - cx) からの距離（垂直距離）で帯判定する
-      const invSqrt2 = 1/Math.SQRT2;
-      const nearbySet = new Set();
-      tsums.forEach(t=>{
-        if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
-        const dx = t.x-center.x, dy = t.y-center.y;
-        const distFromLine = Math.abs(dx + dy) * invSqrt2; // 直線 x+y=一定 からの距離
-        if(distFromLine <= bandHalf) nearbySet.add(t);
-      });
-      extraTargets = Array.from(nearbySet);
-      hookRangeLevel++; // 繋ぐたびに次回の範囲を拡大
     }
     const extraEffectiveN = extraTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     const totalEffectiveN = effectiveN + extraEffectiveN;
@@ -2074,8 +2153,8 @@
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
 
-    // ナミネ・ソラ、または怒ったフック船長・フック船長本体を含むチェーンはコイン補正-2（本家固有のコイン補正）
-    const coinBonus = (hasNamineOrSora || hasHookPair) ? -2 : undefined;
+    // ナミネ・ソラを含むチェーンはコイン補正-2（本家のナミネ固有コイン補正）
+    const coinBonus = hasNamineOrSora ? -2 : undefined;
     const gainedCoins = coinsForChain(totalEffectiveN, coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
@@ -2110,10 +2189,182 @@
     popWithWave(path, null, 'popping', ()=>{
       refillIfNeeded(path.concat(extraTargets).map(t=>t.x));
       checkFeverTrigger();
-      // スキル効果中に怒ったフック船長を消しきった場合、原作同様すぐ次の怒ったフック船長を出現させ、
-      // 短い効果時間内に連続で繋ぎ続けられるようにする。
-      if(hasHookPair && hookActive) spawnHookAngry();
     }, false, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
+  }
+
+  // ツムの物理半径とDOM要素の実サイズを変更する（位置は中心を保ったまま）。
+  // 最終決戦フック船長の「消すたびに大きくなる」演出のために使う。
+  function resizeTsum(t, newR){
+    t.r = newR;
+    const size = newR*2;
+    t.el.style.width = size+'px';
+    t.el.style.height = size+'px';
+    // width/heightに連動する子要素（.face等）はCSSのwidth:100%/height:100%で追従する想定。
+    // 位置の再計算は次のrenderTsumPositionで行われるよう、キャッシュを無効化しておく
+    t._lastX = undefined; t._lastY = undefined;
+    renderTsumPosition(t);
+  }
+
+  // 1) 怒ったフック船長が自分のフックで斜めに切るアニメーションを再生し、終わったらコールバック
+  function playHookSlashAnim(hookAngry, onDone){
+    hookAngry.el.classList.add('hookSlashing');
+    const slash = document.createElement('div');
+    slash.className = 'hookSlashLayer play';
+    slash.style.left = (hookAngry.x - hookAngry.r*1.2)+'px';
+    slash.style.top = (hookAngry.y)+'px';
+    // 斜めラインの角度(HOOK_LINE_ANGLE_DEG=鉛直基準)を、水平基準のCSS rotate角に変換して反映する
+    slash.style.setProperty('--hookSlashAngle', `${90-HOOK_LINE_ANGLE_DEG}deg`);
+    board.appendChild(slash);
+    setTimeout(()=>{
+      hookAngry.el.classList.remove('hookSlashing');
+      slash.remove();
+      onDone && onDone();
+    }, HOOK_CUT_ANIM_MS);
+  }
+
+  // 3) 消去後、怒ったフック船長が大きくなるアニメーションを再生し、終わったらコールバック
+  function playHookGrowAnim(hookAngry, onDone){
+    if(!tsums.includes(hookAngry)){ onDone && onDone(); return; }
+    hookAngry.el.classList.add('hookGrowing');
+    // 1段階ごとに一回り大きくする（上限を設けて画面からはみ出しすぎないようにする）
+    const nextR = Math.min(Math.round(hookAngry.r*1.28), tsumRadius*BIG_TSUM_SCALE*2.4);
+    resizeTsum(hookAngry, nextR);
+    setTimeout(()=>{
+      hookAngry.el.classList.remove('hookGrowing');
+      onDone && onDone();
+    }, HOOK_GROW_ANIM_MS);
+  }
+
+  // 最終決戦フック船長：怒ったフック船長とフック船長本体を繋いだ瞬間の専用消去処理。
+  // 通常のなぞり消去とは異なり、
+  //  1) 繋いだ瞬間に時間を止める
+  //  2) 怒ったフック船長が自分のフックで斜めに切るアニメーション
+  //  3) その後、斜めラインが消去される
+  //  4) 怒ったフック船長が大きくなるアニメーション
+  //  5) 大きくなるアニメーションが終わったら時間停止解除
+  // という流れで進む。
+  function resolveHookChain(path){
+    if(!gameActive) return;
+
+    // スキル効果時間が既に終わっている（＝怒ったフック船長が元に戻るべきタイミングを過ぎている）場合は、
+    // 斜め消去を発動させず、通常のなぞり消去としての後始末だけ行って抜ける。
+    // これがないと、繋ぐたびに hookAnimFreeze でスキル残り時間の減少が止まる仕組みと相まって、
+    // プレイヤーが繋ぎ続ける限り怒ったフック船長がいつまでも元に戻らず、斜め消去が無限に発動し続けてしまう。
+    if(!hookActive){
+      path.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
+      return;
+    }
+
+    bumpCombo();
+
+    const hookAngry = path.find(t=> t.type.key==='hookAngry');
+    if(!hookAngry){
+      // 万が一見つからない場合は通常のなぞり消去として処理する（フォールバック）
+      path.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
+      return;
+    }
+
+    // 演出中は入力とスキル効果時間の経過だけを止め、ツムの物理演算（重力・衝突）は止めない。
+    // 再開は自動タイマーに任せず、成長アニメーション完了時に明示的に resumeTimerNow() で行う。
+    hookAnimFreeze = true;
+    hookAnimGhostRef = hookAngry; // 演出中は他のツムと一切干渉させないための参照
+    appEl.classList.add('hookAnimDimmed'); // 怒ったフック船長以外を薄暗くする
+    hookAngry.el.classList.add('hookSpotlight'); // 怒ったフック船長自身は暗くならないようにする
+    clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
+
+    // 0) 怒ったフック船長を画面（盤面）中央へ戻す。
+    // ここでghost化することで、元いた場所には以後の物理演算・当たり判定が
+    // 一切残らないようにし（他ツムがすり抜けられる/ぶつからない）、
+    // 成長アニメーションが終わるまでは中央に固定したままにする。
+    hookAngry.vx = 0; hookAngry.vy = 0;
+    hookAngry.ghost = true;
+    hookAngry.x = boardW/2;
+    hookAngry.y = boardH/2;
+    renderTsumPosition(hookAngry);
+
+    // 中央へ戻るアニメーション（.tsumのtransform transitionによる短い移動）が
+    // 終わるのを待ってから、1) 斜めに切るアニメーションを開始する
+    setTimeout(()=>{
+    playHookSlashAnim(hookAngry, ()=>{
+
+      // 2) 斜めラインの巻き込み判定・消去処理
+      // 縦寄りの斜め（鉛直から少し傾いた角度）のライン上を巻き込む。
+      // 直線の方向ベクトル(dirX,dirY)：鉛直方向(0,1)を基準に HOOK_LINE_ANGLE_DEG 度だけ傾ける。
+      const pathIds = new Set(path.map(t=>t.id));
+      const angleRad = -HOOK_LINE_ANGLE_DEG * Math.PI/180; // 斜めラインを逆側（左右反転）にする
+      const dirX = Math.sin(angleRad), dirY = Math.cos(angleRad); // ライン方向（縦寄り）
+      // 怒ったフック船長は「大きくなるたびに同じ比率で消去範囲も拡大する」ため、
+      // 現在の半径(hookAngry.r)と初期半径(HOOK_ANGRY_INITIAL_R)の比率をそのまま帯の太さに反映する。
+      const growRatio = hookAngry.r / HOOK_ANGRY_INITIAL_R;
+      const bandHalf = HOOK_BAND_BASE * growRatio;
+      const nearbySet = new Set();
+      tsums.forEach(t=>{
+        if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+        const dx = t.x-hookAngry.x, dy = t.y-hookAngry.y;
+        // ライン方向ベクトルに対する法線方向（垂直方向）への距離を、外積の絶対値で求める
+        const distFromLine = Math.abs(dx*dirY - dy*dirX);
+        if(distFromLine <= bandHalf) nearbySet.add(t);
+      });
+      // 怒ったフック船長自身は「大きくなる」演出のため、この時点ではまだ消さずに残す
+      const otherPathTsums = path.filter(t=> t!==hookAngry);
+      const extraTargets = Array.from(nearbySet);
+      const allErased = otherPathTsums.concat(extraTargets);
+
+      const effectiveN = allErased.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0) + BIG_TSUM_COUNT_WEIGHT; // 怒ったフック船長自身も大ツム相当としてカウント
+      const bonus = computeScore(allErased, effectiveN);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+
+      const gainedCoins = coinsForChain(effectiveN, -2); // 本家同様コイン補正-2
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+
+      if(effectiveN > maxChain) maxChain = effectiveN;
+      chainVal.textContent = maxChain;
+
+      if(!inFever){
+        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + effectiveN*FEVER_GAUGE_PER_TSUM);
+      }
+
+      const myCount = allErased.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0) + BIG_TSUM_COUNT_WEIGHT;
+      addSkillGauge(myCount);
+
+      showCombo(allErased.length, bonus, allErased, gainedCoins, effectiveN);
+      showEraseCount(allErased, effectiveN, hookAngry);
+      burstSparkles(allErased);
+      burstMyTsumOrbs(allErased);
+      if(gainedCoins>0) burstCoins(allErased, gainedCoins);
+
+      hookAngry.el.classList.remove('selected','hookLinkable');
+      popWithWave(allErased, null, 'popping', ()=>{
+        refillIfNeeded(allErased.map(t=>t.x));
+
+        // 斜めライン消去（ポップ演出）が終わったタイミングで、
+        // 画面の薄暗い演出（#board::after）が完全に消えるまでツムの物理演算そのものを止める。
+        hookPhysicsPause = true;
+
+        // 3) 怒ったフック船長が大きくなるアニメーション
+        // ※次回の消去範囲は hookAngry.r（現在の半径）と HOOK_ANGRY_INITIAL_R の比率から
+        //   自動的に決まるため、レベルのようなカウンタを別途持つ必要はない。
+        playHookGrowAnim(hookAngry, ()=>{
+          hookAnimFreeze = false; // 4) 大きくなるアニメーションが終わったら時間停止解除
+          appEl.classList.remove('hookAnimDimmed');
+          hookAngry.el.classList.remove('hookSpotlight');
+          resumeTimerNow();
+          checkFeverTrigger();
+
+          // 画面の薄暗いのが完全に消えきる（#board::afterのopacity transition完了）まで待ってから、
+          // 怒ったフック船長を画面中央に置いたまま通常の物理演算（重力・衝突）へ復帰させる。
+          setTimeout(()=>{
+            hookAngry.ghost = false;
+            hookAnimGhostRef = null;
+            hookPhysicsPause = false;
+          }, HOOK_DIM_FADE_MS);
+        });
+      }, true);
+    });
+    }, HOOK_RETURN_TO_CENTER_MS);
   }
 
   function checkFeverTrigger(){
@@ -2179,7 +2430,7 @@
     if(comboTimer) clearTimeout(comboTimer);
 
     clearTimeout(feverEndTimer);
-    feverEndTimer = setTimeout(exitFever, FEVER_DURATION*1000);
+    feverRemainingMs = FEVER_DURATION*1000; // 以後 frameLoop 内で、時間停止中でない間だけ減っていく
   }
 
   function exitFever(){
@@ -2197,6 +2448,14 @@
     timerResumeTimeout = setTimeout(()=>{
       if(gameActive) timerHandle = setInterval(tick, 1000);
     }, ms);
+  }
+
+  // 演出完了など、明示的なタイミングで確実にタイマーを再開させたい場合に使う。
+  // pauseTimer(ms) で予約された自動再開より早く終わったとき（あるいはズレを防ぎたいとき）に呼ぶ。
+  function resumeTimerNow(){
+    clearTimeout(timerResumeTimeout);
+    clearInterval(timerHandle);
+    if(gameActive) timerHandle = setInterval(tick, 1000);
   }
 
   // ------------------------------------------------------------
@@ -2687,87 +2946,79 @@
   }
 
   // 最終決戦フック船長のスキル本体：
-  // 中央付近のフック船長（マイツム）を1体「怒ったフック船長」に変化させ、
-  // 効果時間（約2秒）の間、怒ったフック船長とフック船長本体を繋ぐたびに斜めライン消去が発生し、
-  // 繋ぐたびに次の消去範囲が拡大していく。効果時間が短いため、繋ぎ続けるスピードが重要。
+  // 画面中央に「怒ったフック船長」を新規出現させる（大ツムと同じ大きさ）。
+  // 効果時間（約2秒）の間、怒ったフック船長とフック船長本体を繋ぐたびに、
+  // 時間が止まって斜めに切るアニメーション→斜めライン消去→怒ったフック船長が大きくなるアニメーション、
+  // という流れが起き、繋ぐたびに次の消去範囲が拡大していく。効果時間が短いため繋ぎ続けるスピードが重要。
   function skillHookFinalBattle(){
     // 前回のスキル効果がまだ残っている場合は、先に前回分を後始末してから今回の判定に入る
     if(hookActive){
-      clearTimeout(hookEndTimer);
       endHookSkill();
     }
 
-    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
-    if(myTsums.length===0){
-      showSkillLabel('ネヴァー・ギブアップ・アゲイン！ 対象がいなかった…');
-      finishSkill();
-      return;
-    }
-
-    // スキルレベル相当の初期範囲（今回は簡易的に固定値。原作のSS〜3Lに相当するイメージ）
-    hookRangeLevel = 1;
-
-    // 盤面中央に最も近いマイツム（フック船長）を1体、怒ったフック船長に変化させる
+    // 画面（盤面）中央に、大ツムと同じ大きさで怒ったフック船長を新規出現させる
     const boardCx = boardW/2, boardCy = boardH/2;
-    let center = myTsums[0], bestD = Infinity;
-    for(const t of myTsums){
-      const dx = t.x-boardCx, dy = t.y-boardCy;
-      const d = dx*dx+dy*dy;
-      if(d < bestD){ bestD = d; center = t; }
-    }
+    const bigR = Math.round(tsumRadius*BIG_TSUM_SCALE);
+    const hookAngry = spawnTsum(boardCx, boardCy, 0, 0, HOOK_ANGRY_TYPE, false);
+    resizeTsum(hookAngry, bigR);
+    hookAngry.vx = 0; hookAngry.vy = 0;
+    hookAngry.resting = true; // 出現直後から安定させ、周りに軽く押し出されても暴れないようにする
 
-    boardFrozen = true;
-    pauseTimer(500);
+    // 出現直後の半径を「成長比率」の基準として記録する。
+    // 消去帯の初期の太さは、通常ツム半径の1.6倍程度を基準値とする。
+    HOOK_ANGRY_INITIAL_R = bigR;
+    HOOK_BAND_BASE = tsumRadius * 1.6;
 
     const flash = document.createElement('div');
     flash.className = 'namineTransformFlashLayer';
     board.appendChild(flash);
     setTimeout(()=> flash.remove(), 520);
 
-    center.el.classList.add('soraTransforming');
     showSkillLabel('怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！');
-
-    setTimeout(()=>{
-      transformTsumType(center, HOOK_ANGRY_TYPE);
-      boardFrozen = false;
-      finishSkill();
-      hookActive = true;
-      clearTimeout(hookEndTimer);
-      hookEndTimer = setTimeout(endHookSkill, HOOK_DURATION*1000);
-    }, 400);
+    finishSkill();
+    hookActive = true;
+    hookRemainingMs = HOOK_DURATION*1000; // 残り時間をセット。以後 frameLoop 内で boardFrozen でない間だけ減っていく
   }
 
-  // 斜めライン消去のたびに、消しきった怒ったフック船長の代わりを盤面へ出現させる。
-  // マイツム（フック船長本体）が残っていればそれを変化させ、なければ何もしない
-  // （効果時間が短いので、次に降ってきたフック船長を待つことになる）。
-  function spawnHookAngry(){
-    if(!hookActive) return;
-    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost && t.type.key!=='hookAngry');
-    if(myTsums.length===0) return;
-    const boardCx = boardW/2, boardCy = boardH/2;
-    let center = myTsums[0], bestD = Infinity;
-    for(const t of myTsums){
-      const dx = t.x-boardCx, dy = t.y-boardCy;
-      const d = dx*dx+dy*dy;
-      if(d < bestD){ bestD = d; center = t; }
-    }
-    transformTsumType(center, HOOK_ANGRY_TYPE);
-  }
-
-  // 効果終了時、まだ変化したままの怒ったフック船長が残っていればフック船長本体に戻す
+  // 効果終了時、まだ怒ったフック船長が残っていればフック船長本体に戻す（サイズも通常に戻す）。
+  // 画面を薄暗くし、怒ったフック船長にスポットライトを当てながら「元に戻るアニメーション」を再生し、
+  // 終わったらそのまま通常のフック船長として盤面に残す。
+  const HOOK_REVERT_ANIM_MS = 700; // .tsum.hookReverting のアニメーション時間（CSSのanimation時間と合わせる）
   function endHookSkill(){
     hookActive = false;
     const hookAngryTsums = tsums.filter(t=> t.type.key==='hookAngry' && !t.isBomb && !t.ghost);
     const originalType = TSUM_TYPES.find(t=>t.key==='hook');
-    if(originalType){
+    if(originalType && hookAngryTsums.length>0){
+      hookAnimFreeze = true; // 入力・スキル効果時間の経過を止める（斜め消去演出と同様）
+      appEl.classList.add('hookAnimDimmed'); // 画面を薄暗くする
+      hookAngryTsums.forEach(t=> t.el.classList.add('hookSpotlight')); // 戻る本人だけは暗くならないようにする
+      clearInterval(timerHandle);
+      clearTimeout(timerResumeTimeout);
+
+      let remaining = hookAngryTsums.length;
+      const finishOne = ()=>{
+        remaining--;
+        if(remaining<=0){
+          // 全員が元に戻り終わったら、薄暗い演出を解除して通常状態へ復帰する
+          hookAnimFreeze = false;
+          appEl.classList.remove('hookAnimDimmed');
+          resumeTimerNow();
+        }
+      };
+
       hookAngryTsums.forEach(t=>{
-        t.el.classList.add('soraTransforming');
+        t.el.classList.add('hookReverting');
         setTimeout(()=>{
-          if(tsums.includes(t)) transformTsumType(t, originalType);
-        }, 250);
+          if(tsums.includes(t)){
+            resizeTsum(t, tsumRadius);
+            t.isBig = false;
+            transformTsumType(t, originalType); // 元に戻った後は、通常のフック船長としてそのまま盤面に残る
+            t.el.classList.remove('hookSpotlight');
+          }
+          finishOne();
+        }, HOOK_REVERT_ANIM_MS);
       });
     }
-    hookRangeLevel = 1;
   }
 
   function doBuzzErase(p){
@@ -3208,6 +3459,9 @@
               if(checked.has(pairKey)) continue;
               checked.add(pairKey);
               const b = tsums[j];
+              // 怒ったフック船長がアニメーション中（斜め切り〜成長演出中）は、
+              // 盤面のツムたちと一切干渉しない（押し出しの対象にも支えにもしない）
+              if((a===hookAnimGhostRef && hookAnimFreeze) || (b===hookAnimGhostRef && hookAnimFreeze)) continue;
               const dx = b.x - a.x, dy = b.y - a.y;
               let dist = Math.sqrt(dx*dx+dy*dy);
               const minDist = (a.r + b.r) * 1.0;
@@ -3343,8 +3597,27 @@
     if(!lastFrameTime) lastFrameTime = now;
     const dt = (now - lastFrameTime)/1000;
     lastFrameTime = now;
-    if(!boardFrozen && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
+    // 最終決戦フック船長の演出中（hookAnimFreeze）は、ゲーム全体の時間停止(boardFrozen)とは違い、
+    // ツムの物理演算（重力・衝突）はそのまま動かし続ける仕様のため、boardFrozenのみで判定する。
+    if(!boardFrozen && !hookPhysicsPause && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
       physicsStep(dt);
+    }
+    // 最終決戦フック船長のスキル効果時間は、演出中（hookAnimFreeze中）は経過させない。
+    // こうすることで「繋いだ瞬間の演出中は、スキルの残り時間も一緒に止まる」仕様を実現する。
+    if(hookActive && !hookAnimFreeze){
+      hookRemainingMs -= dt*1000;
+      if(hookRemainingMs <= 0){
+        hookRemainingMs = 0;
+        endHookSkill();
+      }
+    }
+    // フィーバーの残り時間も、フック船長演出中（hookAnimFreeze）やゲーム全体の時間停止(boardFrozen)の間は経過させない。
+    if(inFever && !hookAnimFreeze && !boardFrozen){
+      feverRemainingMs -= dt*1000;
+      if(feverRemainingMs <= 0){
+        feverRemainingMs = 0;
+        exitFever();
+      }
     }
     // フィーバーゲージは合計で消したツム数のみで増える（時間経過による減衰はしない）
     rafHandle = requestAnimationFrame(frameLoop);
@@ -3453,7 +3726,7 @@
     timeLeft = GAME_TIME + (itemExtraTime ? 5 : 0);
     comboCount = 0;
     if(comboTimer) clearTimeout(comboTimer);
-    feverGauge = 0; inFever = false;
+    feverGauge = 0; inFever = false; feverRemainingMs = 0;
     skillGauge = 0; skillReady = false; skillActive = false; skillGaugeCarry = 0;
     ghostTimers.forEach(g=> clearTimeout(g.timeoutId));
     ghostTimers = [];
@@ -3475,8 +3748,13 @@
     clearTimeout(namineEndTimer);
     namineTransformedKey = null;
     hookActive = false;
-    clearTimeout(hookEndTimer);
-    hookRangeLevel = 1;
+    hookRemainingMs = 0;
+    HOOK_ANGRY_INITIAL_R = 0;
+    HOOK_BAND_BASE = 0;
+    hookAnimFreeze = false;
+    hookAnimGhostRef = null;
+    hookPhysicsPause = false;
+    appEl.classList.remove('hookAnimDimmed');
 
     // アイテム反映：盤面のツム種類数／ボム出現チェーン数
     activeTsumTypes = buildActiveTsumTypes(itemFewerTypes ? 4 : 5);
