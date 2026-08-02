@@ -2878,7 +2878,7 @@
               const b = tsums[j];
               const dx = b.x - a.x, dy = b.y - a.y;
               let dist = Math.sqrt(dx*dx+dy*dy);
-              const minDist = a.r + b.r;
+              const minDist = (a.r + b.r) * 1.12;
               if(dist < minDist){
                 let nx, ny;
                 if(dist < 0.01){
