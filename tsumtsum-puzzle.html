@@ -2284,6 +2284,8 @@
       score += bonus;
       scoreVal.textContent = score.toLocaleString();
       const gainedCoins = coinsForChain(targets.length, -1);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
       burstSparkles(targets);
       burstMyTsumOrbs(targets);
       if(gainedCoins>0) burstCoins(targets, gainedCoins);
@@ -2850,7 +2852,11 @@
     const anyActive = tsums.some(t=> t.selected || (!t.ghost && !t.settled));
     const n = tsums.length;
     const ITER = 7;
-    const cellSize = tsumRadius*2.2;
+    // セルサイズは盤面上の最大半径（大ツム＝デカツムを含む）を基準にする。
+    // 通常半径だけを基準にすると、大ツム同士の衝突判定距離(最大 r_big*2)がセルサイズを超えてしまい、
+    // 隣接1セル分しか見ない近傍探索では検出漏れ（すり抜けて重なった後に急に弾かれ暴れる）が起きるため。
+    const maxR = tsumRadius * BIG_TSUM_SCALE;
+    const cellSize = maxR*2.2;
     if(anyActive){
     for(let iter=0; iter<ITER; iter++){
       // グリッドを毎回組み直す（押し出しでセルを跨ぐ可能性があるため）
