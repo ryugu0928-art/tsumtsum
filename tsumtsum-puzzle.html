@@ -343,6 +343,10 @@
   .tsum.namineLinkable .face{
     box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 8px 2px rgba(233,164,208,0.85), 0 4px 6px rgba(0,0,0,0.15);
   }
+  /* 怒ったフック船長・フック船長本体は種類が違っても繋げられることを示す特別なリンク色の縁取り */
+  .tsum.hookLinkable .face{
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 10px 3px rgba(192,57,43,0.9), 0 4px 6px rgba(0,0,0,0.15);
+  }
 
   /* ---------- ガストンのハンティングショット演出 ---------- */
   .gastonShotLayer{
@@ -1088,7 +1092,14 @@
     { key:'namine', name:'ナミネ',     color:'#e8a4d0', dark:'#c97cae', motif:'flower', score:180, skillNeed:19, colorGroup:'redPink', coinBonus:-2,
       skillName:'メモリーチェイン',
       skillDesc:'盤面で2番目に多いサブツムを、6秒間「ソラ」に変化させる。ナミネとソラは離れていても一緒につなげられ、消すと周りのツムも巻き込んで消える' },
+    { key:'hook', name:'最終決戦フック船長', color:'#2f6b4a', dark:'#1c4530', motif:'hook', score:190, skillNeed:19, colorGroup:'mintGreen', coinBonus:-2,
+      skillName:'ネヴァー・ギブアップ・アゲイン',
+      skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約2秒、繋ぐたびに消去範囲が拡大していく）' },
   ];
+
+  // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
+  // フック船長本体と離れていてもつなげられ、つなぐと斜めライン消去が発生し、消去範囲がどんどん拡大していく。
+  const HOOK_ANGRY_TYPE = { key:'hookAngry', name:'怒ったフック船長', color:'#c0392b', dark:'#7a1f16', motif:'angryHook', score:0, colorGroup:'redPink' };
 
   // ソラ：ナミネのスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
   const SORA_TYPE = { key:'sora', name:'ソラ', color:'#2b2f4a', dark:'#181a2e', motif:'key', score:0, colorGroup:'navy' };
@@ -1106,6 +1117,13 @@
   let namineActive = false;
   let namineEndTimer = null;
   let namineTransformedKey = null; // ソラに変化させた元のツムのkey（効果終了時に戻すため）
+
+  // 最終決戦フック船長：スキル効果中は「怒ったフック船長」が盤面に出現し、
+  // フック船長本体と繋ぐたびに斜めライン消去が発生、消去範囲がどんどん拡大していく。
+  let hookActive = false;
+  let hookEndTimer = null;
+  let hookRangeLevel = 1; // 現在の消去範囲レベル（繋ぐたびに増加）
+  const HOOK_DURATION = 2; // スキル効果時間（秒）。原作同様、非常に短い。
 
   // ------------------------------------------------------------
   // Items（ゲーム開始前に選ぶアイテム効果）
@@ -1515,6 +1533,67 @@
         });
         break;
       }
+      case 'hook': {
+        // フック船長：三角帽子（羽根飾り付き）とかぎ状のヒゲ
+        const hat = document.createElement('div');
+        hat.className='motif';
+        hat.style.width = size*0.52+'px';
+        hat.style.height = size*0.3+'px';
+        hat.style.left = '50%'; hat.style.top = '-16%';
+        hat.style.transform = 'translateX(-50%)';
+        hat.style.background = 'linear-gradient(180deg,#3a3a3a,#1a1a1a)';
+        hat.style.borderRadius = '50% 50% 20% 20%';
+        hat.style.boxShadow = 'inset 0 -3px 4px rgba(0,0,0,0.3)';
+        face.appendChild(hat);
+        const feather = document.createElement('div');
+        feather.className='motif';
+        feather.style.width = size*0.08+'px';
+        feather.style.height = size*0.3+'px';
+        feather.style.left = '68%'; feather.style.top = '-38%';
+        feather.style.background = 'linear-gradient(180deg,#ff5c5c,#c0392b)';
+        feather.style.borderRadius = '50%';
+        feather.style.transform = 'rotate(18deg)';
+        face.appendChild(feather);
+        const mustacheColor = '#2a2a2a';
+        [ -1, 1 ].forEach(sign=>{
+          const m = document.createElement('div');
+          m.className='motif';
+          m.style.width = size*0.2+'px';
+          m.style.height = size*0.06+'px';
+          m.style.left = (50+sign*16)+'%'; m.style.top = '50%';
+          m.style.background = mustacheColor;
+          m.style.borderRadius = '50%';
+          m.style.transform = `translateX(-50%) rotate(${sign*20}deg)`;
+          face.appendChild(m);
+        });
+        break;
+      }
+      case 'angryHook': {
+        // 怒ったフック船長：吊り上がった赤い眉と、荒々しいヒゲ
+        [ -1, 1 ].forEach(sign=>{
+          const brow = document.createElement('div');
+          brow.className='motif';
+          brow.style.width = size*0.2+'px';
+          brow.style.height = size*0.06+'px';
+          brow.style.left = (50+sign*16)+'%'; brow.style.top = '28%';
+          brow.style.background = '#7a1f16';
+          brow.style.borderRadius = '3px';
+          brow.style.transform = `translateX(-50%) rotate(${-sign*22}deg)`;
+          face.appendChild(brow);
+        });
+        [ -1, 1 ].forEach(sign=>{
+          const m = document.createElement('div');
+          m.className='motif';
+          m.style.width = size*0.22+'px';
+          m.style.height = size*0.06+'px';
+          m.style.left = (50+sign*16)+'%'; m.style.top = '52%';
+          m.style.background = '#5a140d';
+          m.style.borderRadius = '50%';
+          m.style.transform = `translateX(-50%) rotate(${sign*26}deg)`;
+          face.appendChild(m);
+        });
+        break;
+      }
     }
   }
 
@@ -1690,6 +1769,7 @@
     t.vx = 0; t.vy = 0;
     t.el.classList.add('selected');
     if(t.type.key==='namine' || t.type.key==='sora') t.el.classList.add('namineLinkable');
+    if(t.type.key==='hook' || t.type.key==='hookAngry') t.el.classList.add('hookLinkable');
     updateRope();
     updateLinkCount();
   }
@@ -1698,8 +1778,12 @@
   function isNamineSoraPair(keyA, keyB){
     return (keyA==='namine' && keyB==='sora') || (keyA==='sora' && keyB==='namine');
   }
+  // 怒ったフック船長とフック船長本体も、離れていても自由につなげられる特殊ペア
+  function isHookPair(keyA, keyB){
+    return (keyA==='hook' && keyB==='hookAngry') || (keyA==='hookAngry' && keyB==='hook');
+  }
   function sameChainType(keyA, keyB){
-    return keyA===keyB || isNamineSoraPair(keyA, keyB);
+    return keyA===keyB || isNamineSoraPair(keyA, keyB) || isHookPair(keyA, keyB);
   }
 
   function tryAddToSelection(t){
@@ -1708,18 +1792,18 @@
     if(len>=2 && selectedPath[len-2] === t){
       const removed = selectedPath.pop();
       removed.selected = false;
-      removed.el.classList.remove('selected','namineLinkable');
+      removed.el.classList.remove('selected','namineLinkable','hookLinkable');
       updateRope(); updateLinkCount();
       return;
     }
     if(selectedPath.includes(t)) return;
     const last = selectedPath[selectedPath.length-1];
-    // ナミネ⇄ソラ同士は、盤面上どれだけ離れていてもつながる
-    if(isNamineSoraPair(t.type.key, last.type.key)){
+    // ナミネ⇄ソラ、怒ったフック船長⇄フック船長本体 は、盤面上どれだけ離れていてもつながる
+    if(isNamineSoraPair(t.type.key, last.type.key) || isHookPair(t.type.key, last.type.key)){
       selectedPath.push(t);
       t.selected = true;
       t.vx = 0; t.vy = 0;
-      t.el.classList.add('selected', 'namineLinkable');
+      t.el.classList.add('selected', isHookPair(t.type.key, last.type.key) ? 'hookLinkable' : 'namineLinkable');
       updateRope(); updateLinkCount();
       return;
     }
@@ -1732,6 +1816,7 @@
       t.vx = 0; t.vy = 0;
       t.el.classList.add('selected');
       if(t.type.key==='namine' || t.type.key==='sora') t.el.classList.add('namineLinkable');
+      if(t.type.key==='hook' || t.type.key==='hookAngry') t.el.classList.add('hookLinkable');
       updateRope(); updateLinkCount();
     }
   }
@@ -1790,7 +1875,7 @@
     if(path.length >= 3){
       resolveMatch(path);
     } else {
-      path.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
+      path.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
     }
   }
 
@@ -1859,7 +1944,7 @@
       const delay = Math.round(i*stagger);
       setTimeout(()=>{
         if(!tsums.includes(t)) return; // 既にボム等で強制終了済み
-        t.el.classList.remove('selected','namineLinkable');
+        t.el.classList.remove('selected','namineLinkable','hookLinkable');
         t.el.style.animationDuration = (POP_DURATION/1000)+'s';
         t.el.classList.add(popClass || 'popping');
         t.ghost = true; t.vx = 0; t.vy = 0;
@@ -1946,6 +2031,10 @@
     // ナミネのスキル効果中（ソラが存在する間）に、ナミネ・ソラを含むチェーンを消した場合のみ
     // 周囲のツムも巻き込んで一緒に消す。スキル効果外では通常のチェーンとして扱う。
     const hasNamineOrSora = namineActive && path.some(t=> t.type.key==='namine' || t.type.key==='sora');
+    // 最終決戦フック船長のスキル効果中（怒ったフック船長が存在する間）に、
+    // 怒ったフック船長・フック船長本体を含むチェーンを消した場合、斜めラインを巻き込んで消去する。
+    // 繋ぐたびに hookRangeLevel が増加し、次はより広い斜めラインを巻き込むようになる（原作の「繋ぐと大きくなる」再現）。
+    const hasHookPair = hookActive && path.some(t=> t.type.key==='hook' || t.type.key==='hookAngry');
     let extraTargets = [];
     if(hasNamineOrSora){
       const pathIds = new Set(path.map(t=>t.id));
@@ -1960,6 +2049,23 @@
         }
       });
       extraTargets = Array.from(nearbySet);
+    } else if(hasHookPair){
+      const pathIds = new Set(path.map(t=>t.id));
+      // 斜めライン消去：怒ったフック船長を中心に、右肩上がりの斜め45度方向の帯状範囲を巻き込む。
+      // hookRangeLevel が上がるほど帯の幅（太さ）が広がり、より多くのツムを巻き込める。
+      const center = path.find(t=> t.type.key==='hookAngry') || path[path.length-1];
+      const bandHalf = tsumRadius * (1.1 + hookRangeLevel*0.55); // レベルが上がるごとに帯を太くする
+      // 斜め45度の直線 y - cy = -(x - cx) からの距離（垂直距離）で帯判定する
+      const invSqrt2 = 1/Math.SQRT2;
+      const nearbySet = new Set();
+      tsums.forEach(t=>{
+        if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+        const dx = t.x-center.x, dy = t.y-center.y;
+        const distFromLine = Math.abs(dx + dy) * invSqrt2; // 直線 x+y=一定 からの距離
+        if(distFromLine <= bandHalf) nearbySet.add(t);
+      });
+      extraTargets = Array.from(nearbySet);
+      hookRangeLevel++; // 繋ぐたびに次回の範囲を拡大
     }
     const extraEffectiveN = extraTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     const totalEffectiveN = effectiveN + extraEffectiveN;
@@ -1968,8 +2074,8 @@
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
 
-    // ナミネ・ソラを含むチェーンはコイン補正-2（本家のナミネ固有コイン補正）
-    const coinBonus = hasNamineOrSora ? -2 : undefined;
+    // ナミネ・ソラ、または怒ったフック船長・フック船長本体を含むチェーンはコイン補正-2（本家固有のコイン補正）
+    const coinBonus = (hasNamineOrSora || hasHookPair) ? -2 : undefined;
     const gainedCoins = coinsForChain(totalEffectiveN, coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
@@ -2004,6 +2110,9 @@
     popWithWave(path, null, 'popping', ()=>{
       refillIfNeeded(path.concat(extraTargets).map(t=>t.x));
       checkFeverTrigger();
+      // スキル効果中に怒ったフック船長を消しきった場合、原作同様すぐ次の怒ったフック船長を出現させ、
+      // 短い効果時間内に連続で繋ぎ続けられるようにする。
+      if(hasHookPair && hookActive) spawnHookAngry();
     }, false, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
   }
 
@@ -2142,7 +2251,7 @@
     updateSkillGaugeUI();
 
     if(selecting){
-      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
       selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; chainCountBadge.classList.remove('show'); lastPointerPoint=null;
     }
 
@@ -2158,6 +2267,7 @@
       gaston: skillGastonLine,
       buzz: skillBuzzLightyear,
       namine: skillNamine,
+      hook: skillHookFinalBattle,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -2574,6 +2684,90 @@
     t.el.replaceWith(newEl);
     t.el = newEl;
     attachHandlers(t);
+  }
+
+  // 最終決戦フック船長のスキル本体：
+  // 中央付近のフック船長（マイツム）を1体「怒ったフック船長」に変化させ、
+  // 効果時間（約2秒）の間、怒ったフック船長とフック船長本体を繋ぐたびに斜めライン消去が発生し、
+  // 繋ぐたびに次の消去範囲が拡大していく。効果時間が短いため、繋ぎ続けるスピードが重要。
+  function skillHookFinalBattle(){
+    // 前回のスキル効果がまだ残っている場合は、先に前回分を後始末してから今回の判定に入る
+    if(hookActive){
+      clearTimeout(hookEndTimer);
+      endHookSkill();
+    }
+
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
+    if(myTsums.length===0){
+      showSkillLabel('ネヴァー・ギブアップ・アゲイン！ 対象がいなかった…');
+      finishSkill();
+      return;
+    }
+
+    // スキルレベル相当の初期範囲（今回は簡易的に固定値。原作のSS〜3Lに相当するイメージ）
+    hookRangeLevel = 1;
+
+    // 盤面中央に最も近いマイツム（フック船長）を1体、怒ったフック船長に変化させる
+    const boardCx = boardW/2, boardCy = boardH/2;
+    let center = myTsums[0], bestD = Infinity;
+    for(const t of myTsums){
+      const dx = t.x-boardCx, dy = t.y-boardCy;
+      const d = dx*dx+dy*dy;
+      if(d < bestD){ bestD = d; center = t; }
+    }
+
+    boardFrozen = true;
+    pauseTimer(500);
+
+    const flash = document.createElement('div');
+    flash.className = 'namineTransformFlashLayer';
+    board.appendChild(flash);
+    setTimeout(()=> flash.remove(), 520);
+
+    center.el.classList.add('soraTransforming');
+    showSkillLabel('怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！');
+
+    setTimeout(()=>{
+      transformTsumType(center, HOOK_ANGRY_TYPE);
+      boardFrozen = false;
+      finishSkill();
+      hookActive = true;
+      clearTimeout(hookEndTimer);
+      hookEndTimer = setTimeout(endHookSkill, HOOK_DURATION*1000);
+    }, 400);
+  }
+
+  // 斜めライン消去のたびに、消しきった怒ったフック船長の代わりを盤面へ出現させる。
+  // マイツム（フック船長本体）が残っていればそれを変化させ、なければ何もしない
+  // （効果時間が短いので、次に降ってきたフック船長を待つことになる）。
+  function spawnHookAngry(){
+    if(!hookActive) return;
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost && t.type.key!=='hookAngry');
+    if(myTsums.length===0) return;
+    const boardCx = boardW/2, boardCy = boardH/2;
+    let center = myTsums[0], bestD = Infinity;
+    for(const t of myTsums){
+      const dx = t.x-boardCx, dy = t.y-boardCy;
+      const d = dx*dx+dy*dy;
+      if(d < bestD){ bestD = d; center = t; }
+    }
+    transformTsumType(center, HOOK_ANGRY_TYPE);
+  }
+
+  // 効果終了時、まだ変化したままの怒ったフック船長が残っていればフック船長本体に戻す
+  function endHookSkill(){
+    hookActive = false;
+    const hookAngryTsums = tsums.filter(t=> t.type.key==='hookAngry' && !t.isBomb && !t.ghost);
+    const originalType = TSUM_TYPES.find(t=>t.key==='hook');
+    if(originalType){
+      hookAngryTsums.forEach(t=>{
+        t.el.classList.add('soraTransforming');
+        setTimeout(()=>{
+          if(tsums.includes(t)) transformTsumType(t, originalType);
+        }, 250);
+      });
+    }
+    hookRangeLevel = 1;
   }
 
   function doBuzzErase(p){
@@ -3280,6 +3474,9 @@
     namineActive = false;
     clearTimeout(namineEndTimer);
     namineTransformedKey = null;
+    hookActive = false;
+    clearTimeout(hookEndTimer);
+    hookRangeLevel = 1;
 
     // アイテム反映：盤面のツム種類数／ボム出現チェーン数
     activeTsumTypes = buildActiveTsumTypes(itemFewerTypes ? 4 : 5);
@@ -3324,7 +3521,7 @@
     clearTimeout(namineEndTimer);
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
-      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable'));
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
       selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; chainCountBadge.classList.remove('show');
     }
     appEl.classList.remove('fever');
