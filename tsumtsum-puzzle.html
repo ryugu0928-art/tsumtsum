@@ -28,12 +28,23 @@
     touch-action:none;
     color:var(--ink);
   }
-  #app{
+  /* #app は常に 480:900（横:縦）の固定比率で表示する。
+     画面の縦横比がこれと異なる場合は、はみ出す方向を basis に、
+     もう一方をその比率に合わせて縮小し、余白は body の水色背景をそのまま延長して見せる。 */
+  #appOuter{
     position:relative;
     width:100%;
-    max-width:480px;
     height:100%;
-    max-height:900px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    background:linear-gradient(180deg,var(--bg-top) 0%, var(--bg-bottom) 100%);
+  }
+  #app{
+    position:relative;
+    width:480px;
+    height:900px;
     margin:0 auto;
     display:flex;
     flex-direction:column;
@@ -1205,6 +1216,7 @@
 </style>
 </head>
 <body>
+<div id="appOuter">
 <div id="app">
 
   <div id="hud">
@@ -1324,6 +1336,7 @@
     </div>
   </div>
 
+</div>
 </div>
 
 <script>
@@ -1512,6 +1525,7 @@
   const sallyAuraLayer = document.getElementById('sallyAuraLayer');
   const ropeSvg = document.getElementById('ropeSvg');
   const appEl = document.getElementById('app');
+  const appOuterEl = document.getElementById('appOuter');
   const scoreVal = document.getElementById('scoreVal');
   const coinVal = document.getElementById('coinVal');
   const timeVal = document.getElementById('timeVal');
@@ -1590,6 +1604,25 @@
   // ------------------------------------------------------------
   // Sizing
   // ------------------------------------------------------------
+  const APP_RATIO_W = 480;
+  const APP_RATIO_H = 900;
+
+  // #app は常に 480:900 の固定比率・解像度で表示する。
+  // 画面（#appOuter）の比率がこれと異なる場合は、はみ出さない範囲で最大化しつつ
+  // 比率は絶対に変えない。余った部分は #appOuter の下に見えている body の水色背景がそのまま埋める。
+  function layoutAppFrame(){
+    const outerW = appOuterEl.clientWidth;
+    const outerH = appOuterEl.clientHeight;
+    if(outerW<=0 || outerH<=0) return;
+    const scale = Math.min(outerW/APP_RATIO_W, outerH/APP_RATIO_H);
+    const appW = Math.floor(APP_RATIO_W*scale);
+    const appH = Math.floor(APP_RATIO_H*scale);
+    appEl.style.width = appW+'px';
+    appEl.style.height = appH+'px';
+    appEl.style.maxWidth = 'none';
+    appEl.style.maxHeight = 'none';
+  }
+
   function computeBoardSize(){
     // #board は #boardFrame（見た目の枠）と全く同じ inset:6px 10px の絶対配置。
     // 当たり判定を見た目通りにするため、実際にレンダリングされた #boardFrame の
@@ -1601,14 +1634,7 @@
   }
 
   function layoutBoard(){
-    // boardWrap は flex:1 で縦の残りスペース全部を取るため、スマホ等の縦長画面では
-    // 幅より高さがずっと大きくなりがち。boardWrap自体の高さを幅に合わせて正方形に
-    // 制限してから、その中いっぱいに boardFrame / board を配置する。
-    boardWrap.style.maxHeight = 'none';
-    const wrapRect0 = boardWrap.getBoundingClientRect();
-    const squareSide = Math.floor(Math.min(wrapRect0.width, wrapRect0.height));
-    boardWrap.style.maxHeight = squareSide + 'px';
-
+    layoutAppFrame();
     const {w,h} = computeBoardSize();
     boardW = w; boardH = h;
     board.style.width = boardW+'px';
