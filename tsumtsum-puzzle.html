@@ -472,6 +472,37 @@
   }
   .gastonBeam.fire{ width:100%; }
 
+  /* ---------- 野獣のワイルドクロー演出：右上から左下へ引っ掻く ---------- */
+  .beastClawLayer{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:56;
+    overflow:hidden;
+  }
+  .beastClawMark{
+    position:absolute;
+    left:50%; top:50%;
+    width:15%; height:150%;
+    margin-left:calc(-6% + var(--clawOffset, 0px));
+    margin-top:-75%;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,0.15) 8%, rgba(255,255,255,0.95) 48%, rgba(255,255,255,0.15) 92%, transparent);
+    box-shadow:0 0 10px 2px rgba(255,255,255,0.6);
+    transform-origin:center;
+    transform: rotate(var(--beastClawAngle, -55deg)) scaleY(0);
+    opacity:0;
+    border-radius:40%;
+  }
+  .beastClawLayer.play .beastClawMark{
+    animation: beastClawSweep 0.5s ease-out forwards;
+  }
+  @keyframes beastClawSweep{
+    0%{ transform: rotate(var(--beastClawAngle, -55deg)) scaleY(0); opacity:0; }
+    30%{ opacity:1; }
+    65%{ transform: rotate(var(--beastClawAngle, -55deg)) scaleY(1); opacity:1; }
+    100%{ transform: rotate(var(--beastClawAngle, -55deg)) scaleY(1); opacity:0; }
+  }
+
   /* ---------- キャプテンライトイヤーのカットイン演出 ---------- */
   .buzzCutinLayer{
     position:absolute;
@@ -1169,6 +1200,9 @@
     { key:'hook', name:'最終決戦フック船長', color:'#2f6b4a', dark:'#1c4530', motif:'hook', score:190, skillNeed:19, colorGroup:'mintGreen', coinBonus:-2,
       skillName:'ネヴァー・ギブアップ・アゲイン',
       skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約2秒、繋ぐたびに消去範囲が拡大していく）' },
+    { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:200, skillNeed:14, colorGroup:'brown',
+      skillName:'ワイルドクロー',
+      skillDesc:'画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去。ボムも巻き込んで消せる（発動中は時間停止）' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -1675,6 +1709,32 @@
           m.style.borderRadius = '50%';
           m.style.transform = `translateX(-50%) rotate(${sign*26}deg)`;
           face.appendChild(m);
+        });
+        break;
+      }
+      case 'beast': {
+        // 野獣：もじゃもじゃの太い眉と、覗く牙
+        [ -1, 1 ].forEach(sign=>{
+          const brow = document.createElement('div');
+          brow.className='motif';
+          brow.style.width = size*0.24+'px';
+          brow.style.height = size*0.1+'px';
+          brow.style.left = (50+sign*17)+'%'; brow.style.top = '24%';
+          brow.style.background = '#2f2317';
+          brow.style.borderRadius = '40%';
+          brow.style.transform = `translateX(-50%) rotate(${-sign*14}deg)`;
+          face.appendChild(brow);
+        });
+        [ -1, 1 ].forEach(sign=>{
+          const fang = document.createElement('div');
+          fang.className='motif';
+          fang.style.width = size*0.08+'px';
+          fang.style.height = size*0.16+'px';
+          fang.style.left = (50+sign*10)+'%'; fang.style.top = '54%';
+          fang.style.background = '#fff8e6';
+          fang.style.borderRadius = '0 0 50% 50%';
+          fang.style.transform = 'translateX(-50%)';
+          face.appendChild(fang);
         });
         break;
       }
@@ -2527,6 +2587,7 @@
       buzz: skillBuzzLightyear,
       namine: skillNamine,
       hook: skillHookFinalBattle,
+      beast: skillBeastClaw,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -3019,6 +3080,85 @@
         }, HOOK_REVERT_ANIM_MS);
       });
     }
+  }
+
+  // 野獣：画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去する。
+  // ボムも巻き込んで消去でき、発動中（引っ掻き演出〜消去）は盤面の時間を完全に停止する。
+  const BEAST_CLAW_ANIM_MS = 650;   // 爪が引っ掻く演出の時間
+  const BEAST_BAND_HALF_RATIO = 3.5; // 斜め帯の半幅（tsumRadius基準）。以前より幅広に。
+  const BEAST_LINE_ANGLE_DEG = 35;   // 斜めラインの角度（鉛直から何度傾けるか）。右上→左下の対角に近い角度。
+  function skillBeastClaw(){
+    // 演出〜消去が終わるまで、盤面の物理演算とゲーム内タイマーを完全に停止する
+    boardFrozen = true;
+    pauseTimer(BEAST_CLAW_ANIM_MS + 400);
+
+    // 盤面中央を通る斜めライン（右上から左下）を基準に、帯状の範囲を巻き込む。
+    // 方向ベクトル：右上→左下方向を、鉛直から BEAST_LINE_ANGLE_DEG 度傾けた形で表す。
+    const cx = boardW/2, cy = boardH/2;
+    const angleRad = BEAST_LINE_ANGLE_DEG * Math.PI/180;
+    const dirX = -Math.sin(angleRad), dirY = Math.cos(angleRad); // 右上→左下の帯の向き
+    const bandHalf = tsumRadius * BEAST_BAND_HALF_RATIO;
+    // ボムも巻き込んで消せるため、!t.isBomb の除外はしない（ghostだけ除外）
+    const targets = tsums.filter(t=>{
+      if(t.ghost) return false;
+      const dx = t.x-cx, dy = t.y-cy;
+      const distFromLine = Math.abs(dx*dirY - dy*dirX);
+      return distFromLine <= bandHalf;
+    });
+
+    showBeastClawAnim(()=>{
+      if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
+
+      const bonus = computeScore(targets);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(targets.length);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(targets.length > maxChain) maxChain = targets.length;
+      chainVal.textContent = maxChain;
+
+      if(!inFever){
+        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
+      }
+      const myCount = targets.filter(t=>t.isMine).length;
+      addSkillGauge(myCount);
+
+      burstSparkles(targets);
+      burstMyTsumOrbs(targets);
+      if(gainedCoins>0) burstCoins(targets, gainedCoins);
+      showEraseCount(targets, targets.length);
+
+      popWithWave(targets, {x:cx, y:cy}, 'popping', ()=>{
+        boardFrozen = false; // 演出が終わったら盤面の時間を再開
+        refillIfNeeded(targets.map(t=>t.x));
+        finishSkill();
+        checkFeverTrigger();
+      }, true);
+    });
+  }
+
+  // 右上から左下へ、鋭い爪（3本のツメ跡）が画面を引っ掻く演出
+  function showBeastClawAnim(onDone){
+    const layer = document.createElement('div');
+    layer.className = 'beastClawLayer';
+    layer.style.setProperty('--beastClawAngle', `${BEAST_LINE_ANGLE_DEG-90}deg`);
+    board.appendChild(layer);
+
+    [0,1,2].forEach(i=>{
+      const claw = document.createElement('div');
+      claw.className = 'beastClawMark';
+      claw.style.setProperty('--clawOffset', (i-1)*(tsumRadius*1.5)+'px');
+      claw.style.animationDelay = (i*40)+'ms';
+      layer.appendChild(claw);
+    });
+
+    requestAnimationFrame(()=> layer.classList.add('play'));
+
+    setTimeout(()=>{
+      layer.remove();
+      onDone && onDone();
+    }, BEAST_CLAW_ANIM_MS);
   }
 
   function doBuzzErase(p){
