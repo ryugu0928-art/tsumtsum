@@ -223,6 +223,11 @@
     box-shadow:inset 0 6px 14px rgba(0,0,0,0.45), 0 4px 0 rgba(0,0,0,0.15), 0 0 0 6px rgba(255,255,255,0.55), 0 0 0 9px rgba(20,120,170,0.5);
     z-index:0;
     pointer-events:none;
+    transition:background .35s ease;
+  }
+  /* サリーのスキル効果時間中：枠内の背景を暗い灰色にして「効果中」を分かりやすくする */
+  #app.sallySkillActive #boardFrame{
+    background:radial-gradient(ellipse at 50% 20%, #4a4a4f 0%, #232326 75%);
   }
   #board{
     position:relative;
@@ -242,10 +247,15 @@
     z-index:56;
     transition:opacity 0.25s ease;
   }
-  #app.hookAnimDimmed #board::after{
+  #app.hookAnimDimmed #board::after, #app.timeStopDimmed #board::after{
     opacity:1;
   }
   #app.hookAnimDimmed .tsum.hookSpotlight{
+    position:relative;
+    z-index:57;
+  }
+  /* ジャックのランダム消去・ジャック＆サリー合体スキル中：選ばれたツムだけ薄暗くならないよう浮き上がらせる */
+  #app.timeStopDimmed .tsum.jackTargetSpotlight{
     position:relative;
     z-index:57;
   }
@@ -366,6 +376,126 @@
   /* 怒ったフック船長・フック船長本体は種類が違っても繋げられることを示す特別なリンク色の縁取り */
   .tsum.hookLinkable .face{
     box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 10px 3px rgba(192,57,43,0.9), 0 4px 6px rgba(0,0,0,0.15);
+  }
+  /* サリーの効果時間中：少し離れていても繋がることを示す紫の縁取り */
+  .tsum.sallyLinkable .face{
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 10px 3px rgba(160,140,196,0.9), 0 4px 6px rgba(0,0,0,0.15);
+  }
+  /* サリーのスキル：チェーンをたどるアニメーション中に光るツム（薄暗くなる演出より手前に浮き上がらせる） */
+  .tsum.sallyTraced{
+    z-index:57;
+  }
+  .tsum.sallyTraced .face{
+    animation: sallyTracePulse 0.85s ease-out;
+    box-shadow: 0 0 0 3px #fff, 0 0 16px 5px rgba(160,140,196,0.95);
+  }
+  @keyframes sallyTracePulse{
+    0%{ filter:brightness(1); transform:scale(1); }
+    45%{ filter:brightness(1.7); transform:scale(1.12); }
+    100%{ filter:brightness(1); transform:scale(1); }
+  }
+
+  /* ---------- ジャック＆サリー：ドリームスティッチ発動時の縫い糸ライン演出 ---------- */
+  /* サリーのスキル発動の瞬間、盤面全体に紫の縫い目のようなラインが走る（アニメ本編の"ステッチ"モチーフ） */
+  .sallyStitchLayer{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:54;
+    overflow:hidden;
+  }
+  .sallyStitchLine{
+    position:absolute;
+    left:-15%;
+    width:130%;
+    height:3px;
+    background:repeating-linear-gradient(90deg, #c9b8dd 0 10px, transparent 10px 20px);
+    box-shadow:0 0 8px 2px rgba(155,107,255,0.6);
+    opacity:0;
+    transform:scaleX(0);
+    transform-origin:left center;
+  }
+  .sallyStitchLine.play{
+    animation: sallyStitchDraw 1.0s ease-out forwards;
+  }
+  @keyframes sallyStitchDraw{
+    0%{ opacity:0; transform:scaleX(0); }
+    15%{ opacity:1; }
+    85%{ opacity:1; transform:scaleX(1); }
+    100%{ opacity:0; transform:scaleX(1); }
+  }
+  /* サリー発動中は盤面全体をほんのり紫に染めて「効果中」を分かりやすくする */
+  .sallyAuraLayer{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:8;
+    background:radial-gradient(ellipse at 50% 40%, rgba(155,107,255,0.16), transparent 70%);
+    opacity:0;
+    transition:opacity .4s ease;
+  }
+  .sallyAuraLayer.show{ opacity:1; }
+
+  /* ---------- ジャック＆サリー：合体（ドリームスクランブル）演出 ---------- */
+  /* サブツム消去後、ジャックとサリーが画面中央へ吸い寄せられるように寄っていく残像＋発光 */
+  .tsum.jackSallyGathering{
+    animation: jackSallyGather 0.5s ease-in forwards;
+    z-index:57;
+  }
+  @keyframes jackSallyGather{
+    0%{ filter:brightness(1); }
+    100%{ filter:brightness(1.9) saturate(1.3); }
+  }
+  /* 合体の瞬間、中央で弾ける虹色(ジャックのクリーム色×サリーの紫)フラッシュ */
+  .jackSallyComboFlash{
+    position:absolute;
+    left:50%; top:50%;
+    width:40px; height:40px;
+    margin:-20px 0 0 -20px;
+    border-radius:50%;
+    pointer-events:none;
+    z-index:62;
+    background:radial-gradient(circle, #fff 0%, #fff2cf 20%, #c9b8dd 55%, rgba(155,107,255,0) 78%);
+    opacity:0;
+  }
+  .jackSallyComboFlash.play{
+    animation: jackSallyFlashBurst 1.3s cubic-bezier(.2,.8,.3,1) forwards;
+  }
+  @keyframes jackSallyFlashBurst{
+    0%{ opacity:0; transform:scale(0.2); }
+    20%{ opacity:1; transform:scale(1.4); }
+    55%{ opacity:0.9; transform:scale(5.5); }
+    100%{ opacity:0; transform:scale(9); }
+  }
+  /* フラッシュの外周に走る星型スパークルの輪 */
+  .jackSallyStarRing{
+    position:absolute;
+    left:50%; top:50%;
+    width:10px; height:10px;
+    margin:-5px 0 0 -5px;
+    pointer-events:none;
+    z-index:63;
+    font-size:18px;
+    line-height:1;
+    color:#fff2cf;
+    text-shadow:0 0 6px rgba(155,107,255,0.9), 0 0 3px #fff;
+    opacity:0;
+    transform:translate(0,0) scale(0.4) rotate(0deg);
+  }
+  .jackSallyStarRing.play{
+    animation: jackSallyStarFly 1.4s cubic-bezier(.15,.7,.3,1) forwards;
+  }
+  @keyframes jackSallyStarFly{
+    0%{ opacity:0; transform:translate(0,0) scale(0.3) rotate(0deg); }
+    12%{ opacity:1; transform:translate(0,0) scale(1.1) rotate(20deg); }
+    100%{ opacity:0; transform:translate(var(--starX,0), var(--starY,0)) scale(0.6) rotate(200deg); }
+  }
+  /* 「ドリームスクランブル」テキストが強調して現れる専用ラベル演出（虹色グラデ縁取り、少し大きめにスケール） */
+  #comboDisplay.jackSallyLabel{
+    background:linear-gradient(135deg,#f4f0e6,#c9b8dd 55%,#9b6bff);
+    color:#402a5c;
+    font-size:16px;
+    box-shadow:0 4px 0 rgba(0,0,0,0.15), 0 0 14px 3px rgba(155,107,255,0.6);
   }
 
   /* ---------- 最終決戦フック船長：斜めに切るアニメーション ---------- */
@@ -747,10 +877,11 @@
     position:relative;
   }
   #skillGaugeWrap{ flex:1; }
+  #skillGaugeWrap2{ flex:1; }
   #chainLabel{
     display:none;
   }
-  #skillGauge{
+  #skillGauge, #skillGauge2{
     height:26px;
     background:linear-gradient(180deg,#1c3f5c,#122a40);
     border-radius:18px;
@@ -760,7 +891,7 @@
     display:flex;
     align-items:center;
   }
-  #skillFill{
+  #skillFill, #skillFill2{
     position:absolute;
     left:0; top:0; bottom:0;
     height:100%;
@@ -768,7 +899,10 @@
     background:linear-gradient(180deg,#ffe27a,#ffb400 60%,#e08600);
     transition:width .25s ease;
   }
-  #skillGaugeLabel{
+  #skillFill2{
+    background:linear-gradient(180deg,#e0c8ff,#a08cc4 60%,#6e5a94);
+  }
+  #skillGaugeLabel, #skillGaugeLabel2{
     position:relative;
     z-index:1;
     width:100%;
@@ -779,7 +913,7 @@
     color:#dfe9f2;
     text-shadow:0 1px 2px rgba(0,0,0,0.5);
   }
-  #skillBtn{
+  #skillBtn, #skillBtn2{
     flex-shrink:0;
     width:60px; height:60px;
     border-radius:50%;
@@ -791,22 +925,29 @@
     transition:opacity .2s ease, transform .1s ease;
     display:flex; align-items:center; justify-content:center;
   }
-  #skillBtnIcon{
+  #skillBtn2{
+    background:radial-gradient(circle at 35% 30%, #e0c8ff, #a08cc4 65%, #6e5a94 100%);
+    box-shadow:0 4px 0 #4f3f6b, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55);
+  }
+  #skillBtnIcon, #skillBtnIcon2{
     width:26px; height:26px;
     position:relative;
   }
-  #skillBtnIcon::before{
+  #skillBtnIcon::before, #skillBtnIcon2::before{
     content:'';
     position:absolute; inset:0;
     background:#7a4a00;
     clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   }
-  #skillBtn.ready{
+  #skillBtnIcon2::before{
+    background:#3f2f57;
+  }
+  #skillBtn.ready, #skillBtn2.ready{
     opacity:1;
     pointer-events:auto;
     animation:skillReady 1s ease-in-out infinite;
   }
-  #skillBtn:active{ transform:scale(0.92); }
+  #skillBtn:active, #skillBtn2:active{ transform:scale(0.92); }
   @keyframes skillReady{
     0%,100%{ box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 0 rgba(255,210,63,0.6);}
     50%{ box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 10px rgba(255,210,63,0);}
@@ -1033,6 +1174,7 @@
     <div id="boardFrame"></div>
     <div id="feverLights"></div>
     <div id="board">
+      <div id="sallyAuraLayer" class="sallyAuraLayer"></div>
       <svg id="ropeSvg"></svg>
       <div id="chainCountBadge"></div>
     </div>
@@ -1046,6 +1188,10 @@
         <div id="skillGauge"><div id="skillFill"></div><span id="skillGaugeLabel">FEVER</span></div>
       </div>
       <button id="skillBtn"><span id="skillBtnIcon"></span></button>
+      <div id="skillGaugeWrap2" style="display:none">
+        <div id="skillGauge2"><div id="skillFill2"></div><span id="skillGaugeLabel2">サリー</span></div>
+      </div>
+      <button id="skillBtn2" style="display:none"><span id="skillBtnIcon2"></span></button>
     </div>
   </div>
 
@@ -1156,18 +1302,24 @@
 
   // 消去数(1〜45)ごとの獲得コイン数テーブル（本家ツムツム仕様のコイン補正表に準拠）
   // インデックス0は消去数1個目に対応（45個消去まで対応、以降は範囲外として最後の値を使う）
+  // NORMAL=補正無し、MINUS1=コイン補正-1、MINUS2=コイン補正-2 の各行の値を正しく対応させている
   const COIN_TABLE_NORMAL = [0,0,0,1,3,5,7,10,13,16,21,26,31,36,46,56,66,76,86,96,106,116,126,136,146,156,166,176,186,198,210,222,234,246,258,270,282,294,306,318,330,342,354,366,378];
-  const COIN_TABLE_MINUS1 = [0,0,0,1,2,3,4,5,6,7,8,9,10,11,16,21,26,31,36,41,46,51,56,61,66,71,76,81,86,93,100,107,114,121,128,135,142,149,156,163,170,177,184,191,198];
+  const COIN_TABLE_MINUS1 = [0,0,0,1,2,3,4,6,8,10,14,18,22,26,35,44,53,62,71,80,89,98,107,116,125,134,143,152,161,172,183,194,205,216,227,238,249,260,271,282,293,304,315,326,337];
   const COIN_TABLE_MINUS2 = [0,0,0,1,2,3,4,5,6,7,10,13,16,19,27,35,43,51,59,67,75,83,91,99,107,115,123,131,139,149,159,169,179,189,199,209,219,229,239,249,259,269,279,289,299];
+  const COIN_TABLE_PLUS7  = [0,0,0,8,17,26,35,45,55,65,77,89,101,113,130,147,164,181,198,215,232,249,266,283,300,317,334,351,368];
+  const COIN_TABLE_PLUS12 = [0,0,0,12,25,38,51,65,79,93,109,125,141,157,178,199,220,241,262,283,304,325,346,367,388,409,430,451,472,495];
 
-  // coinBonus: そのツム固有のコイン補正値（0 / -1 / -2 に対応）。
+  // coinBonus: そのツム固有・スキル固有のコイン補正値（0 / -1 / -2 / +7 / +12 に対応）。
   // ガストン・キャプテンライトイヤーのスキル発動中消去は-1補正、ナミネ関連の消去は-2補正、
+  // ジャックのランダムスクランブルは+7補正、ドリームスクランブル合体演出は+12補正、
   // それ以外（通常のチェーン・ボム消去含む）は補正無し。
   function coinsForChain(n, coinBonus){
     if(n<3) return 0;
     let table = COIN_TABLE_NORMAL;
     if(coinBonus===-1) table = COIN_TABLE_MINUS1;
     else if(coinBonus===-2) table = COIN_TABLE_MINUS2;
+    else if(coinBonus===7) table = COIN_TABLE_PLUS7;
+    else if(coinBonus===12) table = COIN_TABLE_PLUS12;
     const idx = Math.min(n, table.length) - 1;
     const base = table[idx];
     return Math.round(base * coinMultiplier);
@@ -1203,6 +1355,17 @@
     { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:200, skillNeed:14, colorGroup:'brown',
       skillName:'ワイルドクロー',
       skillDesc:'画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去。ボムも巻き込んで消せる（発動中は時間停止）' },
+    // ジャック＆サリー：ペアツム。ジャックを選ぶとサリーも一緒に「マイツム」として盤面に出現する。
+    // ジャックとサリーは同じ種類ではないため互いには繋げられない（それぞれ別の色として扱う）。
+    // スキルはジャック・サリーそれぞれ個別のゲージ（必要数が異なる）で溜まり、
+    // ゲージが満タンになった方のスキルをボタンから発動できる。
+    { key:'jack', name:'ジャック', color:'#f4f0e6', dark:'#cfc9b8', motif:'jackSkull', score:210, skillNeed:18, colorGroup:'jackSally', coinBonus:0,
+      pairKey:'sally', pairLabel:'ジャック&サリー',
+      skillName:'ランダムスクランブル',
+      skillDesc:'サブツム(ジャックとサリー以外)を15個ランダム消去（コイン補正+7）。発動中は時間停止（ツムの物理は働く）。サリーのスキル効果中に発動すると、追加でジャックとサリーを全て消去する特別演出になる（コイン補正+12）。※ペアツム：サリーとは別々のゲージ（ジャック18個／サリー36個）で管理' },
+    { key:'sally', name:'サリー', color:'#c9b8dd', dark:'#a08cc4', motif:'sallyPatch', score:210, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
+      skillName:'ドリームスティッチ',
+      skillDesc:'効果時間中、少し離れたツムともつなげられるようになる。チェーンすると、たどった道の周りのツムも巻き込んで最後のツムのところへまとめて消える（道をたどるアニメーション中は時間停止・ツムの物理も止まる）' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -1242,6 +1405,31 @@
   let HOOK_ANGRY_INITIAL_R = 0;   // 怒ったフック船長の出現直後（初期）の半径。成長比率の基準にする。
   let HOOK_BAND_BASE = 0;         // 初期半径のときの消去帯の半幅（初期基準値）。成長比率と同じ比率で拡大させる。
 
+  // ジャック＆サリー：ペアツム関連の状態
+  let jackGauge = 0, sallyGauge = 0;       // ジャック用・サリー用の個別スキルゲージ（0〜SKILL_GAUGE_MAX）
+  let jackReady = false, sallyReady = false;
+  let sallyActive = false;                  // サリーのスキル効果中フラグ
+  let sallyRemainingMs = 0;                 // サリー効果の残り時間（ミリ秒）。時間停止中（hookAnimFreeze・boardFrozen・skillTimeFreeze）は減らさない。
+  const SALLY_DURATION = 4;                 // サリーのスキル効果時間（秒）
+  const SALLY_LINK_RANGE_MULT = 9.5;        // サリー効果中のリンク許容距離（通常は t.r*3.4）
+  const SALLY_GATHER_RANGE = 2.6;           // チェーンした各ツムの周りを巻き込む範囲（ツム半径の倍率）
+  const SALLY_TRACE_STEP_MS = 210;          // チェーンをたどるアニメーションの1体あたりの間隔
+
+  function isPairMode(){
+    const mine = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    return !!(mine && mine.pairKey);
+  }
+  function pairPartnerKey(){
+    const mine = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    return mine ? mine.pairKey : null;
+  }
+  // ジャック・サリーは、選ばれている方（myTsumKey）でなくても、ペア相手なら「マイツム」扱いにする
+  function isMineType(type){
+    if(type.key===myTsumKey) return true;
+    if(isPairMode() && type.key===pairPartnerKey()) return true;
+    return false;
+  }
+
   // ------------------------------------------------------------
   // Items（ゲーム開始前に選ぶアイテム効果）
   // ------------------------------------------------------------
@@ -1257,6 +1445,7 @@
   const board = document.getElementById('board');
   const boardWrap = document.getElementById('boardWrap');
   const feverLights = document.getElementById('feverLights');
+  const sallyAuraLayer = document.getElementById('sallyAuraLayer');
   const ropeSvg = document.getElementById('ropeSvg');
   const appEl = document.getElementById('app');
   const scoreVal = document.getElementById('scoreVal');
@@ -1270,6 +1459,9 @@
   const feverBanner = document.getElementById('feverBanner');
   const skillFill = document.getElementById('skillFill');
   const skillBtn = document.getElementById('skillBtn');
+  const skillGaugeWrap2 = document.getElementById('skillGaugeWrap2');
+  const skillBtn2 = document.getElementById('skillBtn2');
+  const skillFill2 = document.getElementById('skillFill2');
   const myTsumIcon = document.getElementById('myTsumIcon');
   const startOverlay = document.getElementById('startOverlay');
   const resultOverlay = document.getElementById('resultOverlay');
@@ -1306,6 +1498,7 @@
   let gameActive = false;
   // ガストンの横ライン消去中など、盤面の物理演算ごと完全に停止させたいときに立てるフラグ
   let boardFrozen = false;
+  let skillTimeFreeze = false; // ジャックのスキルなど「物理は止めないが、ゲーム内の各種残り時間だけ止めたい」演出用の汎用フラグ
   let idCounter = 0;
 
   let myTsumKey = TSUM_TYPES.find(t=>t.isMyTsumDefault).key;
@@ -1384,7 +1577,13 @@
     const usedGroups = new Set([mine.colorGroup]);
     const picked = [mine];
 
-    const rest = TSUM_TYPES.filter(t=>t.key!==myTsumKey);
+    // ペアツム（ジャック＆サリーなど）を選んでいる場合は、相方も必ず一緒に盤面へ出す
+    if(mine.pairKey){
+      const partner = TSUM_TYPES.find(t=>t.key===mine.pairKey);
+      if(partner) picked.push(partner);
+    }
+
+    const rest = TSUM_TYPES.filter(t=>t.key!==myTsumKey && t.key!==mine.pairKey);
     for(let i=rest.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [rest[i], rest[j]] = [rest[j], rest[i]];
@@ -1738,6 +1937,65 @@
         });
         break;
       }
+      case 'jackSkull': {
+        // ジャック：縫い目のような曲がった口と、小さな蝶ネクタイ
+        const mouth = document.createElement('div');
+        mouth.className='motif';
+        mouth.style.width = size*0.5+'px';
+        mouth.style.height = size*0.22+'px';
+        mouth.style.left = '50%'; mouth.style.top = '54%';
+        mouth.style.transform = 'translateX(-50%)';
+        mouth.style.background = 'transparent';
+        mouth.style.borderTop = `${Math.max(2,size*0.035)}px solid #17140f`;
+        mouth.style.borderRadius = '0 0 50% 50% / 0 0 100% 100%';
+        face.appendChild(mouth);
+        for(let i=0;i<4;i++){
+          const stitch = document.createElement('div');
+          stitch.className='motif';
+          stitch.style.width = Math.max(1,size*0.02)+'px';
+          stitch.style.height = size*0.09+'px';
+          stitch.style.left = (34 + i*11)+'%'; stitch.style.top = '54%';
+          stitch.style.background = '#17140f';
+          stitch.style.transform = 'rotate(8deg)';
+          face.appendChild(stitch);
+        }
+        const bow = document.createElement('div');
+        bow.className='motif';
+        bow.style.width = size*0.18+'px';
+        bow.style.height = size*0.1+'px';
+        bow.style.left = '50%'; bow.style.top = '80%';
+        bow.style.background = '#17140f';
+        bow.style.borderRadius = '2px';
+        bow.style.transform = 'translateX(-50%)';
+        face.appendChild(bow);
+        break;
+      }
+      case 'sallyPatch': {
+        // サリー：継ぎ接ぎの縫い目と、赤い髪の房
+        const hair = document.createElement('div');
+        hair.className='motif';
+        hair.style.width = size*0.34+'px';
+        hair.style.height = size*0.3+'px';
+        hair.style.left = '74%'; hair.style.top = '2%';
+        hair.style.background = 'linear-gradient(180deg,#c0392b,#7a1f16)';
+        hair.style.borderRadius = '30% 60% 50% 50%';
+        hair.style.transform = 'rotate(20deg)';
+        face.appendChild(hair);
+        const patchDot = document.createElement('div');
+        patchDot.className='motif';
+        patchDot.style.width = size*0.02+'px';
+        for(let i=0;i<3;i++){
+          const stitch = document.createElement('div');
+          stitch.className='motif';
+          stitch.style.width = Math.max(1,size*0.02)+'px';
+          stitch.style.height = size*0.08+'px';
+          stitch.style.left = (24)+'%'; stitch.style.top = (36+i*9)+'%';
+          stitch.style.background = '#4a3a63';
+          stitch.style.transform = 'rotate(70deg)';
+          face.appendChild(stitch);
+        }
+        break;
+      }
     }
   }
 
@@ -1803,7 +2061,7 @@
 
   function spawnTsum(x, y, vx, vy, forcedType, forceBig){
     const type = forcedType || randomType();
-    const isMine = type.key === myTsumKey;
+    const isMine = isMineType(type);
     // 大ツムはガストンレイン中・ボム・幽霊は対象外。自然発生は低確率のランダム。
     const isBig = forceBig!==undefined ? forceBig :
       (!gastonRainActive && Math.random() < BIG_TSUM_CHANCE);
@@ -1942,7 +2200,7 @@
     if(len>=2 && selectedPath[len-2] === t){
       const removed = selectedPath.pop();
       removed.selected = false;
-      removed.el.classList.remove('selected','namineLinkable','hookLinkable');
+      removed.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable');
       updateRope(); updateLinkCount();
       return;
     }
@@ -1960,13 +2218,16 @@
     const dx = t.x - last.x, dy = t.y - last.y;
     const dist = Math.sqrt(dx*dx+dy*dy);
     // 隣接判定：実座標での距離がツム直径の約1.7倍以内なら「つながる」とみなす
-    if(dist <= t.r*3.4){
+    // サリーのスキル効果中は、この許容距離が広がり少し離れたツムともつながる
+    const linkRange = t.r*3.4*(sallyActive ? SALLY_LINK_RANGE_MULT/3.4 : 1);
+    if(dist <= linkRange){
       selectedPath.push(t);
       t.selected = true;
       t.vx = 0; t.vy = 0;
       t.el.classList.add('selected');
       if(t.type.key==='namine' || t.type.key==='sora') t.el.classList.add('namineLinkable');
       if(t.type.key==='hook' || t.type.key==='hookAngry') t.el.classList.add('hookLinkable');
+      if(sallyActive) t.el.classList.add('sallyLinkable');
       updateRope(); updateLinkCount();
     }
   }
@@ -2104,7 +2365,7 @@
       const delay = Math.round(i*stagger);
       setTimeout(()=>{
         if(!tsums.includes(t)) return; // 既にボム等で強制終了済み
-        t.el.classList.remove('selected','namineLinkable','hookLinkable');
+        t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable');
         t.el.style.animationDuration = (POP_DURATION/1000)+'s';
         t.el.classList.add(popClass || 'popping');
         t.ghost = true; t.vx = 0; t.vy = 0;
@@ -2183,6 +2444,14 @@
 
   function resolveMatch(path){
     if(!gameActive) return;
+
+    // サリーのスキル効果中は、サブツムを含む通常のチェーンでも「たどって周りを巻き込む」処理へ
+    if(sallyActive){
+      bumpCombo();
+      resolveSallyChain(path);
+      return;
+    }
+
     const n = path.length;
     // 大ツムは「ツム5つ分」として扱う（スコア・コイン・チェーン記録・ゲージ計算の実質個数）
     const effectiveN = path.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
@@ -2228,7 +2497,7 @@
 
     const myCount = path.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0)
       + extraTargets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
-    addSkillGauge(myCount);
+    addSkillGauge(myCount, path.concat(extraTargets));
 
     showCombo(n, bonus, path, gainedCoins, totalEffectiveN);
     showEraseCount(path.concat(extraTargets), totalEffectiveN, path[path.length-1]);
@@ -2388,7 +2657,7 @@
       }
 
       const myCount = allErased.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0) + BIG_TSUM_COUNT_WEIGHT;
-      addSkillGauge(myCount);
+      addSkillGauge(myCount, allErased);
 
       showCombo(allErased.length, bonus, allErased, gainedCoins, effectiveN);
       showEraseCount(allErased, effectiveN, hookAngry);
@@ -2522,6 +2791,26 @@
   // Skill
   // ------------------------------------------------------------
   function updateSkillGaugeUI(){
+    if(isPairMode()){
+      // ペアツム（ジャック＆サリー）：ジャック・サリーそれぞれ専用のゲージ／ボタンを独立して更新する
+      skillGaugeWrap2.style.display = '';
+      skillBtn2.style.display = '';
+      const pctJack = Math.min(100, (jackGauge/SKILL_GAUGE_MAX)*100);
+      const pctSally = Math.min(100, (sallyGauge/SKILL_GAUGE_MAX)*100);
+      skillFill.style.width = pctJack+'%';
+      skillFill2.style.width = pctSally+'%';
+      if(jackGauge >= SKILL_GAUGE_MAX && !jackReady){
+        jackReady = true;
+        skillBtn.classList.add('ready');
+      }
+      if(sallyGauge >= SKILL_GAUGE_MAX && !sallyReady){
+        sallyReady = true;
+        skillBtn2.classList.add('ready');
+      }
+      return;
+    }
+    skillGaugeWrap2.style.display = 'none';
+    skillBtn2.style.display = 'none';
     const pct = Math.min(100, (skillGauge/SKILL_GAUGE_MAX)*100);
     skillFill.style.width = pct+'%';
     if(skillGauge >= SKILL_GAUGE_MAX && !skillReady){
@@ -2537,7 +2826,28 @@
     return (hero && hero.skillNeed) || 11;
   }
 
-  function addSkillGauge(myCount){
+  // ジャック・サリーそれぞれの消去数を個別ゲージへ加算する（ペアツム専用。片方が満タンでも、
+  // もう片方はスキル発動とは無関係に独立して溜まり続ける）
+  function addPairSkillGauge(erasedList){
+    if(gastonRainActive || !erasedList || erasedList.length===0) return;
+    const jackType = TSUM_TYPES.find(t=>t.key==='jack');
+    const sallyType = TSUM_TYPES.find(t=>t.key==='sally');
+    const jackCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='jack' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
+    const sallyCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='sally' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
+    if(jackCount>0 && !jackReady){
+      jackGauge = Math.min(SKILL_GAUGE_MAX, jackGauge + jackCount*(SKILL_GAUGE_MAX/jackType.skillNeed));
+    }
+    if(sallyCount>0 && !sallyReady){
+      sallyGauge = Math.min(SKILL_GAUGE_MAX, sallyGauge + sallyCount*(SKILL_GAUGE_MAX/sallyType.skillNeed));
+    }
+    if(jackCount>0 || sallyCount>0) updateSkillGaugeUI();
+  }
+
+  function addSkillGauge(myCount, erasedList){
+    if(isPairMode()){
+      addPairSkillGauge(erasedList || []);
+      return;
+    }
     if(myCount<=0) return;
     // ガストンのハンティングショット後5秒間は、ガストンを消してもゲージが溜まらない
     if(gastonRainActive) return;
@@ -2557,9 +2867,47 @@
   }
 
   skillBtn.addEventListener('click', ()=>{
-    if(!skillReady || !gameActive || skillActive) return;
+    if(!gameActive) return;
+    if(isPairMode()){
+      // ジャック側のボタン：ジャックのゲージが満タンなら、他方のスキルの発動状況に関わらず単独で使える
+      if(!jackReady || skillActive) return;
+      activatePairSkill('jack');
+      return;
+    }
+    if(!skillReady || skillActive) return;
     activateSkill();
   });
+
+  skillBtn2.addEventListener('click', ()=>{
+    if(!gameActive || !isPairMode()) return;
+    // サリー側のボタン：サリーのゲージが満タンなら単独で使える
+    if(!sallyReady || skillActive) return;
+    activatePairSkill('sally');
+  });
+
+  // ペアツム専用：ジャック・サリーはゲージが別々なので、どちらかが満タンになった時点でそれぞれ独立して発動できる。
+  // 例外として、サリーのスキル効果中にジャックを発動した場合のみ、合体演出（ジャック＆サリー全消去）になる。
+  function activatePairSkill(who){
+    skillActive = true;
+
+    if(selecting){
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable'));
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; chainCountBadge.classList.remove('show'); lastPointerPoint=null;
+    }
+    pauseTimer(650);
+
+    if(who==='jack'){
+      jackReady = false; jackGauge = 0;
+      skillBtn.classList.remove('ready');
+      updateSkillGaugeUI();
+      skillJackScramble();
+    } else {
+      sallyReady = false; sallyGauge = 0;
+      skillBtn2.classList.remove('ready');
+      updateSkillGaugeUI();
+      skillSallyStitch();
+    }
+  }
 
   function activateSkill(){
     skillActive = true;
@@ -2570,7 +2918,7 @@
     updateSkillGaugeUI();
 
     if(selecting){
-      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable'));
       selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; chainCountBadge.classList.remove('show'); lastPointerPoint=null;
     }
 
@@ -2592,11 +2940,17 @@
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
 
-  function finishSkill(){ skillActive = false; }
+  function finishSkill(){
+    skillActive = false;
+    skillTimeFreeze = false;
+    appEl.classList.remove('timeStopDimmed');
+    if(isPairMode()) updateSkillGaugeUI();
+  }
 
-  function showSkillLabel(text){
+  function showSkillLabel(text, extraClass){
     comboDisplay.textContent = text;
-    comboDisplay.classList.remove('show');
+    comboDisplay.classList.remove('show','jackSallyLabel');
+    if(extraClass) comboDisplay.classList.add(extraClass);
     void comboDisplay.offsetWidth;
     comboDisplay.classList.add('show');
   }
@@ -2995,7 +3349,7 @@
   // ツムの種類を差し替える共通処理（座標・物理状態は維持したままDOM要素だけ作り直す）
   function transformTsumType(t, newType){
     t.type = newType;
-    const isMine = newType.key === myTsumKey;
+    const isMine = isMineType(newType);
     t.isMine = isMine;
     const size = t.r*2;
     const newEl = createTsumEl(newType, isMine, size);
@@ -3122,7 +3476,7 @@
         feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
       }
       const myCount = targets.filter(t=>t.isMine).length;
-      addSkillGauge(myCount);
+      addSkillGauge(myCount, targets);
 
       burstSparkles(targets);
       burstMyTsumOrbs(targets);
@@ -3159,6 +3513,259 @@
       layer.remove();
       onDone && onDone();
     }, BEAST_CLAW_ANIM_MS);
+  }
+
+  // ------------------------------------------------------------
+  // ジャック＆サリー（ペアツム）
+  // ------------------------------------------------------------
+
+  // 合体（ドリームスクランブル）の瞬間に、盤面中央で虹色フラッシュ＋星スパークルの輪を弾けさせる演出。
+  // アニメ本編の紹介動画のような「主役同士が合わさって光る」印象を強めるための追加エフェクト。
+  function showJackSallyComboBurst(){
+    const flash = document.createElement('div');
+    flash.className = 'jackSallyComboFlash';
+    board.appendChild(flash);
+    requestAnimationFrame(()=> flash.classList.add('play'));
+    setTimeout(()=> flash.remove(), 1320);
+
+    const STAR_COUNT = 10;
+    const stars = ['★','✦','✧'];
+    for(let i=0;i<STAR_COUNT;i++){
+      const star = document.createElement('div');
+      star.className = 'jackSallyStarRing';
+      star.textContent = stars[i % stars.length];
+      const angle = (i/STAR_COUNT)*Math.PI*2 + (Math.random()-0.5)*0.3;
+      const dist = tsumRadius*(5 + Math.random()*2.5);
+      star.style.setProperty('--starX', (Math.cos(angle)*dist)+'px');
+      star.style.setProperty('--starY', (Math.sin(angle)*dist)+'px');
+      star.style.animationDelay = (Math.random()*150)+'ms';
+      board.appendChild(star);
+      requestAnimationFrame(()=> star.classList.add('play'));
+      setTimeout(()=> star.remove(), 1600);
+    }
+  }
+
+  // ジャックのスキル：サブツム(ジャックとサリー以外)を15個ランダム消去。
+  // 発動中は時間停止（＝残り時間タイマーを止めるだけで、ツムの物理は止めない＝boardFrozenにはしない）。
+  // サリーの効果時間中に発動した場合は、追加でジャックとサリーを全て消す特別演出になる。
+  function skillJackScramble(){
+    const comboMode = sallyActive; // サリー効果中に発動した場合は合体演出
+    pauseTimer(2600); // 残り時間だけ止める（物理は動き続ける）。ツムが枠内に入るのを待ってからの合体演出をじっくり見せるため長めに確保
+    appEl.classList.add('timeStopDimmed'); // 時間停止中であることが分かるよう画面を薄暗くする
+    skillTimeFreeze = true; // 発動中はサリーの効果残り時間なども一緒に止める（finishSkillで解除）
+
+    const subCandidates = tsums.filter(t=> !t.isMine && !t.isBomb && !t.ghost && t.type.key!=='jack' && t.type.key!=='sally');
+    shuffleArr(subCandidates);
+    const targets = subCandidates.slice(0, Math.min(15, subCandidates.length));
+    targets.forEach(t=> t.el.classList.add('jackTargetSpotlight')); // 選ばれたツムだけ薄暗くならないようにする
+
+    // ---- ここから下（ランダム消去15個＋補充まで）は、単体発動時とまったく同じロジック ----
+    // comboMode の場合は、消去・補充が終わったあと（onRandomEraseDone）に続けて
+    // ジャック＆サリー全消去演出へ進む。単体発動時は同じ処理のあとそのままスキルを終了する。
+    const finishUp = (allTargets, label, coinsGained, onRandomEraseDone)=>{
+      if(allTargets.length>0){
+        burstSparkles(allTargets);
+        burstMyTsumOrbs(allTargets);
+        if(coinsGained>0) burstCoins(allTargets, coinsGained);
+      }
+      showSkillLabel(label);
+      popWithWave(allTargets, {x:boardW/2, y:boardH/2}, 'popping', ()=>{
+        refillIfNeeded(allTargets.map(t=>t.x));
+        if(onRandomEraseDone){
+          onRandomEraseDone();
+        } else {
+          finishSkill();
+          checkFeverTrigger();
+        }
+      }, true);
+    };
+
+    if(targets.length===0 && !comboMode){
+      showSkillLabel('ランダムスクランブル！ 対象がいなかった…');
+      finishSkill();
+      return;
+    }
+
+    const bonus = computeScore(targets);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(targets.length, 7);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(targets.length > maxChain) maxChain = targets.length;
+    chainVal.textContent = maxChain;
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
+    }
+    showEraseCount(targets, targets.length);
+
+    const label = `ランダムスクランブル！ サブツム${targets.length}個消去 +${bonus}`;
+
+    if(!comboMode){
+      finishUp(targets, label, gainedCoins);
+      return;
+    }
+
+    // ---- 合体演出：単体発動時と同じランダム消去＋補充のあと、続けてジャックとサリーを全て消去する ----
+    finishUp(targets, label, gainedCoins, ()=>{
+      waitUntilAllSettled(()=>{
+        // 待機中に補充されて降ってきたジャック＆サリーも巻き込むため、ここで改めて取得する
+        const jackSallyTargets = tsums.filter(t=> t.isMine && !t.isBomb && !t.ghost && (t.type.key==='jack' || t.type.key==='sally'));
+        jackSallyTargets.forEach(t=> t.el.classList.add('jackTargetSpotlight')); // ジャック＆サリー本体も薄暗くならないようにする
+        if(jackSallyTargets.length===0){
+          showSkillLabel(label);
+          finishSkill();
+          checkFeverTrigger();
+          return;
+        }
+
+        // 合体前の「寄せられて光る」タメ演出：ジャック＆サリーが一瞬強く発光してから弾ける
+        jackSallyTargets.forEach(t=> t.el.classList.add('jackSallyGathering'));
+        showJackSallyComboBurst();
+
+        setTimeout(()=>{
+          const bonus2 = computeScore(jackSallyTargets);
+          score += bonus2;
+          scoreVal.textContent = score.toLocaleString();
+          const gainedCoins2 = coinsForChain(jackSallyTargets.length, 12);
+          coins += gainedCoins2;
+          coinVal.textContent = coins.toLocaleString();
+          if(jackSallyTargets.length > maxChain) maxChain = jackSallyTargets.length;
+          chainVal.textContent = maxChain;
+          if(!inFever){
+            feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + jackSallyTargets.length*FEVER_GAUGE_PER_TSUM);
+          }
+          showEraseCount(jackSallyTargets, jackSallyTargets.length);
+          burstSparkles(jackSallyTargets);
+          burstMyTsumOrbs(jackSallyTargets);
+          if(gainedCoins2>0) burstCoins(jackSallyTargets, gainedCoins2);
+
+          showSkillLabel(`ドリームスクランブル！ サブツム${targets.length}個＋ジャック&サリー${jackSallyTargets.length}個消去`, 'jackSallyLabel');
+          popWithWave(jackSallyTargets, {x:boardW/2, y:boardH/2}, 'popping', ()=>{
+            refillIfNeeded(jackSallyTargets.map(t=>t.x));
+            finishSkill();
+            checkFeverTrigger();
+          }, true);
+        }, 700);
+      }, 1500);
+    });
+  }
+
+  // サリーのスキル：効果時間中、少し離れたツムとも繋げられるようになる（リンク距離の拡張はtryAddToSelection側で処理）。
+  // ここではスキル発動時の効果開始処理のみを行う。
+  function skillSallyStitch(){
+    sallyActive = true;
+    boardFrozen = true;
+    pauseTimer(900);
+    appEl.classList.add('timeStopDimmed'); // 発動演出中であることが分かるよう画面を薄暗くし、時間を止める
+    showSkillLabel(`ドリームスティッチ！ ${SALLY_DURATION}秒間、少し離れたツムも繋げられる`);
+    showSallyStitchBurst();
+    sallyAuraLayer.classList.add('show');
+    sallyRemainingMs = SALLY_DURATION*1000; // 以後 frameLoop 内で、時間停止中でない間だけ減っていく
+    setTimeout(()=>{
+      boardFrozen = false;
+      appEl.classList.remove('timeStopDimmed');
+      finishSkill();
+    }, 900);
+  }
+
+  // サリーの効果時間終了処理（時間停止中でない間、frameLoopの残り時間が0になった時点で呼ばれる）
+  function endSallySkill(){
+    sallyActive = false;
+    sallyAuraLayer.classList.remove('show');
+  }
+
+  // ドリームスティッチ発動の瞬間、盤面に紫の縫い目ラインを数本走らせる演出（サリーの"つぎはぎ"モチーフ）
+  function showSallyStitchBurst(){
+    const layer = document.createElement('div');
+    layer.className = 'sallyStitchLayer';
+    board.appendChild(layer);
+    const LINE_COUNT = 4;
+    for(let i=0;i<LINE_COUNT;i++){
+      const line = document.createElement('div');
+      line.className = 'sallyStitchLine';
+      line.style.top = (18 + i*(boardH-36)/(LINE_COUNT-1))+'px';
+      line.style.animationDelay = (i*120)+'ms';
+      layer.appendChild(line);
+    }
+    requestAnimationFrame(()=>{
+      layer.querySelectorAll('.sallyStitchLine').forEach(l=> l.classList.add('play'));
+    });
+    setTimeout(()=> layer.remove(), 1500);
+  }
+
+  // サリーの効果中に、サリーを含むチェーンを消したときの専用処理。
+  // なぞった順に「たどるアニメーション」を再生（その間は時間停止・物理も停止）した後、
+  // なぞった各ツムの周囲も巻き込んで、最後のツムの位置へまとめて一気に消す。
+  function resolveSallyChain(path){
+    if(!gameActive) return;
+    boardFrozen = true;
+    pauseTimer(path.length*SALLY_TRACE_STEP_MS + 1100);
+    appEl.classList.add('timeStopDimmed'); // たどるアニメーション中であることが分かるよう画面を薄暗くする
+
+    if(selecting){
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; chainCountBadge.classList.remove('show'); lastPointerPoint=null;
+    }
+
+    const traceOne = (i)=>{
+      if(i>=path.length){
+        setTimeout(()=> finishSallyChain(path), 320);
+        return;
+      }
+      const t = path[i];
+      if(tsums.includes(t)) t.el.classList.add('sallyTraced');
+      setTimeout(()=> traceOne(i+1), SALLY_TRACE_STEP_MS);
+    };
+    traceOne(0);
+  }
+
+  function finishSallyChain(path){
+    const pathIds = new Set(path.map(t=>t.id));
+    const radius = tsumRadius * SALLY_GATHER_RANGE;
+    const nearbySet = new Set();
+    tsums.forEach(t=>{
+      if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+      for(const c of path){
+        const dx = t.x-c.x, dy = t.y-c.y;
+        if(dx*dx+dy*dy <= radius*radius){ nearbySet.add(t); break; }
+      }
+    });
+    const extraTargets = Array.from(nearbySet);
+    const effectiveN = path.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0)
+      + extraTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+
+    const bonus = computeScore(path) + (extraTargets.length>0 ? computeScore(extraTargets) : 0);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(effectiveN);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(effectiveN > maxChain) maxChain = effectiveN;
+    chainVal.textContent = maxChain;
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + effectiveN*FEVER_GAUGE_PER_TSUM);
+    }
+
+    const allErased = path.concat(extraTargets);
+    const myCount = allErased.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
+    addSkillGauge(myCount, allErased);
+
+    const last = path[path.length-1];
+    showCombo(path.length, bonus, allErased, gainedCoins, effectiveN);
+    showEraseCount(allErased, effectiveN, last);
+    burstSparkles(allErased);
+    burstMyTsumOrbs(allErased);
+    if(gainedCoins>0) burstCoins(allErased, gainedCoins);
+
+    allErased.forEach(t=> t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable','sallyTraced'));
+
+    // 「最後のツムのところにまとめて消える」：最後のツムを中心に一気に（ノーウェーブで）消す
+    popWithWave(allErased, {x:last.x, y:last.y}, 'popping', ()=>{
+      boardFrozen = false;
+      appEl.classList.remove('timeStopDimmed');
+      refillIfNeeded(allErased.map(t=>t.x));
+      checkFeverTrigger();
+    }, true);
   }
 
   function doBuzzErase(p){
@@ -3733,6 +4340,22 @@
     }
   }
 
+  // 全てのツムが盤面（枠）内に入るまで待ってからコールバックを呼ぶ（ジャック＆サリー合体演出などで使用）。
+  // 補充されたツムは画面外の上方から降ってくるため、enteredBoard フラグ（一度でも枠内に到達したか）で判定する。
+  // maxWaitMs で上限を設け、演出が万一詰まっても先へ進めるようにする。
+  function waitUntilAllSettled(callback, maxWaitMs){
+    const startTime = performance.now();
+    const check = ()=>{
+      const allInBounds = tsums.every(t=> t.selected || t.ghost || t.enteredBoard);
+      if(allInBounds || performance.now()-startTime > (maxWaitMs||2000)){
+        callback();
+        return;
+      }
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }
+
   function frameLoop(now){
     if(!lastFrameTime) lastFrameTime = now;
     const dt = (now - lastFrameTime)/1000;
@@ -3757,6 +4380,15 @@
       if(feverRemainingMs <= 0){
         feverRemainingMs = 0;
         exitFever();
+      }
+    }
+    // サリーのスキル効果時間も、他の時間停止演出（hookAnimFreeze・boardFrozen＝ジャックのスキル中やサリー自身の
+    // たどるアニメーション中など）の間は経過させない。「時間停止中は効果時間も一緒に止まる」仕様にするため。
+    if(sallyActive && !hookAnimFreeze && !boardFrozen && !skillTimeFreeze){
+      sallyRemainingMs -= dt*1000;
+      if(sallyRemainingMs <= 0){
+        sallyRemainingMs = 0;
+        endSallySkill();
       }
     }
     // フィーバーゲージは合計で消したツム数のみで増える（時間経過による減衰はしない）
@@ -3867,13 +4499,20 @@
     comboCount = 0;
     if(comboTimer) clearTimeout(comboTimer);
     feverGauge = 0; inFever = false; feverRemainingMs = 0;
-    skillGauge = 0; skillReady = false; skillActive = false; skillGaugeCarry = 0;
+    skillGauge = 0; skillReady = false; skillActive = false; skillGaugeCarry = 0; skillTimeFreeze = false;
+    jackGauge = 0; sallyGauge = 0; jackReady = false; sallyReady = false;
+    sallyActive = false; sallyRemainingMs = 0;
+    sallyAuraLayer.classList.remove('show');
     ghostTimers.forEach(g=> clearTimeout(g.timeoutId));
     ghostTimers = [];
     clearTimeout(feverEndTimer);
     appEl.classList.remove('fever');
     feverLights.classList.remove('show');
     skillBtn.classList.remove('ready');
+    skillBtn2.classList.remove('ready');
+    skillFill2.style.width = '0%';
+    skillGaugeWrap2.style.display = isPairMode() ? '' : 'none';
+    skillBtn2.style.display = isPairMode() ? '' : 'none';
 
     scoreMultiplier = 1;
     if(scoreMultiplierEndTimer) clearTimeout(scoreMultiplierEndTimer);
@@ -3895,6 +4534,7 @@
     hookAnimGhostRef = null;
     hookPhysicsPause = false;
     appEl.classList.remove('hookAnimDimmed');
+    appEl.classList.remove('timeStopDimmed');
 
     // アイテム反映：盤面のツム種類数／ボム出現チェーン数
     activeTsumTypes = buildActiveTsumTypes(itemFewerTypes ? 4 : 5);
@@ -3934,6 +4574,7 @@
     clearTimeout(timerResumeTimeout);
     clearTimeout(feverEndTimer);
     boardFrozen = false;
+    sallyActive = false; sallyRemainingMs = 0;
     buzzTapMode = false;
     boardWrap.classList.remove('buzzTapMode');
     clearTimeout(namineEndTimer);
@@ -3944,6 +4585,8 @@
     }
     appEl.classList.remove('fever');
     feverLights.classList.remove('show');
+    sallyAuraLayer.classList.remove('show');
+    appEl.classList.remove('timeStopDimmed');
     finalScore.textContent = score.toLocaleString();
     finalChain.textContent = maxChain;
     finalCoin.textContent = coins.toLocaleString();
@@ -3973,7 +4616,7 @@
     titleWrap.appendChild(el);
 
     charPreview.innerHTML = '';
-    TSUM_TYPES.forEach(t=>{
+    TSUM_TYPES.filter(t=>!t.pairHidden).forEach(t=>{
       const col = document.createElement('div');
       col.className = 'charCol';
 
@@ -3992,14 +4635,15 @@
 
       const label = document.createElement('div');
       label.className='charName';
-      label.textContent = t.name;
+      label.textContent = t.pairKey ? (t.pairLabel || t.name) : t.name;
       col.appendChild(label);
 
       charPreview.appendChild(col);
     });
 
+    const heroLabel = heroType.pairKey ? (heroType.pairLabel || heroType.name) : heroType.name;
     skillInfoBox.innerHTML =
-      `<div class="skName">${heroType.name}のスキル：${heroType.skillName}</div>`+
+      `<div class="skName">${heroLabel}のスキル：${heroType.skillName}</div>`+
       `<div class="skDesc">${heroType.skillDesc}</div>`;
   }
 
