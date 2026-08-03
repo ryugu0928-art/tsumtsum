@@ -344,6 +344,14 @@
     z-index:40;
     transition: transform .5s cubic-bezier(.2,.7,.3,1), opacity .5s ease;
   }
+  /* マイツム／サブツムが消えるとき、ツム本体がスキルゲージ or フィーバーゲージへ
+     直接吸い込まれていくように移動しながら縮小するポップ演出。
+     実際のtransform/transitionはJS側（popWithWave）で直接設定する
+     （renderTsumPositionが管理する通常のtranslate(x-r,y-r)と衝突しないようにするため）。 */
+  .tsum.suckPopping{
+    z-index:27;
+    pointer-events:none;
+  }
 
   /* ---------- ナミネ：ソラへの変化演出＆特殊リンク見た目 ---------- */
   .tsum.soraTransforming .face{
@@ -368,6 +376,21 @@
     0%{ opacity:0; }
     20%{ opacity:1; }
     100%{ opacity:0; }
+  }
+  /* ダッフィーのフォーチュン・トラペゾイド：盤面上に逆台形（上辺が広く下辺が狭い）の範囲を光らせる演出 */
+  .duffyTrapezoidLayer{
+    position:absolute;
+    pointer-events:none;
+    z-index:55;
+    background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(201,147,90,0.35) 60%, transparent 100%);
+    box-shadow:0 0 16px 4px rgba(201,147,90,0.6);
+    opacity:0;
+    animation: duffyTrapezoidFade .55s ease-out forwards;
+  }
+  @keyframes duffyTrapezoidFade{
+    0%{ opacity:0; transform:scaleY(0.7); }
+    25%{ opacity:1; transform:scaleY(1); }
+    100%{ opacity:0; transform:scaleY(1); }
   }
   /* ナミネ・ソラは種類が違っても繋げられることを示す特別なリンク色の縁取り */
   .tsum.namineLinkable .face{
@@ -550,6 +573,22 @@
     40%{ filter:brightness(2.2) saturate(0); transform:scale(1.15) rotate(-8deg); }
     70%{ filter:brightness(1.6) saturate(0.4); transform:scale(0.9) rotate(4deg); }
     100%{ filter:brightness(1) saturate(1); transform:scale(1) rotate(0deg); }
+  }
+  /* スキル発動：怒ったフック船長が画面中央に出現するアニメーション。
+     時間停止で盤面が薄暗くなる中、本人だけスポットライトで浮き上がりつつ
+     小さく震えながら一気に膨れ上がって現れる演出。
+     --hookPos に配置用のtranslate()文字列を入れてもらい、scale/rotateと合成することで、
+     アニメーションのtransformが本来の配置(translate)を消してしまわないようにする。 */
+  .tsum.hookAppearing{
+    animation: hookAppearPulse 0.9s cubic-bezier(.2,1.3,.3,1);
+    z-index:59;
+  }
+  @keyframes hookAppearPulse{
+    0%{ opacity:0; filter:brightness(2.4) saturate(0); transform:var(--hookPos) scale(0.15) rotate(0deg); }
+    35%{ opacity:1; filter:brightness(2.4) saturate(0); transform:var(--hookPos) scale(1.25) rotate(-10deg); }
+    55%{ filter:brightness(1.8) saturate(0.5); transform:var(--hookPos) scale(0.92) rotate(6deg); }
+    75%{ filter:brightness(1.3) saturate(0.85); transform:var(--hookPos) scale(1.06) rotate(-2deg); }
+    100%{ opacity:1; filter:brightness(1) saturate(1); transform:var(--hookPos) scale(1) rotate(0deg); }
   }
 
   /* ---------- ガストンのハンティングショット演出 ---------- */
@@ -870,18 +909,64 @@
     gap:12px;
   }
   #myTsumIcon{
-    width:46px; height:46px;
+    width:44px; height:44px;
     border-radius:50%;
     flex-shrink:0;
-    box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 0 0 3px rgba(255,255,255,0.6);
     position:relative;
+    z-index:1;
   }
-  #skillGaugeWrap{ flex:1; }
-  #skillGaugeWrap2{ flex:1; }
+  #sallyIcon{
+    width:44px; height:44px;
+    border-radius:50%;
+    flex-shrink:0;
+    position:relative;
+    z-index:1;
+  }
+  /* マイツムを囲むリング型スキルゲージ：conic-gradientで円形に進捗を表現し、
+     満タンになったらリングごとタップしてスキルを発動できる。 */
+  .skillRingWrap{
+    position:relative;
+    width:72px; height:72px;
+    border-radius:50%;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:default;
+    box-shadow:0 3px 0 rgba(0,0,0,0.25);
+  }
+  .skillRingWrap::before{
+    content:'';
+    position:absolute; inset:0;
+    border-radius:50%;
+    background:conic-gradient(#5fd8ff calc(var(--pct,0)*1%), rgba(255,255,255,0.22) 0);
+    transition:background .2s linear;
+  }
+  .skillRingWrap.ready::before{
+    background:conic-gradient(#ffd23f calc(var(--pct,0)*1%), rgba(255,255,255,0.22) 0);
+  }
+  .skillRingWrap::after{
+    content:'';
+    position:absolute; inset:11px;
+    border-radius:50%;
+    background:#16324a;
+    box-shadow:0 0 0 3px rgba(255,255,255,0.6);
+  }
+  .skillRingWrap.ready{
+    cursor:pointer;
+    animation:skillReady 1s ease-in-out infinite;
+  }
+  .skillRingWrap:active{ transform:scale(0.94); }
+  @keyframes skillReady{
+    0%,100%{ box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 0 0 0 rgba(255,210,63,0.6);}
+    50%{ box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 0 0 10px rgba(255,210,63,0);}
+  }
+
+  #feverGaugeWrap{ flex:1; }
   #chainLabel{
     display:none;
   }
-  #skillGauge, #skillGauge2{
+  #feverGauge{
     height:26px;
     background:linear-gradient(180deg,#1c3f5c,#122a40);
     border-radius:18px;
@@ -891,18 +976,25 @@
     display:flex;
     align-items:center;
   }
-  #skillFill, #skillFill2{
+  #feverFill{
     position:absolute;
     left:0; top:0; bottom:0;
     height:100%;
     width:0%;
-    background:linear-gradient(180deg,#ffe27a,#ffb400 60%,#e08600);
+    background:linear-gradient(180deg,#ff9ad6,#ff4fa0 60%,#c22b73);
     transition:width .25s ease;
   }
-  #skillFill2{
-    background:linear-gradient(180deg,#e0c8ff,#a08cc4 60%,#6e5a94);
+  #feverGaugeWrap.feverRainbow #feverFill{
+    background:linear-gradient(90deg,#ff3b3b,#ff9c3b,#f7e34c,#4ce06a,#4ca8ff,#7a5cff,#ff5cd6,#ff3b3b);
+    background-size:300% 100%;
+    animation:feverRainbowShift 1.4s linear infinite;
+    transition:width .05s linear; /* フィーバー終了ちょうどに空になるよう、時間経過に即時追従させる */
   }
-  #skillGaugeLabel, #skillGaugeLabel2{
+  @keyframes feverRainbowShift{
+    0%{ background-position:0% 50%; }
+    100%{ background-position:150% 50%; }
+  }
+  #feverGaugeLabel{
     position:relative;
     z-index:1;
     width:100%;
@@ -912,45 +1004,6 @@
     letter-spacing:2px;
     color:#dfe9f2;
     text-shadow:0 1px 2px rgba(0,0,0,0.5);
-  }
-  #skillBtn, #skillBtn2{
-    flex-shrink:0;
-    width:60px; height:60px;
-    border-radius:50%;
-    border:none;
-    background:radial-gradient(circle at 35% 30%, #ffe27a, #ffb400 65%, #c97a1f 100%);
-    box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55);
-    opacity:0.45;
-    pointer-events:none;
-    transition:opacity .2s ease, transform .1s ease;
-    display:flex; align-items:center; justify-content:center;
-  }
-  #skillBtn2{
-    background:radial-gradient(circle at 35% 30%, #e0c8ff, #a08cc4 65%, #6e5a94 100%);
-    box-shadow:0 4px 0 #4f3f6b, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55);
-  }
-  #skillBtnIcon, #skillBtnIcon2{
-    width:26px; height:26px;
-    position:relative;
-  }
-  #skillBtnIcon::before, #skillBtnIcon2::before{
-    content:'';
-    position:absolute; inset:0;
-    background:#7a4a00;
-    clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-  }
-  #skillBtnIcon2::before{
-    background:#3f2f57;
-  }
-  #skillBtn.ready, #skillBtn2.ready{
-    opacity:1;
-    pointer-events:auto;
-    animation:skillReady 1s ease-in-out infinite;
-  }
-  #skillBtn:active, #skillBtn2:active{ transform:scale(0.92); }
-  @keyframes skillReady{
-    0%,100%{ box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 0 rgba(255,210,63,0.6);}
-    50%{ box-shadow:0 4px 0 #a5620f, inset 0 2px 3px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.55), 0 0 0 10px rgba(255,210,63,0);}
   }
 
   /* ---------- overlays ---------- */
@@ -1183,15 +1236,15 @@
   <div id="bottomBar">
     <div id="chainLabel">つないだ数：<span id="linkCount">0</span></div>
     <div id="myTsumRow">
-      <div id="myTsumIcon"></div>
-      <div id="skillGaugeWrap">
-        <div id="skillGauge"><div id="skillFill"></div><span id="skillGaugeLabel">FEVER</span></div>
+      <div id="skillRingWrap" class="skillRingWrap">
+        <div id="myTsumIcon"></div>
       </div>
-      <button id="skillBtn"><span id="skillBtnIcon"></span></button>
-      <div id="skillGaugeWrap2" style="display:none">
-        <div id="skillGauge2"><div id="skillFill2"></div><span id="skillGaugeLabel2">サリー</span></div>
+      <div id="feverGaugeWrap">
+        <div id="feverGauge"><div id="feverFill"></div><span id="feverGaugeLabel">FEVER</span></div>
       </div>
-      <button id="skillBtn2" style="display:none"><span id="skillBtnIcon2"></span></button>
+      <div id="skillRingWrap2" class="skillRingWrap pairSally" style="display:none">
+        <div id="sallyIcon"></div>
+      </div>
     </div>
   </div>
 
@@ -1366,6 +1419,10 @@
     { key:'sally', name:'サリー', color:'#c9b8dd', dark:'#a08cc4', motif:'sallyPatch', score:210, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
       skillName:'ドリームスティッチ',
       skillDesc:'効果時間中、少し離れたツムともつなげられるようになる。チェーンすると、たどった道の周りのツムも巻き込んで最後のツムのところへまとめて消える（道をたどるアニメーション中は時間停止・ツムの物理も止まる）' },
+    { key:'duffy', name:'ダッフィー', color:'#d9a054', dark:'#9c6b28', motif:'duffyEars', score:220, skillNeed:17, colorGroup:'brown', coinBonus:0,
+      myTsumFallBoost:true, // おまけ効果：ダッフィーをマイツムに設定している間、マイツムが降ってきやすくなる
+      skillName:'フォーチュン・トラペゾイド',
+      skillDesc:'2種類のスキルが交互に発動。1回目：盤面に逆台形型にマイツムを増やしてから、その逆台形の範囲を消去。2回目：同じ逆台形の範囲をそのまま消去。（発動中は時間停止・ツムの物理も停止）' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -1414,6 +1471,10 @@
   const SALLY_DURATION = 4;                 // サリーのスキル効果時間（秒）
   const SALLY_LINK_RANGE_MULT = 9.5;        // サリー効果中のリンク許容距離（通常は t.r*3.4）
   const SALLY_GATHER_RANGE = 2.6;           // チェーンした各ツムの周りを巻き込む範囲（ツム半径の倍率）
+
+  // ダッフィー：スキル発動2回に1回、逆台形型にマイツムへ変化させてから同じ範囲を消去する（1回目）。
+  // もう1回は、変化させずにそのまま同じ逆台形の範囲を消去する（2回目）。この2種類が交互に発動する。
+  let duffySkillPhase = 0; // 0: 次は変化＋消去（1回目）／1: 次はそのまま消去（2回目）
   const SALLY_TRACE_STEP_MS = 210;          // チェーンをたどるアニメーションの1体あたりの間隔
 
   function isPairMode(){
@@ -1458,12 +1519,12 @@
   const chainCountBadge = document.getElementById('chainCountBadge');
   const comboDisplay = document.getElementById('comboDisplay');
   const feverBanner = document.getElementById('feverBanner');
-  const skillFill = document.getElementById('skillFill');
-  const skillBtn = document.getElementById('skillBtn');
-  const skillGaugeWrap2 = document.getElementById('skillGaugeWrap2');
-  const skillBtn2 = document.getElementById('skillBtn2');
-  const skillFill2 = document.getElementById('skillFill2');
+  const feverFill = document.getElementById('feverFill');
+  const feverGaugeWrap = document.getElementById('feverGaugeWrap');
+  const skillRingWrap = document.getElementById('skillRingWrap');
+  const skillRingWrap2 = document.getElementById('skillRingWrap2');
   const myTsumIcon = document.getElementById('myTsumIcon');
+  const sallyIcon = document.getElementById('sallyIcon');
   const startOverlay = document.getElementById('startOverlay');
   const resultOverlay = document.getElementById('resultOverlay');
   const startBtn = document.getElementById('startBtn');
@@ -1515,7 +1576,6 @@
   let skillGauge = 0;
   let skillReady = false;
   let skillActive = false;
-  let skillGaugeCarry = 0; // ゲージ満タン時にあふれた分を次のゲージへ繰り越す（ゲージ連打テクニックの再現）
   let ghostTimers = []; // 消去演出中（幽霊状態）のツムの完了タイマー一覧。ボムで強制終了させるために保持する
 
   let selecting = false;
@@ -1559,11 +1619,28 @@
     });
   }
 
+  // ダッフィーをマイツムに設定している間、マイツム自身の出現重みを上げて降ってきやすくする（おまけ効果）。
+  const DUFFY_MY_TSUM_WEIGHT = 2.2; // 通常の何倍の確率で選ばれるようにするか
   function randomType(){
     if(gastonRainActive){
       return TSUM_TYPES.find(t=>t.key==='gaston');
     }
-    const picked = activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
+    const myType = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    let picked;
+    if(myType && myType.myTsumFallBoost){
+      // マイツム（ダッフィー自身、ペアがいる場合はペア含む）だけ重みを増やした重み付き抽選を行う
+      const weights = activeTsumTypes.map(t=> isMineType(t) ? DUFFY_MY_TSUM_WEIGHT : 1);
+      const total = weights.reduce((s,w)=>s+w,0);
+      let r = Math.random()*total;
+      let idx = 0;
+      for(let i=0;i<weights.length;i++){
+        r -= weights[i];
+        if(r<=0){ idx = i; break; }
+      }
+      picked = activeTsumTypes[idx];
+    } else {
+      picked = activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
+    }
     // ナミネのスキル効果中、変化対象に選ばれた種類が新規に降ってくる場合はソラとして生成する
     if(namineActive && picked.key===namineTransformedKey){
       return SORA_TYPE;
@@ -1997,6 +2074,47 @@
         }
         break;
       }
+      case 'duffyEars': {
+        // ダッフィー：くまの丸い耳2つ＋鼻先の薄いパッチ
+        [ -1, 1 ].forEach(sign=>{
+          const ear = document.createElement('div');
+          ear.className='motif';
+          const s = size*0.3;
+          ear.style.width = s+'px';
+          ear.style.height = s+'px';
+          ear.style.background = `radial-gradient(circle at 35% 30%, ${lighten(type.color)} 0%, ${type.color} 60%, ${type.dark} 100%)`;
+          ear.style.borderRadius = '50%';
+          ear.style.left = (50+sign*30)+'%';
+          ear.style.top = '-14%';
+          ear.style.transform = 'translate(-50%,-50%)';
+          ear.style.boxShadow = 'inset 0 -3px 4px rgba(0,0,0,0.15)';
+          face.appendChild(ear);
+          // 耳の内側（少し明るい色）
+          const inner = document.createElement('div');
+          inner.className='motif';
+          const innerS = s*0.55;
+          inner.style.width = innerS+'px';
+          inner.style.height = innerS+'px';
+          inner.style.background = lighten(type.color);
+          inner.style.borderRadius = '50%';
+          inner.style.left = (50+sign*30)+'%';
+          inner.style.top = '-14%';
+          inner.style.transform = 'translate(-50%,-50%)';
+          face.appendChild(inner);
+        });
+        // 鼻先の吻部パッチ（丸みのある薄い色の楕円）
+        const muzzle = document.createElement('div');
+        muzzle.className='motif';
+        muzzle.style.width = size*0.4+'px';
+        muzzle.style.height = size*0.3+'px';
+        muzzle.style.left = '50%'; muzzle.style.top = '58%';
+        muzzle.style.transform = 'translate(-50%,-50%)';
+        muzzle.style.background = lighten(type.color);
+        muzzle.style.borderRadius = '50%';
+        muzzle.style.opacity = '0.85';
+        face.appendChild(muzzle);
+        break;
+      }
     }
   }
 
@@ -2090,6 +2208,7 @@
   }
 
   function renderTsumPosition(t){
+    if(t.sucking) return; // ゲージへ吸い込まれる演出中は、演出側で直接transformを制御するため上書きしない
     // 変化がなければDOM書き込みをスキップ（静止したツムを毎フレーム書き換えるのを防ぎ負荷を減らす）
     if(t._lastX===t.x && t._lastY===t.y && t._lastRot===t.rot) return;
     t._lastX = t.x; t._lastY = t.y; t._lastRot = t.rot;
@@ -2342,7 +2461,9 @@
   // つまり見た目のポップ演出中も自分自身は落下・移動し続け（範囲ギリギリで入ってくる／出ていくツムが
   // 自然に動き続けて見える）、かつ他のツムに対して「壁」として干渉することもない。
   // （キャプテンライトイヤーのタップ消去のように、範囲内が即座に判定・消去される演出に使う）
-  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady, skipGhost){
+  // suckTargets: Map<tsum, {x,y}>（盤面座標＝boardRect基準）を渡すと、そのツムだけ
+  // 通常のpopOutではなく「suckPopping」演出（指定座標へ吸い込まれながら縮小して消える）になる。
+  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady, skipGhost, suckTargets, gaugeRate, gaugeIgnoreGastonRain){
     if(list.length===0){ onAllDone && onAllDone(); return; }
     const ordered = list.slice();
     if(centerPoint && !instant){
@@ -2374,7 +2495,25 @@
         if(!tsums.includes(t)) return; // 既にボム等で強制終了済み
         t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable');
         t.el.style.animationDuration = (POP_DURATION/1000)+'s';
-        t.el.classList.add(popClass || 'popping');
+        const suckTo = suckTargets && suckTargets.get(t);
+        if(suckTo){
+          // その場（現在のtranslate位置）を起点に、ゲージ中心へ向かって縮小しながら移動する。
+          // renderTsumPositionによる上書きを止めるため t.sucking を立ててから、
+          // 現在位置を明示的にセットし直し、次フレームで目標位置へtransitionさせる。
+          t.sucking = true;
+          t.el.classList.add('suckPopping');
+          t.el.style.transition = 'none';
+          t.el.style.transform = `translate(${t.x - t.r}px, ${t.y - t.r}px) scale(1)`;
+          // 強制リフローしてから目標へ変化させることで、transitionが確実に発火するようにする
+          void t.el.offsetWidth;
+          t.el.style.transition = `transform ${(POP_DURATION/1000)}s cubic-bezier(.4,0,.7,1), opacity ${(POP_DURATION/1000)}s ease`;
+          requestAnimationFrame(()=>{
+            t.el.style.transform = `translate(${suckTo.x - t.r}px, ${suckTo.y - t.r}px) scale(0.05)`;
+            t.el.style.opacity = '0';
+          });
+        } else {
+          t.el.classList.add(popClass || 'popping');
+        }
         if(skipGhost){
           // 物理演算（重力・移動）は継続させたいので t.ghost は立てず、衝突判定だけを無効化する。
           t.noCollide = true;
@@ -2390,9 +2529,11 @@
         if(tsums.includes(t)) removeTsum(t);
         t.el.remove();
         ghostTimers = ghostTimers.filter(g=>g.t!==t);
+        // このツムが実際にゲージへ到着した瞬間に、そのツム1個分だけゲージへ加算する
+        applyGaugeForOneTsum(t, suckTargets, gaugeRate, gaugeIgnoreGastonRain);
         finishOne(group, t);
       }, finish);
-      ghostTimers.push({t, timeoutId, group});
+      ghostTimers.push({t, timeoutId, group, suckTargets, gaugeRate, gaugeIgnoreGastonRain});
     });
 
     group.total = ordered.length;
@@ -2426,33 +2567,38 @@
         removeTsum(g.t);
         g.t.el.remove();
       }
+      // ボムキャンで早送りされた場合も、そのツムのゲージ加算だけは取りこぼさないようにする
+      applyGaugeForOneTsum(g.t, g.suckTargets, g.gaugeRate, g.gaugeIgnoreGastonRain);
       finishOne(g.group, g.t);
     });
   }
 
-  // マイツムが消えるとき、スキルゲージへ吸い込まれていく光の玉エフェクトを飛ばす
-  // （ゲージの数値自体は消去と同時に既に加算済みで、これは視覚演出のみ＝同期ズレの再現）
-  function burstMyTsumOrbs(list){
-    let mine = list.filter(t=>t.isMine);
-    if(mine.length===0) return;
-    const MAX_ORBS = 16;
-    if(mine.length > MAX_ORBS) mine = sampleEvenly(mine, MAX_ORBS);
-    const boardRect = board.getBoundingClientRect();
-    const targetRect = skillBtn.getBoundingClientRect();
-    const tx = targetRect.left + targetRect.width/2 - boardRect.left;
-    const ty = targetRect.top + targetRect.height/2 - boardRect.top;
-    mine.forEach(t=>{
-      const orb = document.createElement('div');
-      orb.className = 'myOrb';
-      orb.style.left = t.x+'px';
-      orb.style.top = t.y+'px';
-      board.appendChild(orb);
-      requestAnimationFrame(()=>{
-        orb.style.transform = `translate(${tx-t.x}px, ${ty-t.y}px) scale(0.2)`;
-        orb.style.opacity = '0';
-      });
-      setTimeout(()=> orb.remove(), 520);
-    });
+  // 1個のツムがゲージへ吸い込まれて「到着」した瞬間に、そのツム1個分だけゲージへ加算する。
+  // suckTargets で「フィーバーゲージへ向かうツムなのか／スキルゲージへ向かうツムなのか」が
+  // 事前に決まっているため、ここではそれに応じて対応するゲージへ1個分だけ反映する。
+  // rate: スキルゲージ側への反映率（省略時は1＝100%。バズのタップ消去など一部スキルでのみ0.25等を使う）
+  // ignoreGastonRain: true の場合、ガストン降臨タイム中でもスキルゲージ加算をブロックしない。
+  //   なぞり始めた（＝チェーンを確定させた）時点ではまだ降臨タイムに入っていなかったのに、
+  //   消去演出中に降臨タイムへ突入してしまい、後から消えるツムだけゲージに反映されなくなる…
+  //   という取りこぼしを防ぐため、popWithWave呼び出し側で「開始時点の降臨タイム状態」を
+  //   固定して渡してもらう。
+  function applyGaugeForOneTsum(t, suckTargets, rate, ignoreGastonRain){
+    const suckTo = suckTargets && suckTargets.get(t);
+    if(!suckTo) return; // 吸い込み対象外（＝ゲージ演出を伴わない消し方）のツムは何もしない
+    const weight = t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1;
+    if(t.isMine && !isMySkillGaugeFull()){
+      addSkillGauge(weight, [t], rate, ignoreGastonRain);
+    } else if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + weight*FEVER_GAUGE_PER_TSUM);
+      updateFeverGaugeUI();
+    }
+  }
+
+  // スキルゲージが（ペアツムの場合は両方とも）満タンかどうか＝これ以上マイツムを消してもゲージへは
+  // 溜まらず、あふれた分がフィーバーゲージ側の演出対象になる状態かどうかを判定する。
+  function isMySkillGaugeFull(){
+    if(isPairMode()) return jackReady && sallyReady;
+    return skillReady;
   }
 
   function resolveMatch(path){
@@ -2504,26 +2650,28 @@
     if(totalEffectiveN > maxChain) maxChain = totalEffectiveN;
     chainVal.textContent = maxChain;
 
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + totalEffectiveN*FEVER_GAUGE_PER_TSUM);
-    }
-
     const myCount = path.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0)
       + extraTargets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
-    addSkillGauge(myCount, path.concat(extraTargets));
 
     showCombo(n, bonus, path, gainedCoins, totalEffectiveN);
-    showEraseCount(path.concat(extraTargets), totalEffectiveN, path[path.length-1]);
+    const eraseCountPos = showEraseCount(path.concat(extraTargets), totalEffectiveN, path[path.length-1]);
     burstSparkles(path.concat(extraTargets));
-    burstMyTsumOrbs(path.concat(extraTargets));
+    const suckTargets = buildSuckTargets(path.concat(extraTargets));
     if(gainedCoins>0) burstCoins(path.concat(extraTargets), gainedCoins);
 
     const spawnBomb = totalEffectiveN >= bombChainThreshold;
-    const bombSpot = spawnBomb ? {x:path[path.length-1].x, y:path[path.length-1].y} : null;
+    const bombSpot = spawnBomb ? eraseCountPos : null;
+
+    // ゲージへの加算は、各ツムがゲージへ吸い込まれて到着した瞬間ごとに1個分ずつ popWithWave 内で行う。
+    // ここでは「なぞり終えた（＝チェーン確定）時点」でガストン降臨タイム中だったかどうかを固定しておく。
+    // 効果時間外で繋いだのに、消去演出中に降臨タイムへ突入してしまいゲージ加算が取りこぼされる…
+    // という事態を防ぐため、確定時点で降臨タイム外だった場合は、以降のゲージ加算では
+    // 降臨タイムによる制限を無視する（＝そのツムたちは通常どおりスキルへ反映する）。
+    const gaugeIgnoreGastonRain = !gastonRainActive;
 
     // 巻き込み分は一気に（ノーウェーブで）先に消し、なぞった本体はいつも通りウェーブで消す
     if(extraTargets.length>0){
-      popWithWave(extraTargets, null, 'popping', ()=>{}, true);
+      popWithWave(extraTargets, null, 'popping', ()=>{}, true, undefined, false, suckTargets, undefined, gaugeIgnoreGastonRain);
     }
 
     // 起点→終点の順にウェーブ状で消えていく（なぞった順番のまま）。
@@ -2531,7 +2679,30 @@
     popWithWave(path, null, 'popping', ()=>{
       refillIfNeeded(path.concat(extraTargets).map(t=>t.x));
       checkFeverTrigger();
-    }, false, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
+    }, false, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets, undefined, gaugeIgnoreGastonRain);
+  }
+
+  // マイツム／サブツムが消えるとき、ツム本体が直接吸い込まれていく先の座標（盤面座標系）を
+  // ツムごとにMapで組み立てる：
+  //  ・マイツム　　　：スキルゲージが満タンでなければ→スキルゲージへ、満タンなら→フィーバーゲージへ
+  //  ・サブツム　　　：常にフィーバーゲージへ
+  function buildSuckTargets(list){
+    const map = new Map();
+    if(list.length===0) return map;
+    const boardRect = board.getBoundingClientRect();
+    const skillRect = skillRingWrap.getBoundingClientRect();
+    const feverRect = feverGaugeWrap.getBoundingClientRect();
+    const skillPt = { x: skillRect.left + skillRect.width/2 - boardRect.left, y: skillRect.top + skillRect.height/2 - boardRect.top };
+    const feverPt = { x: feverRect.left + feverRect.width/2 - boardRect.left, y: feverRect.top + feverRect.height/2 - boardRect.top };
+    const gaugeFull = isMySkillGaugeFull();
+    list.forEach(t=>{
+      if(t.isMine){
+        map.set(t, gaugeFull ? feverPt : skillPt);
+      } else {
+        map.set(t, feverPt);
+      }
+    });
+    return map;
   }
 
   // ツムの物理半径とDOM要素の実サイズを変更する（位置は中心を保ったまま）。
@@ -2666,17 +2837,12 @@
       if(effectiveN > maxChain) maxChain = effectiveN;
       chainVal.textContent = maxChain;
 
-      if(!inFever){
-        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + effectiveN*FEVER_GAUGE_PER_TSUM);
-      }
-
       const myCount = allErased.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0) + BIG_TSUM_COUNT_WEIGHT;
-      addSkillGauge(myCount, allErased);
 
       showCombo(allErased.length, bonus, allErased, gainedCoins, effectiveN);
       showEraseCount(allErased, effectiveN, hookAngry);
       burstSparkles(allErased);
-      burstMyTsumOrbs(allErased);
+      const suckTargets = buildSuckTargets(allErased);
       if(gainedCoins>0) burstCoins(allErased, gainedCoins);
 
       hookAngry.el.classList.remove('selected','hookLinkable');
@@ -2705,7 +2871,7 @@
             hookPhysicsPause = false;
           }, HOOK_DIM_FADE_MS);
         });
-      }, true);
+      }, true, undefined, false, suckTargets);
     });
     }, HOOK_RETURN_TO_CENTER_MS);
   }
@@ -2756,6 +2922,7 @@
   function enterFever(){
     inFever = true;
     feverGauge = 0;
+    updateFeverGaugeUI();
     feverCount++;
     appEl.classList.add('fever');
     feverBanner.classList.remove('show');
@@ -2806,32 +2973,45 @@
   // ------------------------------------------------------------
   function updateSkillGaugeUI(){
     if(isPairMode()){
-      // ペアツム（ジャック＆サリー）：ジャック・サリーそれぞれ専用のゲージ／ボタンを独立して更新する
-      skillGaugeWrap2.style.display = '';
-      skillBtn2.style.display = '';
+      // ペアツム（ジャック＆サリー）：ジャック・サリーそれぞれ専用のリングを独立して更新する
+      skillRingWrap2.style.display = '';
       const pctJack = Math.min(100, (jackGauge/SKILL_GAUGE_MAX)*100);
       const pctSally = Math.min(100, (sallyGauge/SKILL_GAUGE_MAX)*100);
-      skillFill.style.width = pctJack+'%';
-      skillFill2.style.width = pctSally+'%';
+      skillRingWrap.style.setProperty('--pct', pctJack);
+      skillRingWrap2.style.setProperty('--pct', pctSally);
       if(jackGauge >= SKILL_GAUGE_MAX && !jackReady){
         jackReady = true;
-        skillBtn.classList.add('ready');
+        skillRingWrap.classList.add('ready');
       }
       if(sallyGauge >= SKILL_GAUGE_MAX && !sallyReady){
         sallyReady = true;
-        skillBtn2.classList.add('ready');
+        skillRingWrap2.classList.add('ready');
       }
       return;
     }
-    skillGaugeWrap2.style.display = 'none';
-    skillBtn2.style.display = 'none';
+    skillRingWrap2.style.display = 'none';
     const pct = Math.min(100, (skillGauge/SKILL_GAUGE_MAX)*100);
-    skillFill.style.width = pct+'%';
+    skillRingWrap.style.setProperty('--pct', pct);
     if(skillGauge >= SKILL_GAUGE_MAX && !skillReady){
       skillReady = true;
-      skillBtn.classList.add('ready');
+      skillRingWrap.classList.add('ready');
     }
   }
+
+  // フィーバーゲージ（画面下のバー）の見た目を更新
+  function updateFeverGaugeUI(){
+    if(inFever){
+      // フィーバー中：満タン→フィーバー終了と同時にちょうど空になるよう、残り時間に応じて一定速度で減らす
+      const pct = Math.max(0, Math.min(100, (feverRemainingMs/(FEVER_DURATION*1000))*100));
+      feverFill.style.width = pct+'%';
+      feverGaugeWrap.classList.add('feverRainbow');
+    } else {
+      const pct = Math.min(100, (feverGauge/FEVER_GAUGE_MAX)*100);
+      feverFill.style.width = pct+'%';
+      feverGaugeWrap.classList.remove('feverRainbow');
+    }
+  }
+
 
   // マイツム消去分をスキルゲージへ加算。満タンをあふれた分は次のゲージへ繰り越す
   // （本家の「ゲージ連打」テクニックを、演出待ちなしで自動的に再現したもの）
@@ -2842,8 +3022,8 @@
 
   // ジャック・サリーそれぞれの消去数を個別ゲージへ加算する（ペアツム専用。片方が満タンでも、
   // もう片方はスキル発動とは無関係に独立して溜まり続ける）
-  function addPairSkillGauge(erasedList, rate){
-    if(gastonRainActive || !erasedList || erasedList.length===0) return;
+  function addPairSkillGauge(erasedList, rate, ignoreGastonRain){
+    if((gastonRainActive && !ignoreGastonRain) || !erasedList || erasedList.length===0) return;
     const r = (rate===undefined) ? 1 : rate;
     const jackType = TSUM_TYPES.find(t=>t.key==='jack');
     const sallyType = TSUM_TYPES.find(t=>t.key==='sally');
@@ -2859,34 +3039,28 @@
   }
 
   // myCount: マイツム消去数（大ツム加重込み）。rate: ゲージへの反映率（省略時は1＝100%）
-  function addSkillGauge(myCount, erasedList, rate){
+  // ignoreGastonRain: true の場合、ガストン降臨タイム中でもゲージ加算をブロックしない
+  //   （効果時間外で繋いだチェーンが、消去演出中に降臨タイム突入してしまっても取りこぼさないための救済）
+  function addSkillGauge(myCount, erasedList, rate, ignoreGastonRain){
     const r = (rate===undefined) ? 1 : rate;
     if(isPairMode()){
-      addPairSkillGauge(erasedList || [], r);
+      addPairSkillGauge(erasedList || [], r, ignoreGastonRain);
       return;
     }
     if(myCount<=0) return;
     // ガストンのハンティングショット後5秒間は、ガストンを消してもゲージが溜まらない
-    if(gastonRainActive) return;
+    // （ただし、効果時間外で繋ぎ始めたチェーンの場合は ignoreGastonRain によりこの制限を無視する）
+    if(gastonRainActive && !ignoreGastonRain) return;
+    if(skillReady) return; // 満タン後にさらに消しても、あふれた分は繰り越さない
     const gain = myCount*r*(SKILL_GAUGE_MAX/currentSkillNeed());
-    if(skillReady){
-      skillGaugeCarry += gain;
-      return;
-    }
-    const raw = skillGauge + gain;
-    if(raw >= SKILL_GAUGE_MAX){
-      skillGaugeCarry += raw - SKILL_GAUGE_MAX;
-      skillGauge = SKILL_GAUGE_MAX;
-    } else {
-      skillGauge = raw;
-    }
+    skillGauge = Math.min(SKILL_GAUGE_MAX, skillGauge + gain);
     updateSkillGaugeUI();
   }
 
-  skillBtn.addEventListener('click', ()=>{
+  skillRingWrap.addEventListener('click', ()=>{
     if(!gameActive) return;
     if(isPairMode()){
-      // ジャック側のボタン：ジャックのゲージが満タンなら、他方のスキルの発動状況に関わらず単独で使える
+      // ジャック側のリング：ジャックのゲージが満タンなら、他方のスキルの発動状況に関わらず単独で使える
       if(!jackReady || skillActive) return;
       activatePairSkill('jack');
       return;
@@ -2895,9 +3069,9 @@
     activateSkill();
   });
 
-  skillBtn2.addEventListener('click', ()=>{
+  skillRingWrap2.addEventListener('click', ()=>{
     if(!gameActive || !isPairMode()) return;
-    // サリー側のボタン：サリーのゲージが満タンなら単独で使える
+    // サリー側のリング：サリーのゲージが満タンなら単独で使える
     if(!sallyReady || skillActive) return;
     activatePairSkill('sally');
   });
@@ -2915,12 +3089,12 @@
 
     if(who==='jack'){
       jackReady = false; jackGauge = 0;
-      skillBtn.classList.remove('ready');
+      skillRingWrap.classList.remove('ready');
       updateSkillGaugeUI();
       skillJackScramble();
     } else {
       sallyReady = false; sallyGauge = 0;
-      skillBtn2.classList.remove('ready');
+      skillRingWrap2.classList.remove('ready');
       updateSkillGaugeUI();
       skillSallyStitch();
     }
@@ -2929,9 +3103,8 @@
   function activateSkill(){
     skillActive = true;
     skillReady = false;
-    skillGauge = Math.min(SKILL_GAUGE_MAX, skillGaugeCarry); // あふれていた分を繰り越し
-    skillGaugeCarry = 0;
-    skillBtn.classList.remove('ready');
+    skillGauge = 0;
+    skillRingWrap.classList.remove('ready');
     updateSkillGaugeUI();
 
     if(selecting){
@@ -2953,6 +3126,7 @@
       namine: skillNamine,
       hook: skillHookFinalBattle,
       beast: skillBeastClaw,
+      duffy: skillDuffyTrapezoid,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -2977,36 +3151,32 @@
     const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
     if(myTsums.length===0){ finishSkill(); return; }
 
-    const bonus = computeScore(myTsums);
+    const effectiveN = myTsums.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(myTsums, effectiveN);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
     const myTsumType = TSUM_TYPES.find(t=>t.key===myTsumKey);
-    const gainedCoins = coinsForChain(myTsums.length, myTsumType.coinBonus);
+    const gainedCoins = coinsForChain(effectiveN, myTsumType.coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
-    if(myTsums.length > maxChain) maxChain = myTsums.length;
+    if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
 
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + myTsums.length*FEVER_GAUGE_PER_TSUM);
-    }
-    addSkillGauge(myTsums.length, myTsums);
-
     showSkillLabel(`ロイヤルクリア！ マイツム${myTsums.length}個消去 +${bonus}`);
-    showEraseCount(myTsums, myTsums.length);
+    const eraseCountPos = showEraseCount(myTsums, effectiveN);
     burstSparkles(myTsums);
-    burstMyTsumOrbs(myTsums);
+    const suckTargets = buildSuckTargets(myTsums);
     if(gainedCoins>0) burstCoins(myTsums, gainedCoins);
 
     // 消去系スキルは中心点から外側へ同心円状（ウェーブ）に消えていく
     const center = {x:boardW/2, y:boardH/2};
-    const spawnBomb = myTsums.length >= bombChainThreshold;
-    const bombSpot = spawnBomb ? myTsums[myTsums.length-1] : null;
+    const spawnBomb = effectiveN >= bombChainThreshold;
+    const bombSpot = spawnBomb ? eraseCountPos : null;
     popWithWave(myTsums, center, 'popping', ()=>{
       refillIfNeeded(myTsums.map(t=>t.x));
       finishSkill();
       checkFeverTrigger();
-    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
+    }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets);
   }
 
   // うさこ：種類を問わず盤面のツムを広範囲にランダム消去
@@ -3017,35 +3187,32 @@
     const count = Math.min(candidates.length, Math.max(6, Math.round(candidates.length*0.35)));
     const targets = candidates.slice(0, count);
 
-    const bonus = computeScore(targets);
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(targets.length, TSUM_TYPES.find(t=>t.key===myTsumKey).coinBonus);
+    const gainedCoins = coinsForChain(effectiveN, TSUM_TYPES.find(t=>t.key===myTsumKey).coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
-    if(targets.length > maxChain) maxChain = targets.length;
+    if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
 
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
-    }
-    const myCount = targets.filter(t=>t.isMine).length;
-    addSkillGauge(myCount, targets);
+    const myCount = targets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
 
     showSkillLabel(`ともだちイレイサー！ ${targets.length}個消去 +${bonus}`);
-    showEraseCount(targets, targets.length);
+    const eraseCountPos = showEraseCount(targets, effectiveN);
     burstSparkles(targets);
-    burstMyTsumOrbs(targets);
+    const suckTargets = buildSuckTargets(targets);
     if(gainedCoins>0) burstCoins(targets, gainedCoins);
 
     const center = {x:boardW/2, y:boardH/2};
-    const spawnBomb = targets.length >= bombChainThreshold;
-    const bombSpot = spawnBomb ? targets[targets.length-1] : null;
+    const spawnBomb = effectiveN >= bombChainThreshold;
+    const bombSpot = spawnBomb ? eraseCountPos : null;
     popWithWave(targets, center, 'popping', ()=>{
       refillIfNeeded(targets.map(t=>t.x));
       finishSkill();
       checkFeverTrigger();
-    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
+    }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets);
   }
 
   // にゃんた：盤面のツムの一部をマイツムに変化（消さずにチェーンしやすくする）
@@ -3133,33 +3300,30 @@
     showGastonShots(bandY, bandHalf, ()=>{
       if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
 
-      const bonus = computeScore(targets);
+      const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(targets, effectiveN);
       score += bonus;
       scoreVal.textContent = score.toLocaleString();
-      const gainedCoins = coinsForChain(targets.length, -1);
+      const gainedCoins = coinsForChain(effectiveN, -1);
       coins += gainedCoins;
       coinVal.textContent = coins.toLocaleString();
-      if(!inFever){
-        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
-      }
-      const myCount = targets.filter(t=>t.isMine).length;
-      addSkillGauge(myCount, targets);
+      const myCount = targets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
 
       burstSparkles(targets);
-      burstMyTsumOrbs(targets);
+      const suckTargets = buildSuckTargets(targets);
       if(gainedCoins>0) burstCoins(targets, gainedCoins);
-      showEraseCount(targets, targets.length);
+      const eraseCountPos = showEraseCount(targets, effectiveN);
 
       // レーザーが走るように左から右へ時間差で消えていく
-      const spawnBomb = targets.length >= bombChainThreshold;
-      const bombSpot = spawnBomb ? targets[targets.length-1] : null;
+      const spawnBomb = effectiveN >= bombChainThreshold;
+      const bombSpot = spawnBomb ? eraseCountPos : null;
       startGastonRain(); // 横ライン消去が発生した瞬間にガストン降臨タイムを開始
       popWithWave(targets, null, 'popping', ()=>{
         boardFrozen = false; // 演出が終わったら盤面の時間を再開
         refillIfNeeded(targets.map(t=>t.x));
         finishSkill();
         checkFeverTrigger();
-      }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
+      }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets);
     });
   }
 
@@ -3394,8 +3558,12 @@
     attachHandlers(t);
   }
 
+  // 出現アニメーション（.tsum.hookAppearing）の再生時間。CSSのanimation時間と合わせる。
+  const HOOK_APPEAR_ANIM_MS = 900;
+
   // 最終決戦フック船長のスキル本体：
   // 画面中央に「怒ったフック船長」を新規出現させる（大ツムと同じ大きさ）。
+  // 出現の瞬間は時間を止め、本人だけスポットライトを当てながら出現アニメーションを再生する。
   // 効果時間（約2秒）の間、怒ったフック船長とフック船長本体を繋ぐたびに、
   // 時間が止まって斜めに切るアニメーション→斜めライン消去→怒ったフック船長が大きくなるアニメーション、
   // という流れが起き、繋ぐたびに次の消去範囲が拡大していく。効果時間が短いため繋ぎ続けるスピードが重要。
@@ -3411,7 +3579,10 @@
     const hookAngry = spawnTsum(boardCx, boardCy, 0, 0, HOOK_ANGRY_TYPE, false);
     resizeTsum(hookAngry, bigR);
     hookAngry.vx = 0; hookAngry.vy = 0;
-    hookAngry.resting = true; // 出現直後から安定させ、周りに軽く押し出されても暴れないようにする
+    // resting は毎フレーム物理判定で上書きされてしまい、支えの無い空中では維持できない
+    // （＝重力で落下して画面下の方に出現してしまう）ため、出現演出中は ghost にして
+    // 重力・物理演算そのものを完全に止め、確実に中央に留まるようにする。
+    hookAngry.ghost = true;
 
     // 出現直後の半径を「成長比率」の基準として記録する。
     // 消去帯の初期の太さは、通常ツム半径の1.6倍程度を基準値とする。
@@ -3423,10 +3594,41 @@
     board.appendChild(flash);
     setTimeout(()=> flash.remove(), 520);
 
-    showSkillLabel('怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！');
-    finishSkill();
-    hookActive = true;
-    hookRemainingMs = HOOK_DURATION*1000; // 残り時間をセット。以後 frameLoop 内で boardFrozen でない間だけ減っていく
+    showSkillLabel('怒ったフック船長が現れた！');
+
+    // 出現アニメーション中は入力・スキル効果時間の経過・ゲーム全体の残り時間を止める
+    // （斜め消去演出や元に戻る演出と同じ hookAnimFreeze の仕組みを流用）
+    hookAnimFreeze = true;
+    hookAnimGhostRef = hookAngry; // 演出中は他のツムと一切干渉させないための参照
+    appEl.classList.add('hookAnimDimmed'); // 怒ったフック船長以外を薄暗くする
+    hookAngry.el.classList.add('hookSpotlight'); // 怒ったフック船長自身は暗くならないようにする
+    // アニメーション側のtransform(scale/rotate)が本来の配置(translate)を消してしまわないよう、
+    // 現在の配置translateを --hookPos に渡してから、出現アニメーションを開始する
+    hookAngry.el.style.setProperty('--hookPos', `translate(${hookAngry.x - hookAngry.r}px, ${hookAngry.y - hookAngry.r}px)`);
+    hookAngry.el.classList.add('hookAppearing');
+    clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
+
+    setTimeout(()=>{
+      hookAngry.el.classList.remove('hookAppearing');
+      // アニメーション終了後、確実に本来の配置(translate)へ戻す（キャッシュされていても再描画を強制する）
+      hookAngry._lastX = undefined; hookAngry._lastY = undefined;
+      renderTsumPosition(hookAngry);
+      // ghost解除：以後は通常どおり他のツムと衝突しつつ物理演算に従う
+      if(tsums.includes(hookAngry)){
+        hookAngry.ghost = false;
+        hookAngry.resting = true; // 解除直後は一旦安定扱いにし、次フレームの物理判定に委ねる
+      }
+      hookAnimFreeze = false;
+      hookAnimGhostRef = null;
+      appEl.classList.remove('hookAnimDimmed');
+      hookAngry.el.classList.remove('hookSpotlight');
+      resumeTimerNow();
+
+      finishSkill();
+      hookActive = true;
+      hookRemainingMs = HOOK_DURATION*1000; // 残り時間をセット。以後 frameLoop 内で boardFrozen でない間だけ減っていく
+    }, HOOK_APPEAR_ANIM_MS);
   }
 
   // 効果終了時、まだ怒ったフック船長が残っていればフック船長本体に戻す（サイズも通常に戻す）。
@@ -3499,32 +3701,29 @@
     showBeastClawAnim(()=>{
       if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
 
-      const bonus = computeScore(targets);
+      const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(targets, effectiveN);
       score += bonus;
       scoreVal.textContent = score.toLocaleString();
-      const gainedCoins = coinsForChain(targets.length);
+      const gainedCoins = coinsForChain(effectiveN);
       coins += gainedCoins;
       coinVal.textContent = coins.toLocaleString();
-      if(targets.length > maxChain) maxChain = targets.length;
+      if(effectiveN > maxChain) maxChain = effectiveN;
       chainVal.textContent = maxChain;
 
-      if(!inFever){
-        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
-      }
-      const myCount = targets.filter(t=>t.isMine).length;
-      addSkillGauge(myCount, targets);
+      const myCount = targets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
 
       burstSparkles(targets);
-      burstMyTsumOrbs(targets);
+      const suckTargets = buildSuckTargets(targets);
       if(gainedCoins>0) burstCoins(targets, gainedCoins);
-      showEraseCount(targets, targets.length);
+      showEraseCount(targets, effectiveN);
 
       popWithWave(targets, {x:cx, y:cy}, 'popping', ()=>{
         boardFrozen = false; // 演出が終わったら盤面の時間を再開
         refillIfNeeded(targets.map(t=>t.x));
         finishSkill();
         checkFeverTrigger();
-      }, true);
+      }, true, undefined, false, suckTargets);
     });
   }
 
@@ -3550,6 +3749,137 @@
       layer.remove();
       onDone && onDone();
     }, BEAST_CLAW_ANIM_MS);
+  }
+
+  // ------------------------------------------------------------
+  // ダッフィー：フォーチュン・トラペゾイド
+  // 盤面上部中央を基準に「上辺が広く下辺が狭い」逆台形の範囲を対象にする。
+  // スキル発動2回に1回（duffySkillPhase===0）は、対象を先にマイツムへ変化させてから消去し、
+  // もう1回（duffySkillPhase===1）は、変化させずにそのまま同じ範囲を消去する。この2種類が交互に発動する。
+  // ------------------------------------------------------------
+  const DUFFY_TRAP_TOP_Y_RATIO = 0.25165;    // 逆台形の上辺のy位置（盤面高さに対する比率、0=最上部）
+  const DUFFY_TRAP_BOTTOM_Y_RATIO = 0.8815; // 逆台形の下辺のy位置（盤面高さに対する比率）
+  const DUFFY_TRAP_TOP_HALF_RATIO = 0.4675; // 上辺の半幅（盤面幅に対する比率）
+  const DUFFY_TRAP_BOTTOM_HALF_RATIO = 0.2805; // 下辺の半幅（盤面幅に対する比率）
+  const DUFFY_ANIM_MS = 550; // 逆台形が光る演出の時間
+
+  // 与えたy座標における逆台形の許容半幅を求める（範囲外のyなら null）
+  function duffyTrapezoidHalfWidthAt(y){
+    const topY = boardH*DUFFY_TRAP_TOP_Y_RATIO;
+    const bottomY = boardH*DUFFY_TRAP_BOTTOM_Y_RATIO;
+    if(y < topY || y > bottomY) return null;
+    const topHalf = boardW*DUFFY_TRAP_TOP_HALF_RATIO;
+    const bottomHalf = boardW*DUFFY_TRAP_BOTTOM_HALF_RATIO;
+    const ratio = (y-topY) / Math.max(1, bottomY-topY); // 0(上辺)〜1(下辺)
+    return topHalf + (bottomHalf-topHalf)*ratio;
+  }
+
+  function isInDuffyTrapezoid(t){
+    const halfW = duffyTrapezoidHalfWidthAt(t.y);
+    if(halfW===null) return false;
+    const cx = boardW/2;
+    return Math.abs(t.x-cx) <= halfW;
+  }
+
+  function skillDuffyTrapezoid(){
+    // 変化〜消去が終わるまで、盤面の物理演算とゲーム内タイマーを完全に停止する
+    boardFrozen = true;
+
+    const isTransformPhase = (duffySkillPhase===0);
+    const candidates = tsums.filter(t=> !t.isBomb && !t.ghost && isInDuffyTrapezoid(t));
+
+    if(isTransformPhase){
+      // 1回目：逆台形の範囲内にあるサブツムを先にマイツムへ変化させ、その後に同じ範囲を消去する
+      pauseTimer(DUFFY_ANIM_MS + 700);
+      const myType = TSUM_TYPES.find(t=>t.key===myTsumKey);
+      const toTransform = candidates.filter(t=>!t.isMine);
+
+      showDuffyTrapezoidFlash(()=>{
+        toTransform.forEach(t=>{
+          t.type = myType;
+          t.isMine = true;
+          const size = t.r*2;
+          const newEl = createTsumEl(myType, true, size);
+          newEl.style.transform = t.el.style.transform;
+          t.el.replaceWith(newEl);
+          t.el = newEl;
+          attachHandlers(t);
+        });
+        showSkillLabel(`フォーチュン・トラペゾイド！ ${toTransform.length}個がマイツムに`);
+        burstSparkles(toTransform);
+
+        setTimeout(()=>{
+          duffyEraseTrapezoid(candidates);
+        }, 380);
+      });
+    } else {
+      // 2回目：変化させず、そのまま同じ逆台形の範囲を消去する
+      pauseTimer(DUFFY_ANIM_MS + 500);
+      showDuffyTrapezoidFlash(()=>{
+        duffyEraseTrapezoid(candidates);
+      });
+    }
+
+    // 次回は逆側のフェーズへ交互に切り替える
+    duffySkillPhase = isTransformPhase ? 1 : 0;
+  }
+
+  // 逆台形の範囲を実際に消去する共通処理（変化フェーズ・非変化フェーズの両方から呼ばれる）
+  function duffyEraseTrapezoid(targets){
+    if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
+
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(effectiveN);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(effectiveN > maxChain) maxChain = effectiveN;
+    chainVal.textContent = maxChain;
+
+    const myCount = targets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
+
+    burstSparkles(targets);
+    const suckTargets = buildSuckTargets(targets);
+    if(gainedCoins>0) burstCoins(targets, gainedCoins);
+    const eraseCountPos = showEraseCount(targets, effectiveN);
+
+    const spawnBomb = effectiveN >= bombChainThreshold;
+    const bombSpot = spawnBomb ? eraseCountPos : null;
+    popWithWave(targets, {x:boardW/2, y:boardH*DUFFY_TRAP_TOP_Y_RATIO}, 'popping', ()=>{
+      boardFrozen = false;
+      refillIfNeeded(targets.map(t=>t.x));
+      finishSkill();
+      checkFeverTrigger();
+    }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets);
+  }
+
+  // 逆台形の範囲を実際のジオメトリと同じ形（clip-path）で光らせる演出
+  function showDuffyTrapezoidFlash(onDone){
+    const topY = boardH*DUFFY_TRAP_TOP_Y_RATIO;
+    const bottomY = boardH*DUFFY_TRAP_BOTTOM_Y_RATIO;
+    const topHalf = boardW*DUFFY_TRAP_TOP_HALF_RATIO;
+    const bottomHalf = boardW*DUFFY_TRAP_BOTTOM_HALF_RATIO;
+    const cx = boardW/2;
+
+    const layer = document.createElement('div');
+    layer.className = 'duffyTrapezoidLayer';
+    layer.style.left = (cx-topHalf)+'px';
+    layer.style.top = topY+'px';
+    layer.style.width = (topHalf*2)+'px';
+    layer.style.height = (bottomY-topY)+'px';
+    // レイヤー内のローカル座標系（0,0が左上）でclip-pathの台形を組む
+    const localTopHalf = topHalf, localBottomHalf = bottomHalf;
+    const leftTopX = 0, rightTopX = localTopHalf*2;
+    const leftBottomX = localTopHalf-localBottomHalf, rightBottomX = localTopHalf+localBottomHalf;
+    layer.style.clipPath = `polygon(${leftTopX}px 0, ${rightTopX}px 0, ${rightBottomX}px 100%, ${leftBottomX}px 100%)`;
+    board.appendChild(layer);
+
+    setTimeout(()=>{
+      layer.remove();
+      onDone && onDone();
+    }, DUFFY_ANIM_MS);
   }
 
   // ------------------------------------------------------------
@@ -3600,9 +3930,10 @@
     // comboMode の場合は、消去・補充が終わったあと（onRandomEraseDone）に続けて
     // ジャック＆サリー全消去演出へ進む。単体発動時は同じ処理のあとそのままスキルを終了する。
     const finishUp = (allTargets, label, coinsGained, onRandomEraseDone)=>{
+      let suckTargets;
       if(allTargets.length>0){
         burstSparkles(allTargets);
-        burstMyTsumOrbs(allTargets);
+        suckTargets = buildSuckTargets(allTargets);
         if(coinsGained>0) burstCoins(allTargets, coinsGained);
       }
       showSkillLabel(label);
@@ -3614,7 +3945,7 @@
           finishSkill();
           checkFeverTrigger();
         }
-      }, true);
+      }, true, undefined, false, suckTargets);
     };
 
     if(targets.length===0 && !comboMode){
@@ -3623,18 +3954,16 @@
       return;
     }
 
-    const bonus = computeScore(targets);
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(targets.length, 7);
+    const gainedCoins = coinsForChain(effectiveN, 7);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
-    if(targets.length > maxChain) maxChain = targets.length;
+    if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
-    }
-    showEraseCount(targets, targets.length);
+    showEraseCount(targets, effectiveN);
 
     const label = `ランダムスクランブル！ サブツム${targets.length}個消去 +${bonus}`;
 
@@ -3661,21 +3990,18 @@
         showJackSallyComboBurst();
 
         setTimeout(()=>{
-          const bonus2 = computeScore(jackSallyTargets);
+          const effectiveN2 = jackSallyTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+          const bonus2 = computeScore(jackSallyTargets, effectiveN2);
           score += bonus2;
           scoreVal.textContent = score.toLocaleString();
-          const gainedCoins2 = coinsForChain(jackSallyTargets.length, 12);
+          const gainedCoins2 = coinsForChain(effectiveN2, 12);
           coins += gainedCoins2;
           coinVal.textContent = coins.toLocaleString();
-          if(jackSallyTargets.length > maxChain) maxChain = jackSallyTargets.length;
+          if(effectiveN2 > maxChain) maxChain = effectiveN2;
           chainVal.textContent = maxChain;
-          if(!inFever){
-            feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + jackSallyTargets.length*FEVER_GAUGE_PER_TSUM);
-          }
-          addSkillGauge(jackSallyTargets.length, jackSallyTargets);
-          showEraseCount(jackSallyTargets, jackSallyTargets.length);
+          showEraseCount(jackSallyTargets, effectiveN2);
           burstSparkles(jackSallyTargets);
-          burstMyTsumOrbs(jackSallyTargets);
+          const suckTargets2 = buildSuckTargets(jackSallyTargets);
           if(gainedCoins2>0) burstCoins(jackSallyTargets, gainedCoins2);
 
           showSkillLabel(`ドリームスクランブル！ サブツム${targets.length}個＋ジャック&サリー${jackSallyTargets.length}個消去`, 'jackSallyLabel');
@@ -3683,7 +4009,7 @@
             refillIfNeeded(jackSallyTargets.map(t=>t.x));
             finishSkill();
             checkFeverTrigger();
-          }, true);
+          }, true, undefined, false, suckTargets2);
         }, 700);
       }, 1500);
     });
@@ -3769,10 +4095,11 @@
       }
     });
     const extraTargets = Array.from(nearbySet);
-    const effectiveN = path.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0)
-      + extraTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const pathEffectiveN = path.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const extraEffectiveN = extraTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const effectiveN = pathEffectiveN + extraEffectiveN;
 
-    const bonus = computeScore(path) + (extraTargets.length>0 ? computeScore(extraTargets) : 0);
+    const bonus = computeScore(path, pathEffectiveN) + (extraTargets.length>0 ? computeScore(extraTargets, extraEffectiveN) : 0);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
     const gainedCoins = coinsForChain(effectiveN);
@@ -3780,19 +4107,15 @@
     coinVal.textContent = coins.toLocaleString();
     if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + effectiveN*FEVER_GAUGE_PER_TSUM);
-    }
 
     const allErased = path.concat(extraTargets);
     const myCount = allErased.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
-    addSkillGauge(myCount, allErased);
 
     const last = path[path.length-1];
     showCombo(path.length, bonus, allErased, gainedCoins, effectiveN);
     showEraseCount(allErased, effectiveN, last);
     burstSparkles(allErased);
-    burstMyTsumOrbs(allErased);
+    const suckTargets = buildSuckTargets(allErased);
     if(gainedCoins>0) burstCoins(allErased, gainedCoins);
 
     allErased.forEach(t=> t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable','sallyTraced'));
@@ -3803,7 +4126,7 @@
       appEl.classList.remove('timeStopDimmed');
       refillIfNeeded(allErased.map(t=>t.x));
       checkFeverTrigger();
-    }, true);
+    }, true, undefined, false, suckTargets);
   }
 
   function doBuzzErase(p){
@@ -3824,32 +4147,29 @@
       return;
     }
 
-    const bonus = computeScore(targets);
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(targets.length, -1);
+    const gainedCoins = coinsForChain(effectiveN, -1);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
-    if(targets.length > maxChain) maxChain = targets.length;
+    if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
 
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
-    }
-    const myCount = targets.filter(t=>t.isMine).length;
-    addSkillGauge(myCount, targets, 0.25);
+    const myCount = targets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
 
     burstSparkles(targets);
-    burstMyTsumOrbs(targets);
+    const suckTargets = buildSuckTargets(targets);
     if(gainedCoins>0) burstCoins(targets, gainedCoins);
-    showEraseCount(targets, targets.length);
+    const eraseCountPos = showEraseCount(targets, effectiveN);
 
-    const spawnBomb = targets.length >= bombChainThreshold;
-    const bombSpot = spawnBomb ? targets[targets.length-1] : null;
+    const spawnBomb = effectiveN >= bombChainThreshold;
+    const bombSpot = spawnBomb ? eraseCountPos : null;
     popWithWave(targets, p, 'popping', ()=>{
       refillIfNeeded(targets.map(t=>t.x));
       if(buzzTapsLeft<=0) endBuzzTapMode();
-    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); }, true);
+    }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, true, suckTargets, 0.25);
   }
 
   function updateBuzzLabel(){
@@ -3909,6 +4229,13 @@
     if(best) markAsBomb(best);
   }
 
+  // 既存のツムを流用せず、指定座標にその場でボムを新規生成する。
+  // 消去数ラベルの表示位置とボムの出現位置を必ず一致させたい場合に使う。
+  function spawnBombAt(spot){
+    const t = spawnTsum(spot.x, spot.y, 0, 0, undefined, false);
+    markAsBomb(t);
+  }
+
   function detonateBomb(bombTsum){
     if(!gameActive || skillActive) return;
     // ボムの爆発は、盤面上で消去演出待ち（幽霊状態）のツムを強制的に0フレームで消し切り、
@@ -3923,21 +4250,18 @@
     });
     const n = affected.length;
     if(n===0) return;
+    const effectiveN = affected.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     bumpCombo();
-    const bonus = computeScore(affected);
+    const bonus = computeScore(affected, effectiveN);
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(n);
+    const gainedCoins = coinsForChain(effectiveN);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
-    if(n > maxChain) maxChain = n;
+    if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
 
-    if(!inFever){
-      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + n*FEVER_GAUGE_PER_TSUM);
-    }
-    const myCount = affected.filter(t=>t.isMine).length;
-    addSkillGauge(myCount, affected);
+    const myCount = affected.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
 
     comboDisplay.textContent = `ボム爆発！ +${bonus}`;
     comboDisplay.classList.remove('show');
@@ -3945,10 +4269,27 @@
     comboDisplay.classList.add('show');
 
     burstSparkles(affected);
-    burstMyTsumOrbs(affected);
+    const suckTargets = buildSuckTargets(affected);
     if(gainedCoins>0) burstCoins(affected, gainedCoins);
 
-    affected.forEach(t=>{ t.el.classList.add('bombPopping'); });
+    affected.forEach(t=>{
+      const suckTo = suckTargets.get(t);
+      if(suckTo){
+        // その場（現在のtranslate位置）を起点に、ゲージ中心へ向かって縮小しながら移動する
+        t.sucking = true;
+        t.el.classList.add('suckPopping');
+        t.el.style.transition = 'none';
+        t.el.style.transform = `translate(${t.x - t.r}px, ${t.y - t.r}px) scale(1)`;
+        void t.el.offsetWidth;
+        t.el.style.transition = 'transform .3s cubic-bezier(.4,0,.7,1), opacity .3s ease';
+        requestAnimationFrame(()=>{
+          t.el.style.transform = `translate(${suckTo.x - t.r}px, ${suckTo.y - t.r}px) scale(0.05)`;
+          t.el.style.opacity = '0';
+        });
+      } else {
+        t.el.classList.add('bombPopping');
+      }
+    });
     affected.forEach(t=> removeTsum(t));
 
     // 発火させたボム自身も、周囲の巻き込み対象とは別に必ず消去する
@@ -3956,7 +4297,11 @@
     removeTsum(bombTsum);
 
     setTimeout(()=>{
-      affected.forEach(t=>{ t.el.remove(); });
+      affected.forEach(t=>{
+        t.el.remove();
+        // このツムが実際にゲージへ到着した瞬間に、そのツム1個分だけゲージへ加算する
+        applyGaugeForOneTsum(t, suckTargets);
+      });
       bombTsum.el.remove();
       refillIfNeeded(affected.map(t=>t.x).concat([bombTsum.x]));
       checkFeverTrigger();
@@ -3972,7 +4317,7 @@
   // endPoint: 指定した場合、そのツムの座標に重ねて表示する（チェーンの終端など）。
   //           省略時は list の座標平均＝「消去したところの中心」から画面中心寄りにオフセットして表示する。
   function showEraseCount(list, count, endPoint){
-    if(!list || list.length===0) return;
+    if(!list || list.length===0) return null;
     let px, py;
     if(endPoint){
       // チェーンの終端ツムに重ねて表示するので、寄せの計算は不要
@@ -4001,6 +4346,8 @@
     label.style.top = py+'px';
     board.appendChild(label);
     setTimeout(()=> label.remove(), 800);
+
+    return {x:px, y:py}; // ボム出現位置などを、実際に表示した位置に合わせられるように返す
   }
 
   function showCombo(n, bonus, path, gainedCoins, effectiveN){
@@ -4415,22 +4762,24 @@
     if(!boardFrozen && !hookPhysicsPause && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
       physicsStep(dt);
     }
-    // 最終決戦フック船長のスキル効果時間は、演出中（hookAnimFreeze中）は経過させない。
-    // こうすることで「繋いだ瞬間の演出中は、スキルの残り時間も一緒に止まる」仕様を実現する。
-    if(hookActive && !hookAnimFreeze){
+    // 最終決戦フック船長のスキル効果時間は、演出中（hookAnimFreeze中）や他の時間停止演出
+    // （boardFrozen・skillTimeFreeze）の間も経過させない。
+    if(hookActive && !hookAnimFreeze && !boardFrozen && !skillTimeFreeze){
       hookRemainingMs -= dt*1000;
       if(hookRemainingMs <= 0){
         hookRemainingMs = 0;
         endHookSkill();
       }
     }
-    // フィーバーの残り時間も、フック船長演出中（hookAnimFreeze）やゲーム全体の時間停止(boardFrozen)の間は経過させない。
-    if(inFever && !hookAnimFreeze && !boardFrozen){
+    // フィーバーの残り時間も、フック船長演出中（hookAnimFreeze）やゲーム全体の時間停止(boardFrozen)、
+    // その他のスキル演出による時間停止(skillTimeFreeze)の間は経過させない。
+    if(inFever && !hookAnimFreeze && !boardFrozen && !skillTimeFreeze){
       feverRemainingMs -= dt*1000;
       if(feverRemainingMs <= 0){
         feverRemainingMs = 0;
         exitFever();
       }
+      updateFeverGaugeUI();
     }
     // サリーのスキル効果時間も、他の時間停止演出（hookAnimFreeze・boardFrozen＝ジャックのスキル中やサリー自身の
     // たどるアニメーション中など）の間は経過させない。「時間停止中は効果時間も一緒に止まる」仕様にするため。
@@ -4549,7 +4898,7 @@
     comboCount = 0;
     if(comboTimer) clearTimeout(comboTimer);
     feverGauge = 0; inFever = false; feverRemainingMs = 0;
-    skillGauge = 0; skillReady = false; skillActive = false; skillGaugeCarry = 0; skillTimeFreeze = false;
+    skillGauge = 0; skillReady = false; skillActive = false; skillTimeFreeze = false;
     jackGauge = 0; sallyGauge = 0; jackReady = false; sallyReady = false;
     sallyActive = false; sallyRemainingMs = 0;
     sallyAuraLayer.classList.remove('show');
@@ -4558,11 +4907,11 @@
     clearTimeout(feverEndTimer);
     appEl.classList.remove('fever');
     feverLights.classList.remove('show');
-    skillBtn.classList.remove('ready');
-    skillBtn2.classList.remove('ready');
-    skillFill2.style.width = '0%';
-    skillGaugeWrap2.style.display = isPairMode() ? '' : 'none';
-    skillBtn2.style.display = isPairMode() ? '' : 'none';
+    skillRingWrap.classList.remove('ready');
+    skillRingWrap2.classList.remove('ready');
+    skillRingWrap.style.setProperty('--pct', 0);
+    skillRingWrap2.style.setProperty('--pct', 0);
+    skillRingWrap2.style.display = isPairMode() ? '' : 'none';
 
     scoreMultiplier = 1;
     if(scoreMultiplierEndTimer) clearTimeout(scoreMultiplierEndTimer);
@@ -4582,6 +4931,7 @@
     HOOK_BAND_BASE = 0;
     hookAnimFreeze = false;
     hookAnimGhostRef = null;
+    duffySkillPhase = 0;
     hookPhysicsPause = false;
     appEl.classList.remove('hookAnimDimmed');
     appEl.classList.remove('timeStopDimmed');
@@ -4594,7 +4944,8 @@
     coinVal.textContent = '0';
     chainVal.textContent = '0';
     timeVal.textContent = timeLeft;
-    skillFill.style.width = '0%';
+    skillRingWrap.style.setProperty('--pct', 0);
+    updateFeverGaugeUI();
     timerBox.classList.remove('warn');
     startOverlay.classList.add('hidden');
     resultOverlay.classList.add('hidden');
@@ -4612,6 +4963,8 @@
   }
 
   function tick(){
+    // ゲーム全体の残り時間も、あらゆる時間停止演出（boardFrozen・hookAnimFreeze・skillTimeFreeze）の間は減らさない。
+    if(boardFrozen || hookAnimFreeze || skillTimeFreeze) return;
     timeLeft--;
     timeVal.textContent = timeLeft;
     if(timeLeft<=10) timerBox.classList.add('warn');
@@ -4654,6 +5007,17 @@
     el.style.position='relative'; el.style.left='0'; el.style.top='0'; el.style.transform='none';
     el.style.pointerEvents='none';
     myTsumIcon.appendChild(el);
+
+    sallyIcon.innerHTML = '';
+    if(isPairMode()){
+      const partnerType = TSUM_TYPES.find(t=>t.key===pairPartnerKey());
+      if(partnerType){
+        const el2 = createTsumEl(partnerType, true, 44);
+        el2.style.position='relative'; el2.style.left='0'; el2.style.top='0'; el2.style.transform='none';
+        el2.style.pointerEvents='none';
+        sallyIcon.appendChild(el2);
+      }
+    }
   }
 
   function buildStartPreview(){
