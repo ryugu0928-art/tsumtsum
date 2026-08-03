@@ -230,7 +230,8 @@
     background:radial-gradient(ellipse at 50% 20%, #4a4a4f 0%, #232326 75%);
   }
   #board{
-    position:relative;
+    position:absolute;
+    inset:6px 10px;
     touch-action:none;
     z-index:1;
   }
@@ -1506,6 +1507,7 @@
 
   const board = document.getElementById('board');
   const boardWrap = document.getElementById('boardWrap');
+  const boardFrame = document.getElementById('boardFrame');
   const feverLights = document.getElementById('feverLights');
   const sallyAuraLayer = document.getElementById('sallyAuraLayer');
   const ropeSvg = document.getElementById('ropeSvg');
@@ -1589,19 +1591,24 @@
   // Sizing
   // ------------------------------------------------------------
   function computeBoardSize(){
-    const wrapRect = boardWrap.getBoundingClientRect();
-    const cs = getComputedStyle(boardWrap);
-    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    const availW = wrapRect.width - padX;
-    const availH = wrapRect.height - padY;
-    // 盤面は常に正方形にする（スマホなど縦長の余白でも縦に伸びすぎないように、
-    // 横幅・高さのうち小さい方に合わせる）
-    const size = Math.floor(Math.min(availW, availH));
-    return {w: size, h: size};
+    // #board は #boardFrame（見た目の枠）と全く同じ inset:6px 10px の絶対配置。
+    // 当たり判定を見た目通りにするため、実際にレンダリングされた #boardFrame の
+    // サイズをそのまま採用する（padding計算を独自にやり直して二重にズレるのを防ぐ）。
+    const frameRect = boardFrame.getBoundingClientRect();
+    const w = Math.floor(frameRect.width);
+    const h = Math.floor(frameRect.height);
+    return {w, h};
   }
 
   function layoutBoard(){
+    // boardWrap は flex:1 で縦の残りスペース全部を取るため、スマホ等の縦長画面では
+    // 幅より高さがずっと大きくなりがち。boardWrap自体の高さを幅に合わせて正方形に
+    // 制限してから、その中いっぱいに boardFrame / board を配置する。
+    boardWrap.style.maxHeight = 'none';
+    const wrapRect0 = boardWrap.getBoundingClientRect();
+    const squareSide = Math.floor(Math.min(wrapRect0.width, wrapRect0.height));
+    boardWrap.style.maxHeight = squareSide + 'px';
+
     const {w,h} = computeBoardSize();
     boardW = w; boardH = h;
     board.style.width = boardW+'px';
