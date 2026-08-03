@@ -614,7 +614,7 @@
     position:absolute;
     left:50%; top:50%;
     width:15%; height:150%;
-    margin-left:calc(-6% + var(--clawOffset, 0px));
+    margin-left:calc(-6% + var(--clawOffset, 0px) + var(--clawXOffset, 0px));
     margin-top:-75%;
     background:linear-gradient(180deg, transparent, rgba(255,255,255,0.15) 8%, rgba(255,255,255,0.95) 48%, rgba(255,255,255,0.15) 92%, transparent);
     box-shadow:0 0 10px 2px rgba(255,255,255,0.6);
@@ -1402,6 +1402,7 @@
   const HOOK_CUT_ANIM_MS = 900;   // 斜めに切るアニメーションの時間
   const HOOK_GROW_ANIM_MS = 850;  // 消去後、怒ったフック船長が大きくなるアニメーションの時間
   const HOOK_LINE_ANGLE_DEG = 22; // 斜めラインの角度（鉛直から何度傾けるか）。小さいほど縦寄りになる。
+  const HOOK_LINE_X_OFFSET_RATIO = 0.7; // 怒ったフック船長の出現位置（＝斜めラインの基準点）を盤面中央から右へずらす量（tsumRadius基準）
   let HOOK_ANGRY_INITIAL_R = 0;   // 怒ったフック船長の出現直後（初期）の半径。成長比率の基準にする。
   let HOOK_BAND_BASE = 0;         // 初期半径のときの消去帯の半幅（初期基準値）。成長比率と同じ比率で拡大させる。
 
@@ -2618,9 +2619,10 @@
     // ここでghost化することで、元いた場所には以後の物理演算・当たり判定が
     // 一切残らないようにし（他ツムがすり抜けられる/ぶつからない）、
     // 成長アニメーションが終わるまでは中央に固定したままにする。
+    // 斜めラインの見た目が少し左寄りに感じられたため、戻す位置を少し右へオフセットしている。
     hookAngry.vx = 0; hookAngry.vy = 0;
     hookAngry.ghost = true;
-    hookAngry.x = boardW/2;
+    hookAngry.x = boardW/2 + tsumRadius*HOOK_LINE_X_OFFSET_RATIO;
     hookAngry.y = boardH/2;
     renderTsumPosition(hookAngry);
 
@@ -3403,9 +3405,9 @@
       endHookSkill();
     }
 
-    // 画面（盤面）中央に、大ツムと同じ大きさで怒ったフック船長を新規出現させる
-    const boardCx = boardW/2, boardCy = boardH/2;
+    // 画面（盤面）中央に、大ツムと同じ大きさで怒ったフック船長を新規出現させる。
     const bigR = Math.round(tsumRadius*BIG_TSUM_SCALE);
+    const boardCx = boardW/2, boardCy = boardH/2;
     const hookAngry = spawnTsum(boardCx, boardCy, 0, 0, HOOK_ANGRY_TYPE, false);
     resizeTsum(hookAngry, bigR);
     hookAngry.vx = 0; hookAngry.vy = 0;
@@ -3473,14 +3475,16 @@
   const BEAST_CLAW_ANIM_MS = 650;   // 爪が引っ掻く演出の時間
   const BEAST_BAND_HALF_RATIO = 3.5; // 斜め帯の半幅（tsumRadius基準）。以前より幅広に。
   const BEAST_LINE_ANGLE_DEG = 35;   // 斜めラインの角度（鉛直から何度傾けるか）。右上→左下の対角に近い角度。
+  const BEAST_LINE_X_OFFSET_RATIO = 0.7; // 斜めラインの基準点を盤面中央から右へずらす量（tsumRadius基準）
   function skillBeastClaw(){
     // 演出〜消去が終わるまで、盤面の物理演算とゲーム内タイマーを完全に停止する
     boardFrozen = true;
     pauseTimer(BEAST_CLAW_ANIM_MS + 400);
 
     // 盤面中央を通る斜めライン（右上から左下）を基準に、帯状の範囲を巻き込む。
+    // 見た目が少し左寄りに感じられたため、基準点を少し右へオフセットしている。
     // 方向ベクトル：右上→左下方向を、鉛直から BEAST_LINE_ANGLE_DEG 度傾けた形で表す。
-    const cx = boardW/2, cy = boardH/2;
+    const cx = boardW/2 + tsumRadius*BEAST_LINE_X_OFFSET_RATIO, cy = boardH/2;
     const angleRad = BEAST_LINE_ANGLE_DEG * Math.PI/180;
     const dirX = -Math.sin(angleRad), dirY = Math.cos(angleRad); // 右上→左下の帯の向き
     const bandHalf = tsumRadius * BEAST_BAND_HALF_RATIO;
@@ -3529,6 +3533,7 @@
     const layer = document.createElement('div');
     layer.className = 'beastClawLayer';
     layer.style.setProperty('--beastClawAngle', `${BEAST_LINE_ANGLE_DEG-90}deg`);
+    layer.style.setProperty('--clawXOffset', (tsumRadius*BEAST_LINE_X_OFFSET_RATIO)+'px');
     board.appendChild(layer);
 
     [0,1,2].forEach(i=>{
