@@ -2103,7 +2103,7 @@
   // ------------------------------------------------------------
   function attachHandlers(t){
     t.el.addEventListener('pointerdown', (e)=>{
-      if(!gameActive || skillActive || t.ghost || hookAnimFreeze) return;
+      if(!gameActive || skillActive || t.ghost || hookAnimFreeze || buzzTapMode) return;
       e.preventDefault();
       // 暗黙のポインターキャプチャを解除し、boardのpointermoveで追跡できるようにする
       if(e.pointerId!=null && t.el.hasPointerCapture && t.el.hasPointerCapture(e.pointerId)){
@@ -2143,7 +2143,7 @@
   let lastPointerPoint = null;
 
   board.addEventListener('pointermove', (e)=>{
-    if(!selecting || !gameActive || skillActive || hookAnimFreeze) return;
+    if(!selecting || !gameActive || skillActive || hookAnimFreeze || buzzTapMode) return;
     const p = getBoardLocalPoint(e);
     if(lastPointerPoint){
       // なぞる速度が速くフレームが飛んでも、前回座標→今回座標を線分状に
@@ -2335,7 +2335,13 @@
   // 消去対象を時間差（ウェーブ）で消していく。消えるまでの間は「幽霊状態」として
   // 物理的な当たり判定だけ残し、上のツムがすり抜けて落ちてこないようにする。
   // centerPoint を渡すとそこから外側へ同心円状に、渡さなければ配列の並び順（起点→終点）で消える。
-  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady){
+  // skipGhost=true の場合、対象ツムを ghost（その場に留まる残像＝重力停止＆他ツムへの壁）にはせず、
+  // 代わりに noCollide フラグだけを立てる。noCollide のツムは重力・移動の物理演算は通常どおり
+  // 受け続けるが、他のツムとの衝突判定（押し出し・支え）からは完全に除外される。
+  // つまり見た目のポップ演出中も自分自身は落下・移動し続け（範囲ギリギリで入ってくる／出ていくツムが
+  // 自然に動き続けて見える）、かつ他のツムに対して「壁」として干渉することもない。
+  // （キャプテンライトイヤーのタップ消去のように、範囲内が即座に判定・消去される演出に使う）
+  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady, skipGhost){
     if(list.length===0){ onAllDone && onAllDone(); return; }
     const ordered = list.slice();
     if(centerPoint && !instant){
@@ -2368,13 +2374,19 @@
         t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable');
         t.el.style.animationDuration = (POP_DURATION/1000)+'s';
         t.el.classList.add(popClass || 'popping');
-        t.ghost = true; t.vx = 0; t.vy = 0;
+        if(skipGhost){
+          // 物理演算（重力・移動）は継続させたいので t.ghost は立てず、衝突判定だけを無効化する。
+          t.noCollide = true;
+          t.el.style.pointerEvents = 'none';
+        } else {
+          t.ghost = true; t.vx = 0; t.vy = 0;
+        }
       }, delay);
 
       const finish = delay + POP_DURATION;
       if(finish>maxFinish) maxFinish = finish;
       const timeoutId = setTimeout(()=>{
-        removeTsum(t);
+        if(tsums.includes(t)) removeTsum(t);
         t.el.remove();
         ghostTimers = ghostTimers.filter(g=>g.t!==t);
         finishOne(group, t);
@@ -2828,12 +2840,13 @@
 
   // ジャック・サリーそれぞれの消去数を個別ゲージへ加算する（ペアツム専用。片方が満タンでも、
   // もう片方はスキル発動とは無関係に独立して溜まり続ける）
-  function addPairSkillGauge(erasedList){
+  function addPairSkillGauge(erasedList, rate){
     if(gastonRainActive || !erasedList || erasedList.length===0) return;
+    const r = (rate===undefined) ? 1 : rate;
     const jackType = TSUM_TYPES.find(t=>t.key==='jack');
     const sallyType = TSUM_TYPES.find(t=>t.key==='sally');
-    const jackCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='jack' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
-    const sallyCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='sally' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
+    const jackCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='jack' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0) * r;
+    const sallyCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='sally' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0) * r;
     if(jackCount>0 && !jackReady){
       jackGauge = Math.min(SKILL_GAUGE_MAX, jackGauge + jackCount*(SKILL_GAUGE_MAX/jackType.skillNeed));
     }
@@ -2843,15 +2856,17 @@
     if(jackCount>0 || sallyCount>0) updateSkillGaugeUI();
   }
 
-  function addSkillGauge(myCount, erasedList){
+  // myCount: マイツム消去数（大ツム加重込み）。rate: ゲージへの反映率（省略時は1＝100%）
+  function addSkillGauge(myCount, erasedList, rate){
+    const r = (rate===undefined) ? 1 : rate;
     if(isPairMode()){
-      addPairSkillGauge(erasedList || []);
+      addPairSkillGauge(erasedList || [], r);
       return;
     }
     if(myCount<=0) return;
     // ガストンのハンティングショット後5秒間は、ガストンを消してもゲージが溜まらない
     if(gastonRainActive) return;
-    const gain = myCount*(SKILL_GAUGE_MAX/currentSkillNeed());
+    const gain = myCount*r*(SKILL_GAUGE_MAX/currentSkillNeed());
     if(skillReady){
       skillGaugeCarry += gain;
       return;
@@ -2970,6 +2985,11 @@
     if(myTsums.length > maxChain) maxChain = myTsums.length;
     chainVal.textContent = maxChain;
 
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + myTsums.length*FEVER_GAUGE_PER_TSUM);
+    }
+    addSkillGauge(myTsums.length, myTsums);
+
     showSkillLabel(`ロイヤルクリア！ マイツム${myTsums.length}個消去 +${bonus}`);
     showEraseCount(myTsums, myTsums.length);
     burstSparkles(myTsums);
@@ -3003,6 +3023,12 @@
     coinVal.textContent = coins.toLocaleString();
     if(targets.length > maxChain) maxChain = targets.length;
     chainVal.textContent = maxChain;
+
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
+    }
+    const myCount = targets.filter(t=>t.isMine).length;
+    addSkillGauge(myCount, targets);
 
     showSkillLabel(`ともだちイレイサー！ ${targets.length}個消去 +${bonus}`);
     showEraseCount(targets, targets.length);
@@ -3111,6 +3137,12 @@
       const gainedCoins = coinsForChain(targets.length, -1);
       coins += gainedCoins;
       coinVal.textContent = coins.toLocaleString();
+      if(!inFever){
+        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
+      }
+      const myCount = targets.filter(t=>t.isMine).length;
+      addSkillGauge(myCount, targets);
+
       burstSparkles(targets);
       burstMyTsumOrbs(targets);
       if(gainedCoins>0) burstCoins(targets, gainedCoins);
@@ -3635,6 +3667,7 @@
           if(!inFever){
             feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + jackSallyTargets.length*FEVER_GAUGE_PER_TSUM);
           }
+          addSkillGauge(jackSallyTargets.length, jackSallyTargets);
           showEraseCount(jackSallyTargets, jackSallyTargets.length);
           burstSparkles(jackSallyTargets);
           burstMyTsumOrbs(jackSallyTargets);
@@ -3795,6 +3828,12 @@
     if(targets.length > maxChain) maxChain = targets.length;
     chainVal.textContent = maxChain;
 
+    if(!inFever){
+      feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + targets.length*FEVER_GAUGE_PER_TSUM);
+    }
+    const myCount = targets.filter(t=>t.isMine).length;
+    addSkillGauge(myCount, targets, 0.25);
+
     burstSparkles(targets);
     burstMyTsumOrbs(targets);
     if(gainedCoins>0) burstCoins(targets, gainedCoins);
@@ -3805,7 +3844,7 @@
     popWithWave(targets, p, 'popping', ()=>{
       refillIfNeeded(targets.map(t=>t.x));
       if(buzzTapsLeft<=0) endBuzzTapMode();
-    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); });
+    }, true, ()=>{ if(bombSpot) spawnBombNear(bombSpot); }, true);
   }
 
   function updateBuzzLabel(){
@@ -3893,7 +3932,7 @@
       feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + n*FEVER_GAUGE_PER_TSUM);
     }
     const myCount = affected.filter(t=>t.isMine).length;
-    addSkillGauge(myCount);
+    addSkillGauge(myCount, affected);
 
     comboDisplay.textContent = `ボム爆発！ +${bonus}`;
     comboDisplay.classList.remove('show');
@@ -4209,6 +4248,12 @@
               // 怒ったフック船長がアニメーション中（斜め切り〜成長演出中）は、
               // 盤面のツムたちと一切干渉しない（押し出しの対象にも支えにもしない）
               if((a===hookAnimGhostRef && hookAnimFreeze) || (b===hookAnimGhostRef && hookAnimFreeze)) continue;
+              // noCollide（キャプテンライトイヤーのタップ消去でポップ中のツムなど）は、
+              // 自分自身は重力・移動の物理演算を継続させたいが、他のツムとの衝突（押し出し・支え）
+              // には一切関与させたくないため、ここでペアごとスキップする。
+              // これにより、範囲判定ギリギリで動いているツムも自然に動き続けつつ、
+              // 他のツムに対して壁として干渉することもない。
+              if(a.noCollide || b.noCollide) continue;
               const dx = b.x - a.x, dy = b.y - a.y;
               let dist = Math.sqrt(dx*dx+dy*dy);
               const minDist = (a.r + b.r) * 1.0;
