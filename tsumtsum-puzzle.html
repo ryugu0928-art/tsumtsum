@@ -1199,7 +1199,7 @@
       skillDesc:'盤面で2番目に多いサブツムを、6秒間「ソラ」に変化させる。ナミネとソラは離れていても一緒につなげられ、消すと周りのツムも巻き込んで消える' },
     { key:'hook', name:'最終決戦フック船長', color:'#2f6b4a', dark:'#1c4530', motif:'hook', score:190, skillNeed:19, colorGroup:'mintGreen', coinBonus:-2,
       skillName:'ネヴァー・ギブアップ・アゲイン',
-      skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約2秒、繋ぐたびに消去範囲が拡大していく）' },
+      skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約3秒、繋ぐたびに消去範囲が拡大していく）' },
     { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:200, skillNeed:14, colorGroup:'brown',
       skillName:'ワイルドクロー',
       skillDesc:'画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去。ボムも巻き込んで消せる（発動中は時間停止）' },
@@ -1234,7 +1234,7 @@
   let hookPhysicsPause = false; // 斜めライン消去が終わった瞬間〜画面の薄暗い演出(#board::after)が消えきるまでの間、ツムの物理演算そのものを止めるフラグ。
   let hookAnimGhostRef = null; // 斜め切り〜成長演出中の「怒ったフック船長」自身への参照。演出中は他のツムと一切干渉させないために使う。
   const HOOK_DIM_FADE_MS = 250; // #board::after の opacity transition時間（CSSの transition:opacity 0.25s ease と合わせる）
-  const HOOK_DURATION = 2; // スキル効果時間（秒）。原作同様、非常に短い。
+  const HOOK_DURATION = 3; // スキル効果時間（秒）。原作同様、非常に短い。
   const HOOK_RETURN_TO_CENTER_MS = 120; // 怒ったフック船長が画面中央へ戻るアニメーションの時間（.tsumのtransform transitionに合わせて少し余裕を持たせる）
   const HOOK_CUT_ANIM_MS = 900;   // 斜めに切るアニメーションの時間
   const HOOK_GROW_ANIM_MS = 850;  // 消去後、怒ったフック船長が大きくなるアニメーションの時間
