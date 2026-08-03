@@ -1395,14 +1395,14 @@
       skillName:'デビルボム',       skillDesc:'盤面のツムをランダムにボム化する' },
     { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:160, skillNeed:20, colorGroup:'brown', coinBonus:-1,
       skillName:'ハンティングショット',
-      skillDesc:'横一列に3発撃ちぬいて消去。その後5秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
+      skillDesc:'横一列に3発撃ちぬいて消去。その後6秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
     { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:170, skillNeed:16, colorGroup:'blue', coinBonus:-1,
       skillName:'ネヴァー・ギブアップ',
       skillDesc:'腕のビームで狙う敵がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径5ツム分の範囲を消去（5回まで）' },
-    { key:'namine', name:'ナミネ',     color:'#e8a4d0', dark:'#c97cae', motif:'flower', score:180, skillNeed:19, colorGroup:'redPink', coinBonus:-2,
+    { key:'namine', name:'ナミネ',     color:'#ffe8cc', dark:'#f0c99a', motif:'blondeHair', eyeColor:'#3f7fd9', score:180, skillNeed:19, colorGroup:'cream', coinBonus:-2,
       skillName:'メモリーチェイン',
       skillDesc:'盤面で2番目に多いサブツムを、6秒間「ソラ」に変化させる。ナミネとソラは離れていても一緒につなげられ、消すと周りのツムも巻き込んで消える' },
-    { key:'hook', name:'最終決戦フック船長', color:'#2f6b4a', dark:'#1c4530', motif:'hook', score:190, skillNeed:19, colorGroup:'mintGreen', coinBonus:-2,
+    { key:'hook', name:'最終決戦フック船長', color:'#ffe3d0', dark:'#f0c3a8', motif:'hook', score:190, skillNeed:19, colorGroup:'skinTone', coinBonus:-2,
       skillName:'ネヴァー・ギブアップ・アゲイン',
       skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約3秒、繋ぐたびに消去範囲が拡大していく）' },
     { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:200, skillNeed:14, colorGroup:'brown',
@@ -1412,11 +1412,11 @@
     // ジャックとサリーは同じ種類ではないため互いには繋げられない（それぞれ別の色として扱う）。
     // スキルはジャック・サリーそれぞれ個別のゲージ（必要数が異なる）で溜まり、
     // ゲージが満タンになった方のスキルをボタンから発動できる。
-    { key:'jack', name:'ジャック', color:'#f4f0e6', dark:'#cfc9b8', motif:'jackSkull', score:210, skillNeed:18, colorGroup:'jackSally', coinBonus:0,
+    { key:'jack', name:'ジャック', color:'#f4f0e6', dark:'#cfc9b8', motif:'jackSkull', eyeColor:'#141414', eyeScale:2.2, score:210, skillNeed:18, colorGroup:'jackSally', coinBonus:0,
       pairKey:'sally', pairLabel:'ジャック&サリー',
       skillName:'ランダムスクランブル',
       skillDesc:'サブツム(ジャックとサリー以外)を15個ランダム消去（コイン補正+7）。発動中は時間停止（ツムの物理は働く）。サリーのスキル効果中に発動すると、追加でジャックとサリーを全て消去する特別演出になる（コイン補正+12）。※ペアツム：サリーとは別々のゲージ（ジャック18個／サリー36個）で管理' },
-    { key:'sally', name:'サリー', color:'#c9b8dd', dark:'#a08cc4', motif:'sallyPatch', score:210, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
+    { key:'sally', name:'サリー', color:'#5b7691', dark:'#334656', motif:'sallyPatch', eyeColor:'#1c2230', score:210, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
       skillName:'ドリームスティッチ',
       skillDesc:'効果時間中、少し離れたツムともつなげられるようになる。チェーンすると、たどった道の周りのツムも巻き込んで最後のツムのところへまとめて消える（道をたどるアニメーション中は時間停止・ツムの物理も止まる）' },
     { key:'duffy', name:'ダッフィー', color:'#d9a054', dark:'#9c6b28', motif:'duffyEars', score:220, skillNeed:17, colorGroup:'brown', coinBonus:0,
@@ -1435,7 +1435,7 @@
   // 盤面に実際に降ってくるツムの種類（アイテムで5種/4種に変化）
   let activeTsumTypes = TSUM_TYPES.slice();
 
-  // ガストンのスキル後：5秒間ガストンだけが降ってくるボーナスタイム
+  // ガストンのスキル後：6秒間ガストンだけが降ってくるボーナスタイム
   let gastonRainActive = false;
   let gastonRainTimer = null;
   let buzzTapMode = false;
@@ -1468,7 +1468,7 @@
   let jackReady = false, sallyReady = false;
   let sallyActive = false;                  // サリーのスキル効果中フラグ
   let sallyRemainingMs = 0;                 // サリー効果の残り時間（ミリ秒）。時間停止中（hookAnimFreeze・boardFrozen・skillTimeFreeze）は減らさない。
-  const SALLY_DURATION = 4;                 // サリーのスキル効果時間（秒）
+  const SALLY_DURATION = 7;                 // サリーのスキル効果時間（秒）
   const SALLY_LINK_RANGE_MULT = 9.5;        // サリー効果中のリンク許容距離（通常は t.r*3.4）
   const SALLY_GATHER_RANGE = 2.6;           // チェーンした各ツムの周りを巻き込む範囲（ツム半径の倍率）
 
@@ -1593,9 +1593,12 @@
     const cs = getComputedStyle(boardWrap);
     const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    const w = Math.floor(wrapRect.width - padX);
-    const h = Math.floor(wrapRect.height - padY);
-    return {w, h};
+    const availW = wrapRect.width - padX;
+    const availH = wrapRect.height - padY;
+    // 盤面は常に正方形にする（スマホなど縦長の余白でも縦に伸びすぎないように、
+    // 横幅・高さのうち小さい方に合わせる）
+    const size = Math.floor(Math.min(availW, availH));
+    return {w: size, h: size};
   }
 
   function layoutBoard(){
@@ -1798,24 +1801,50 @@
         break;
       }
       case 'gun': {
-        // 立派な口ひげ
-        const mustache = document.createElement('div');
-        mustache.className='motif';
-        mustache.style.width = size*0.32+'px';
-        mustache.style.height = size*0.1+'px';
-        mustache.style.left='50%'; mustache.style.top='53%';
-        mustache.style.transform='translateX(-50%)';
-        mustache.style.background = '#3a2410';
-        mustache.style.borderRadius='0 0 60% 60% / 0 0 100% 100%';
-        mustache.style.clipPath = 'polygon(0% 0%, 100% 0%, 88% 100%, 50% 55%, 12% 100%)';
-        face.appendChild(mustache);
-        // 肩に担いだ銃身の長い猟銃
+        // 黒髪：中央が山型に尖った前髪
+        const hair = document.createElement('div');
+        hair.className='motif';
+        hair.style.width = size*0.5+'px';
+        hair.style.height = size*0.2+'px';
+        hair.style.left='50%'; hair.style.top='0%';
+        hair.style.transform='translateX(-50%)';
+        hair.style.background = 'linear-gradient(180deg,#3a2a1a,#1c130b)';
+        hair.style.clipPath = 'polygon(0% 100%, 0% 60%, 50% 0%, 100% 60%, 100% 100%)';
+        face.appendChild(hair);
+        // 太く吊り上がった黒い眉（怒った表情）
+        [ -1, 1 ].forEach(sign=>{
+          const brow = document.createElement('div');
+          brow.className='motif';
+          brow.style.width = size*0.2+'px';
+          brow.style.height = size*0.05+'px';
+          brow.style.left = (50+sign*24)+'%';
+          brow.style.top = '31%';
+          brow.style.transform = `translateX(-50%) rotate(${sign*-16}deg)`;
+          brow.style.background = '#1c130b';
+          brow.style.borderRadius = '40%';
+          face.appendChild(brow);
+        });
+        // 立派な口ひげ（中央から左右へ角度をつけたハの字：2つのパーツで表現）
+        [ -1, 1 ].forEach(sign=>{
+          const m = document.createElement('div');
+          m.className='motif';
+          m.style.width = size*0.17+'px';
+          m.style.height = size*0.055+'px';
+          m.style.left = (50+sign*9)+'%';
+          m.style.top = '46%';
+          m.style.transform = `translateX(${sign>0?'0':'-100%'}) rotate(${sign*18}deg)`;
+          m.style.transformOrigin = sign>0 ? 'left center' : 'right center';
+          m.style.background = '#1c130b';
+          m.style.borderRadius = '0 0 60% 40% / 0 0 100% 100%';
+          face.appendChild(m);
+        });
+        // 肩に担いだ銃身の長い猟銃（頭の右側、髪と重ならない高さに配置）
         const gun = document.createElement('div');
         gun.className='motif';
-        gun.style.width = size*0.62+'px';
-        gun.style.height = size*0.07+'px';
-        gun.style.left='38%'; gun.style.top='6%';
-        gun.style.transform='rotate(-18deg)';
+        gun.style.width = size*0.6+'px';
+        gun.style.height = size*0.065+'px';
+        gun.style.left='42%'; gun.style.top='16%';
+        gun.style.transform='rotate(-20deg)';
         gun.style.background = 'linear-gradient(180deg,#6b6b6b,#2c2c2c)';
         gun.style.borderRadius='3px';
         gun.style.boxShadow='0 1px 2px rgba(0,0,0,0.35)';
@@ -1866,33 +1895,40 @@
         face.appendChild(btn);
         break;
       }
-      case 'flower': {
-        // 頭の上に咲く小さな花飾り（花びら5枚＋中心）
-        const petalColors = ['#fff0f8'];
-        for(let i=0;i<5;i++){
-          const petal = document.createElement('div');
-          petal.className='motif';
-          const s = size*0.16;
-          petal.style.width = s+'px';
-          petal.style.height = s*1.3+'px';
-          petal.style.background = `radial-gradient(circle at 50% 30%, #fff, ${lighten(type.color)} 70%)`;
-          petal.style.borderRadius = '50%';
-          petal.style.left = '50%';
-          petal.style.top = '-22%';
-          const angle = i*72;
-          petal.style.transform = `translate(-50%,-50%) rotate(${angle}deg) translateY(-${s*0.55}px)`;
-          petal.style.boxShadow = 'inset 0 -2px 3px rgba(0,0,0,0.1)';
-          face.appendChild(petal);
-        }
-        const center = document.createElement('div');
-        center.className='motif';
-        center.style.width = size*0.12+'px';
-        center.style.height = size*0.12+'px';
-        center.style.left = '50%'; center.style.top = '-22%';
-        center.style.transform = 'translate(-50%,-50%)';
-        center.style.background = 'radial-gradient(circle, #fff6c0, #ffd23f 70%)';
-        center.style.borderRadius = '50%';
-        face.appendChild(center);
+      case 'blondeHair': {
+        // 金髪：頭を覆うベースの髪＋斜めに流れる前髪（サイドに分けた前髪）
+        const base = document.createElement('div');
+        base.className='motif';
+        base.style.width = size*0.86+'px';
+        base.style.height = size*0.5+'px';
+        base.style.left='50%'; base.style.top='-14%';
+        base.style.transform='translateX(-50%)';
+        base.style.background = 'linear-gradient(180deg,#ffe589,#f3c94d)';
+        base.style.borderRadius = '50% 50% 40% 40% / 60% 60% 40% 40%';
+        face.appendChild(base);
+        // 斜めに流れる前髪（右から左へサイドパート、目にかからない程度に）
+        const bang = document.createElement('div');
+        bang.className='motif';
+        bang.style.width = size*0.6+'px';
+        bang.style.height = size*0.3+'px';
+        bang.style.left='46%'; bang.style.top='4%';
+        bang.style.transform='translateX(-50%) rotate(-6deg)';
+        bang.style.background = 'linear-gradient(100deg,#fff3b0,#f3c94d 60%)';
+        bang.style.clipPath = 'polygon(0% 30%, 30% 0%, 70% 10%, 100% 45%, 90% 100%, 55% 55%, 20% 100%, 5% 60%)';
+        face.appendChild(bang);
+        // 左右に流れる横髪（顔の輪郭に沿う）
+        [ -1, 1 ].forEach(sign=>{
+          const side = document.createElement('div');
+          side.className='motif';
+          side.style.width = size*0.2+'px';
+          side.style.height = size*0.42+'px';
+          side.style.left = (50+sign*38)+'%';
+          side.style.top = '6%';
+          side.style.transform = 'translateX(-50%)';
+          side.style.background = 'linear-gradient(180deg,#ffe589,#f3c94d)';
+          side.style.borderRadius = '40% 40% 60% 60% / 30% 30% 70% 70%';
+          face.appendChild(side);
+        });
         break;
       }
       case 'key': {
@@ -1929,38 +1965,73 @@
         break;
       }
       case 'hook': {
-        // フック船長：三角帽子（羽根飾り付き）とかぎ状のヒゲ
-        const hat = document.createElement('div');
-        hat.className='motif';
-        hat.style.width = size*0.52+'px';
-        hat.style.height = size*0.3+'px';
-        hat.style.left = '50%'; hat.style.top = '-16%';
-        hat.style.transform = 'translateX(-50%)';
-        hat.style.background = 'linear-gradient(180deg,#3a3a3a,#1a1a1a)';
-        hat.style.borderRadius = '50% 50% 20% 20%';
-        hat.style.boxShadow = 'inset 0 -3px 4px rgba(0,0,0,0.3)';
-        face.appendChild(hat);
-        const feather = document.createElement('div');
-        feather.className='motif';
-        feather.style.width = size*0.08+'px';
-        feather.style.height = size*0.3+'px';
-        feather.style.left = '68%'; feather.style.top = '-38%';
-        feather.style.background = 'linear-gradient(180deg,#ff5c5c,#c0392b)';
-        feather.style.borderRadius = '50%';
-        feather.style.transform = 'rotate(18deg)';
-        face.appendChild(feather);
-        const mustacheColor = '#2a2a2a';
+        // 黒く量感のあるくせ毛（頭全体を覆うボリュームヘア）
+        const hairTop = document.createElement('div');
+        hairTop.className='motif';
+        hairTop.style.width = size*0.72+'px';
+        hairTop.style.height = size*0.4+'px';
+        hairTop.style.left = '50%'; hairTop.style.top = '-20%';
+        hairTop.style.transform = 'translateX(-50%)';
+        hairTop.style.background = 'radial-gradient(circle at 50% 35%, #454545, #141414 75%)';
+        hairTop.style.borderRadius = '50% 50% 35% 35%';
+        face.appendChild(hairTop);
+        // 左右に広がるボリュームのあるくせ毛（もみあげ〜サイド、耳の高さまで大きく張り出す）
+        [ -1, 1 ].forEach(sign=>{
+          const puff = document.createElement('div');
+          puff.className='motif';
+          puff.style.width = size*0.3+'px';
+          puff.style.height = size*0.48+'px';
+          puff.style.left = (50+sign*38)+'%'; puff.style.top = '2%';
+          puff.style.transform = 'translateX(-50%)';
+          puff.style.background = 'radial-gradient(circle at 50% 30%, #454545, #141414 75%)';
+          puff.style.borderRadius = '50%';
+          face.appendChild(puff);
+        });
+        // 太く吊り上がった黒い眉
+        [ -1, 1 ].forEach(sign=>{
+          const brow = document.createElement('div');
+          brow.className='motif';
+          brow.style.width = size*0.17+'px';
+          brow.style.height = size*0.045+'px';
+          brow.style.left = (50+sign*20)+'%'; brow.style.top = '32%';
+          brow.style.background = '#141414';
+          brow.style.borderRadius = '40%';
+          brow.style.transform = `translateX(-50%) rotate(${sign*-18}deg)`;
+          face.appendChild(brow);
+        });
+        // 細く先が跳ね上がった口ひげ
+        const mustacheColor = '#141414';
         [ -1, 1 ].forEach(sign=>{
           const m = document.createElement('div');
           m.className='motif';
-          m.style.width = size*0.2+'px';
-          m.style.height = size*0.06+'px';
-          m.style.left = (50+sign*16)+'%'; m.style.top = '50%';
+          m.style.width = size*0.16+'px';
+          m.style.height = size*0.025+'px';
+          m.style.left = (50+sign*13)+'%'; m.style.top = '53%';
           m.style.background = mustacheColor;
           m.style.borderRadius = '50%';
-          m.style.transform = `translateX(-50%) rotate(${sign*20}deg)`;
+          m.style.transform = `translateX(-50%) rotate(${sign*-16}deg)`;
           face.appendChild(m);
         });
+        // 首元に下げた小さな金のフック（チャーム）
+        const charmString = document.createElement('div');
+        charmString.className='motif';
+        charmString.style.width = size*0.03+'px';
+        charmString.style.height = size*0.1+'px';
+        charmString.style.left = '50%'; charmString.style.top = '80%';
+        charmString.style.transform = 'translateX(-50%)';
+        charmString.style.background = '#c9a227';
+        face.appendChild(charmString);
+        const charmHook = document.createElement('div');
+        charmHook.className='motif';
+        charmHook.style.width = size*0.14+'px';
+        charmHook.style.height = size*0.14+'px';
+        charmHook.style.left = '50%'; charmHook.style.top = '86%';
+        charmHook.style.transform = 'translateX(-50%)';
+        charmHook.style.border = `${Math.max(2,size*0.03)}px solid #d9b23a`;
+        charmHook.style.borderTop = 'none';
+        charmHook.style.borderLeft = 'none';
+        charmHook.style.borderRadius = '0 0 100% 0';
+        face.appendChild(charmHook);
         break;
       }
       case 'angryHook': {
@@ -2016,23 +2087,29 @@
         break;
       }
       case 'jackSkull': {
-        // ジャック：縫い目のような曲がった口と、小さな蝶ネクタイ
-        const mouth = document.createElement('div');
-        mouth.className='motif';
-        mouth.style.width = size*0.5+'px';
-        mouth.style.height = size*0.22+'px';
-        mouth.style.left = '50%'; mouth.style.top = '54%';
-        mouth.style.transform = 'translateX(-50%)';
-        mouth.style.background = 'transparent';
-        mouth.style.borderTop = `${Math.max(2,size*0.035)}px solid #17140f`;
-        mouth.style.borderRadius = '0 0 50% 50% / 0 0 100% 100%';
-        face.appendChild(mouth);
+        // ジャック：ジグザグに縫い合わされたような大きな口
+        const mouthWrap = document.createElement('div');
+        mouthWrap.className='motif';
+        mouthWrap.style.width = size*0.5+'px';
+        mouthWrap.style.height = size*0.16+'px';
+        mouthWrap.style.left = '50%'; mouthWrap.style.top = '62%';
+        mouthWrap.style.transform = 'translateX(-50%)';
+        mouthWrap.style.overflow = 'hidden';
+        face.appendChild(mouthWrap);
+        const zigzag = document.createElement('div');
+        zigzag.style.position = 'absolute';
+        zigzag.style.left = '0'; zigzag.style.top = '0';
+        zigzag.style.width = '100%'; zigzag.style.height = '100%';
+        zigzag.style.background = '#17140f';
+        zigzag.style.clipPath = 'polygon(0% 0%, 8% 100%, 16% 0%, 24% 100%, 32% 0%, 40% 100%, 48% 0%, 56% 100%, 64% 0%, 72% 100%, 80% 0%, 88% 100%, 96% 0%, 100% 100%, 100% 0%)';
+        mouthWrap.appendChild(zigzag);
+        // 縫い目（口を左右から縫い上げているステッチ）
         for(let i=0;i<4;i++){
           const stitch = document.createElement('div');
           stitch.className='motif';
-          stitch.style.width = Math.max(1,size*0.02)+'px';
+          stitch.style.width = Math.max(1,size*0.018)+'px';
           stitch.style.height = size*0.09+'px';
-          stitch.style.left = (34 + i*11)+'%'; stitch.style.top = '54%';
+          stitch.style.left = (35 + i*10)+'%'; stitch.style.top = '58%';
           stitch.style.background = '#17140f';
           stitch.style.transform = 'rotate(8deg)';
           face.appendChild(stitch);
@@ -2049,29 +2126,52 @@
         break;
       }
       case 'sallyPatch': {
-        // サリー：継ぎ接ぎの縫い目と、赤い髪の房
-        const hair = document.createElement('div');
-        hair.className='motif';
-        hair.style.width = size*0.34+'px';
-        hair.style.height = size*0.3+'px';
-        hair.style.left = '74%'; hair.style.top = '2%';
-        hair.style.background = 'linear-gradient(180deg,#c0392b,#7a1f16)';
-        hair.style.borderRadius = '30% 60% 50% 50%';
-        hair.style.transform = 'rotate(20deg)';
-        face.appendChild(hair);
-        const patchDot = document.createElement('div');
-        patchDot.className='motif';
-        patchDot.style.width = size*0.02+'px';
+        // サリー：頭頂にまとめた、細めの赤毛の房（左右に数本ずつ、しなやかに広がる）
+        [ -1, 1 ].forEach(sign=>{
+          [0,1,2].forEach(i=>{
+            const strand = document.createElement('div');
+            strand.className='motif';
+            strand.style.width = size*(0.09 - i*0.012)+'px';
+            strand.style.height = size*(0.3 - i*0.03)+'px';
+            strand.style.left = (50+sign*(14+i*9))+'%'; strand.style.top = (-4 - i*2)+'%';
+            strand.style.background = 'linear-gradient(180deg,#c1502f,#7a2814)';
+            strand.style.borderRadius = '50% 50% 40% 40%';
+            strand.style.transform = `translateX(-50%) rotate(${sign*(10+i*9)}deg)`;
+            face.appendChild(strand);
+          });
+        });
+        const hairTop = document.createElement('div');
+        hairTop.className='motif';
+        hairTop.style.width = size*0.5+'px';
+        hairTop.style.height = size*0.14+'px';
+        hairTop.style.left = '50%'; hairTop.style.top = '0%';
+        hairTop.style.transform = 'translateX(-50%)';
+        hairTop.style.background = 'linear-gradient(180deg,#c1502f,#7a2814)';
+        hairTop.style.borderRadius = '50% 50% 30% 30%';
+        face.appendChild(hairTop);
+        // 継ぎ接ぎの縫い目（右頬に1本だけ、はっきりと見えるステッチ）
         for(let i=0;i<3;i++){
           const stitch = document.createElement('div');
           stitch.className='motif';
-          stitch.style.width = Math.max(1,size*0.02)+'px';
+          stitch.style.width = Math.max(2,size*0.025)+'px';
           stitch.style.height = size*0.08+'px';
-          stitch.style.left = (24)+'%'; stitch.style.top = (36+i*9)+'%';
-          stitch.style.background = '#4a3a63';
+          stitch.style.left = '76%'; stitch.style.top = (44+i*9)+'%';
+          stitch.style.background = '#1c2230';
           stitch.style.transform = 'rotate(70deg)';
           face.appendChild(stitch);
         }
+        // にっこり笑った大きな口（サリーらしい柔らかい笑顔）
+        const grin = document.createElement('div');
+        grin.className='motif';
+        grin.style.width = size*0.34+'px';
+        grin.style.height = size*0.2+'px';
+        grin.style.left = '50%'; grin.style.top = '58%';
+        grin.style.transform = 'translateX(-50%)';
+        grin.style.background = 'transparent';
+        grin.style.border = 'none';
+        grin.style.borderBottom = `${Math.max(2,size*0.05)}px solid #1c2230`;
+        grin.style.borderRadius = '0 0 50% 50%/0 0 90% 90%';
+        face.appendChild(grin);
         break;
       }
       case 'duffyEars': {
@@ -2134,13 +2234,15 @@
 
     addMotif(face, type, size);
 
-    const eyeSize = size*0.09;
+    const eyeScale = type.eyeScale || 1;
+    const eyeSize = size*0.09*eyeScale;
     const eyeL = document.createElement('div');
     eyeL.className='eye';
     eyeL.style.width = eyeSize+'px';
     eyeL.style.height = (eyeSize*1.2)+'px';
     eyeL.style.left = '32%';
     eyeL.style.top = '38%';
+    if(type.eyeColor) eyeL.style.background = type.eyeColor;
     const eyeR = eyeL.cloneNode();
     eyeR.style.left = '58%';
     face.appendChild(eyeL);
@@ -2158,15 +2260,17 @@
     face.appendChild(cheekL);
     face.appendChild(cheekR);
 
-    const mouth = document.createElement('div');
-    mouth.style.position='absolute';
-    mouth.style.left='38%';
-    mouth.style.top='52%';
-    mouth.style.width = (size*0.24)+'px';
-    mouth.style.height = (size*0.14)+'px';
-    mouth.style.borderBottom = `${Math.max(2,size*0.045)}px solid rgba(58,43,26,0.7)`;
-    mouth.style.borderRadius='50%';
-    face.appendChild(mouth);
+    if(type.motif !== 'sallyPatch'){
+      const mouth = document.createElement('div');
+      mouth.style.position='absolute';
+      mouth.style.left='38%';
+      mouth.style.top='52%';
+      mouth.style.width = (size*0.24)+'px';
+      mouth.style.height = (size*0.14)+'px';
+      mouth.style.borderBottom = `${Math.max(2,size*0.045)}px solid rgba(58,43,26,0.7)`;
+      mouth.style.borderRadius='50%';
+      face.appendChild(mouth);
+    }
 
     return el;
   }
@@ -3048,7 +3152,7 @@
       return;
     }
     if(myCount<=0) return;
-    // ガストンのハンティングショット後5秒間は、ガストンを消してもゲージが溜まらない
+    // ガストンのハンティングショット後6秒間は、ガストンを消してもゲージが溜まらない
     // （ただし、効果時間外で繋ぎ始めたチェーンの場合は ignoreGastonRain によりこの制限を無視する）
     if(gastonRainActive && !ignoreGastonRain) return;
     if(skillReady) return; // 満タン後にさらに消しても、あふれた分は繰り越さない
@@ -3370,7 +3474,7 @@
     }, 740);
   }
 
-  // ハンティングショットの後、5秒間はガストンだけが降ってくるボーナスタイム
+  // ハンティングショットの後、6秒間はガストンだけが降ってくるボーナスタイム
   // （背景がオレンジに変化。この間はガストンを消してもスキルゲージは溜まらない）
   function startGastonRain(){
     gastonRainActive = true;
@@ -3379,7 +3483,7 @@
     gastonRainTimer = setTimeout(()=>{
       gastonRainActive = false;
       appEl.classList.remove('gastonRain');
-    }, 5000);
+    }, 6000);
   }
 
   // キャプテンライトイヤー：狙撃してくる敵のカットインで足止め→
