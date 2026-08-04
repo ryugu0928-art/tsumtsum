@@ -1355,7 +1355,7 @@
   const FEVER_GAUGE_DECAY_PER_SEC = 1.0; // (未使用) 以前は時間経過でゲージが減衰していたが、現在は合計消去数のみでフィーバー突入を判定する
   const FEVER_TIME_BONUS = 5;
   const FEVER_DURATION = 11;
-  const FEVER_POP_SPEED_MULT = 2;     // フィーバー中はツムの消える速度が2倍
+  const FEVER_POP_SPEED_MULT = 1.5;   // フィーバー中はツムの消える速度が1.5倍
   const SKILL_GAUGE_MAX = 100;
 
   // 物理パラメータ（資料の「円形ヒットボックス」「重力落下」「衝突による位置の遊び」を反映）
@@ -2570,18 +2570,20 @@
     if(lastPointerPoint){
       // なぞる速度が速くフレームが飛んでも、前回座標→今回座標を線分状に
       // サンプリングして通過したツムを拾う（弾道判定によるフレームスキップ対策）
+      // 刻み幅を細かくして、素早いなぞりでも取りこぼしを減らす
       const dx = p.x - lastPointerPoint.x, dy = p.y - lastPointerPoint.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      const steps = Math.min(24, Math.max(1, Math.ceil(dist / (tsumRadius*0.6))));
+      const steps = Math.min(48, Math.max(1, Math.ceil(dist / (tsumRadius*0.3))));
       for(let i=1; i<=steps; i++){
         const sx = lastPointerPoint.x + dx*(i/steps);
         const sy = lastPointerPoint.y + dy*(i/steps);
-        // 中心付近だけでなく、ツムの見た目のほぼ全体（半径の92%まで）をなぞり判定に含める
-        const t = findTsumNear(sx, sy, 0.92);
+        // ツムの見た目の縁を少し超えたあたりまでなぞり判定に含め、
+        // 指が多少ズレても拾いやすくする（つながる距離＝linkRangeは変更しない）
+        const t = findTsumNear(sx, sy, 1.15);
         if(t) tryAddToSelection(t);
       }
     } else {
-      const t = findTsumNear(p.x, p.y, 0.92);
+      const t = findTsumNear(p.x, p.y, 1.15);
       if(t) tryAddToSelection(t);
     }
     lastPointerPoint = p;
@@ -3626,7 +3628,7 @@
 
     // マイツム（ガストン）が集まっている高さを狙って一列を決める
     const bandY = myTsums.reduce((s,t)=>s+t.y, 0) / myTsums.length;
-    const bandHalf = tsumRadius*3.0; // 約3列分の縦幅
+    const bandHalf = tsumRadius*1.8; // 約1.8列分の縦幅（以前より狭く）
     const targets = tsums
       .filter(t=> !t.isBomb && !t.ghost && Math.abs(t.y-bandY) <= bandHalf)
       .sort((a,b)=> a.x - b.x); // 左から右へ順に消えるように並べておく
