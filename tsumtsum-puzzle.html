@@ -163,6 +163,69 @@
   .pauseBars::before{ left:2px; }
   .pauseBars::after{ right:2px; }
 
+  #pauseOverlay{
+    position:absolute; inset:0;
+    background:rgba(20,10,0,0.55);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:500;
+    backdrop-filter:blur(2px);
+  }
+  #pauseOverlay.show{ display:flex; }
+  #pausePanel{
+    width:min(84%, 320px);
+    background:linear-gradient(160deg, #fff8ea, #ffe9bd);
+    border-radius:22px;
+    padding:22px 20px 20px;
+    box-shadow:0 10px 0 #c98a2a, 0 16px 30px rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,0.6);
+    text-align:center;
+  }
+  #pausePanel h2{
+    margin:0 0 16px; font-size:20px; color:#7a4a00; letter-spacing:0.05em;
+  }
+  .pauseRow{
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(255,255,255,0.55);
+    border-radius:14px;
+    padding:10px 14px;
+    margin-bottom:12px;
+  }
+  .pauseRow span{ font-size:14px; font-weight:700; color:#5a3a10; }
+  .gyroToggle{
+    position:relative; width:50px; height:28px;
+    border-radius:14px; border:none; cursor:pointer;
+    background:#c9c0b0;
+    transition:background 0.2s;
+    flex-shrink:0;
+  }
+  .gyroToggle::after{
+    content:''; position:absolute; top:3px; left:3px;
+    width:22px; height:22px; border-radius:50%;
+    background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+    transition:left 0.2s;
+  }
+  .gyroToggle.on{ background:#ffb400; }
+  .gyroToggle.on::after{ left:25px; }
+  #gyroStatusNote{
+    font-size:11px; color:#a05a10; margin:-4px 0 12px; line-height:1.4;
+  }
+  .pauseActionBtn{
+    width:100%; padding:12px; margin-top:6px;
+    border:none; border-radius:14px;
+    font-size:15px; font-weight:800; cursor:pointer;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    color:#7a4a00;
+    box-shadow:0 3px 0 #a86400;
+  }
+  .pauseActionBtn:active{ transform:translateY(2px); box-shadow:0 1px 0 #a86400; }
+  #pauseResumeBtn{
+    background:linear-gradient(160deg,#8ee08e,#3fae3f);
+    color:#0f3f0f;
+    box-shadow:0 3px 0 #2a7a2a;
+  }
+  #pauseResumeBtn:active{ box-shadow:0 1px 0 #2a7a2a; }
+
   #comboDisplay{
     position:absolute;
     top:96px; left:50%;
@@ -1231,6 +1294,18 @@
       <span class="pauseBars"></span>
     </button>
   </div>
+  <div id="pauseOverlay">
+    <div id="pausePanel">
+      <h2>一時停止中</h2>
+      <div class="pauseRow">
+        <span>ジャイロで傾ける</span>
+        <button id="gyroToggleBtn" class="gyroToggle" aria-label="gyro toggle"></button>
+      </div>
+      <div id="gyroStatusNote">端末を傾けると、傾けた方向にツムが落ちるようになります</div>
+      <button id="pauseResumeBtn" class="pauseActionBtn">再開する</button>
+    </div>
+  </div>
+
   <div id="chainVal" style="display:none;">0</div>
 
   <div id="comboDisplay"></div>
@@ -1367,6 +1442,67 @@
   const FRICTION = 0.90;         // 横方向の摩擦（毎フレーム減衰）
   const FEVER_GRAVITY_MULT = 1.35; // フィーバー中は重力を強めて落下を速くする
   const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
+
+  // ジャイロ（端末の傾き）機能：重力方向を傾きに応じて変化させる。
+  // gravityDirX/Y は正規化されていない「重力の向きベクトル」で、通常は真下 (0, 1)。
+  // ジャイロOFF時や非対応端末では常に (0, 1) のまま。
+  let gyroEnabled = false;
+  let gravityDirX = 0, gravityDirY = 1;
+  const GYRO_MAX_TILT_DEG = 35; // この角度でほぼ真横まで倒れる（感度の上限）
+  let gyroListenerAttached = false;
+
+  function handleDeviceOrientation(e){
+    if(!gyroEnabled) return;
+    // beta: 前後の傾き(-180〜180, 0が水平) / gamma: 左右の傾き(-90〜90, 0が水平)
+    const beta = e.beta || 0;
+    const gamma = e.gamma || 0;
+    const clampedBeta = Math.max(-GYRO_MAX_TILT_DEG, Math.min(GYRO_MAX_TILT_DEG, beta - 90 > -180 ? beta : beta));
+    // 端末を縦持ち基準：正面を上にして構えたときbeta≈90(前に傾けて画面を覗き込む角度)を基準の「立った状態」とみなす端末もあるため、
+    // ここでは単純にbeta自体を「奥/手前の傾き」、gammaを「左右の傾き」として扱う（大半のスマホ縦持ち利用を想定）
+    const tiltX = Math.max(-GYRO_MAX_TILT_DEG, Math.min(GYRO_MAX_TILT_DEG, gamma)) / GYRO_MAX_TILT_DEG;
+    const tiltY = Math.max(-GYRO_MAX_TILT_DEG, Math.min(GYRO_MAX_TILT_DEG, beta)) / GYRO_MAX_TILT_DEG;
+    // 常に「ある程度は下向き」の重力を保ちつつ、傾きぶんだけ横・縦に混ぜる
+    let dx = tiltX;
+    let dy = 1 - Math.abs(tiltX)*0.3 + tiltY*0.6;
+    const len = Math.sqrt(dx*dx + dy*dy) || 1;
+    gravityDirX = dx/len;
+    gravityDirY = dy/len;
+  }
+
+  function attachGyroListener(){
+    if(gyroListenerAttached) return;
+    window.addEventListener('deviceorientation', handleDeviceOrientation);
+    gyroListenerAttached = true;
+  }
+
+  // ジャイロを有効化する。iOS13+はユーザー操作をトリガーにpermissionを明示的に要求する必要がある。
+  async function enableGyro(){
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      try{
+        const res = await DeviceOrientationEvent.requestPermission();
+        if(res !== 'granted'){
+          gyroEnabled = false;
+          updateGyroToggleUI();
+          gyroStatusNoteEl && (gyroStatusNoteEl.textContent = 'ジャイロの利用が許可されませんでした');
+          return;
+        }
+      }catch(err){
+        gyroEnabled = false;
+        updateGyroToggleUI();
+        gyroStatusNoteEl && (gyroStatusNoteEl.textContent = 'この端末ではジャイロを利用できません');
+        return;
+      }
+    }
+    attachGyroListener();
+    gyroEnabled = true;
+    updateGyroToggleUI();
+  }
+
+  function disableGyro(){
+    gyroEnabled = false;
+    gravityDirX = 0; gravityDirY = 1;
+    updateGyroToggleUI();
+  }
 
   // 消去数(1〜45)ごとの獲得コイン数テーブル（本家ツムツム仕様のコイン補正表に準拠）
   // 配列インデックス0は消去数1個目に対応。各テーブルは提供された「コイン補正一覧」画像の行をそのまま書き写したもので、
@@ -1572,6 +1708,11 @@
   const coinVal = document.getElementById('coinVal');
   const timeVal = document.getElementById('timeVal');
   const timerBox = document.getElementById('timerBox');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const pauseOverlay = document.getElementById('pauseOverlay');
+  const gyroToggleBtn = document.getElementById('gyroToggleBtn');
+  const gyroStatusNoteEl = document.getElementById('gyroStatusNote');
+  const pauseResumeBtn = document.getElementById('pauseResumeBtn');
   const chainVal = document.getElementById('chainVal');
   const linkCountEl = document.getElementById('linkCount');
   const chainCountBadge = document.getElementById('chainCountBadge');
@@ -1627,6 +1768,7 @@
   let gameActive = false;
   // ガストンの横ライン消去中など、盤面の物理演算ごと完全に停止させたいときに立てるフラグ
   let boardFrozen = false;
+  let gamePaused = false; // 一時停止メニュー表示中フラグ（timer・盤面ともに完全停止）
   let stitchSkillActive = false; // スティッチのスキル演出中フラグ。boardFrozenと違い、この間もツムの物理演算（重力・衝突）は止めない。
   let skillTimeFreeze = false; // ジャックのスキルなど「物理は止めないが、ゲーム内の各種残り時間だけ止めたい」演出用の汎用フラグ
   let idCounter = 0;
@@ -2525,7 +2667,7 @@
   // ------------------------------------------------------------
   function attachHandlers(t){
     t.el.addEventListener('pointerdown', (e)=>{
-      if(!gameActive || skillActive || t.ghost || hookAnimFreeze || buzzTapMode) return;
+      if(!gameActive || skillActive || gamePaused || (t.ghost || t.popScheduled) || hookAnimFreeze || buzzTapMode) return;
       e.preventDefault();
       // 暗黙のポインターキャプチャを解除し、boardのpointermoveで追跡できるようにする
       if(e.pointerId!=null && t.el.hasPointerCapture && t.el.hasPointerCapture(e.pointerId)){
@@ -2549,7 +2691,7 @@
   function findTsumNear(x, y, maxDistRatio){
     let best = null, bestD = Infinity;
     for(const t of tsums){
-      if(t.isBomb || t.ghost) continue;
+      if(t.isBomb || (t.ghost || t.popScheduled)) continue;
       const dx = t.x - x, dy = t.y - y;
       const d = Math.sqrt(dx*dx + dy*dy);
       // 大ツムや成長した怒ったフック船長など、ツムごとに実際の大きさ(t.r)が違うため、
@@ -2798,6 +2940,10 @@
 
     let maxFinish = 0;
     ordered.forEach((t, i)=>{
+      // チェーンやスキルで「消去が確定した」瞬間（実際にポップ演出が始まる前）に
+      // popScheduled を立てておく。これにより、まだ ghost 化していない待機中のツムが
+      // 別の消去系スキルの対象範囲に重複して入り込み、二重に消されて見える不具合を防ぐ。
+      t.popScheduled = true;
       const explicitDelay = explicitDelays && explicitDelays.get(t);
       const delay = explicitDelay!=null ? explicitDelay : Math.round(i*stagger);
       setTimeout(()=>{
@@ -2882,6 +3028,14 @@
     });
   }
 
+  // 各消去系スキルの演出終了時、boardFrozen を解除するのと同時に呼ぶための共通関数。
+  // 時間停止（スキル演出）が解けた瞬間に、まだ消え残っている消去待ち（幽霊状態／popScheduled状態）
+  // のツムを強制的に消し切ってから、盤面の時間を再開させる。
+  function unfreezeBoard(){
+    forceFinishAllGhosts();
+    boardFrozen = false;
+  }
+
   // 1個のツムがゲージへ吸い込まれて「到着」した瞬間に、そのツム1個分だけゲージへ加算する。
   // suckTargets で「フィーバーゲージへ向かうツムなのか／スキルゲージへ向かうツムなのか」が
   // 事前に決まっているため、ここではそれに応じて対応するゲージへ1個分だけ反映する。
@@ -2943,7 +3097,7 @@
       const centers = path.filter(t=> t.type.key==='namine' || t.type.key==='sora');
       const nearbySet = new Set();
       tsums.forEach(t=>{
-        if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+        if(pathIds.has(t.id) || t.isBomb || (t.ghost || t.popScheduled)) return;
         for(const c of centers){
           const dx = t.x-c.x, dy = t.y-c.y;
           if(dx*dx+dy*dy <= radius*radius){
@@ -3149,7 +3303,7 @@
       const bandHalf = HOOK_BAND_BASE * growRatio;
       const nearbySet = new Set();
       tsums.forEach(t=>{
-        if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+        if(pathIds.has(t.id) || t.isBomb || (t.ghost || t.popScheduled)) return;
         const dx = t.x-hookAngry.x, dy = t.y-hookAngry.y;
         // ライン方向ベクトルに対する法線方向（垂直方向）への距離を、外積の絶対値で求める
         const distFromLine = Math.abs(dx*dirY - dy*dirX);
@@ -3393,7 +3547,7 @@
   }
 
   skillRingWrap.addEventListener('click', ()=>{
-    if(!gameActive) return;
+    if(!gameActive || gamePaused) return;
     if(isPairMode()){
       // ジャック側のリング：ジャックのゲージが満タンなら、他方のスキルの発動状況に関わらず単独で使える
       if(!jackReady || skillActive) return;
@@ -3405,7 +3559,7 @@
   });
 
   skillRingWrap2.addEventListener('click', ()=>{
-    if(!gameActive || !isPairMode()) return;
+    if(!gameActive || gamePaused || !isPairMode()) return;
     // サリー側のリング：サリーのゲージが満タンなら単独で使える
     if(!sallyReady || skillActive) return;
     activatePairSkill('sally');
@@ -3471,6 +3625,9 @@
     skillActive = false;
     skillTimeFreeze = false;
     appEl.classList.remove('timeStopDimmed');
+    // スキル自身の消去演出が終わった時点で、まだ消去演出待ち（幽霊状態／popScheduled状態）の
+    // ツムが残っていれば、ボムキャンと同様に強制的に消し切っておく
+    forceFinishAllGhosts();
     if(isPairMode()) updateSkillGaugeUI();
   }
 
@@ -3484,7 +3641,7 @@
 
   // プリンス：マイツムを全消しして大量スコア＆コイン
   function skillRoyalClear(){
-    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !(t.ghost || t.popScheduled));
     if(myTsums.length===0){ finishSkill(); return; }
 
     const effectiveN = myTsums.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
@@ -3517,7 +3674,7 @@
 
   // うさこ：種類を問わず盤面のツムを広範囲にランダム消去
   function skillEraser(){
-    const candidates = tsums.filter(t=>!t.isBomb && !t.ghost);
+    const candidates = tsums.filter(t=>!t.isBomb && !(t.ghost || t.popScheduled));
     if(candidates.length===0){ finishSkill(); return; }
     shuffleArr(candidates);
     const count = Math.min(candidates.length, Math.max(6, Math.round(candidates.length*0.35)));
@@ -3553,7 +3710,7 @@
 
   // にゃんた：盤面のツムの一部をマイツムに変化（消さずにチェーンしやすくする）
   function skillFriendChange(){
-    const others = tsums.filter(t=>!t.isMine && !t.isBomb && !t.ghost);
+    const others = tsums.filter(t=>!t.isMine && !t.isBomb && !(t.ghost || t.popScheduled));
     if(others.length===0){ finishSkill(); return; }
     shuffleArr(others);
     const count = Math.min(others.length, 8);
@@ -3597,7 +3754,7 @@
 
   // あくまる：盤面のツムをランダムにボム化する
   function skillDevilBomb(){
-    const candidates = tsums.filter(t=>!t.isBomb && !t.ghost);
+    const candidates = tsums.filter(t=>!t.isBomb && !(t.ghost || t.popScheduled));
     if(candidates.length===0){ finishSkill(); return; }
     shuffleArr(candidates);
     const count = Math.min(candidates.length, 3);
@@ -3619,7 +3776,7 @@
 
   // ガストン：横一列に3発撃ちぬいてツムを消去する（銃を構えたシルエット＋マズルフラッシュ演出）
   function skillGastonLine(){
-    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !(t.ghost || t.popScheduled));
     if(myTsums.length===0){ finishSkill(); return; }
 
     // 銃撃〜消去演出が終わるまで、盤面の物理演算とゲーム内タイマーを完全に停止する
@@ -3630,11 +3787,11 @@
     const bandY = boardH/2;
     const bandHalf = tsumRadius*1.8; // 約1.8列分の縦幅（以前より狭く）
     const targets = tsums
-      .filter(t=> !t.isBomb && !t.ghost && Math.abs(t.y-bandY) <= bandHalf)
+      .filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && Math.abs(t.y-bandY) <= bandHalf)
       .sort((a,b)=> a.x - b.x); // 左から右へ順に消えるように並べておく
 
     showGastonShots(bandY, bandHalf, ()=>{
-      if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
+      if(targets.length===0){ unfreezeBoard(); finishSkill(); return; }
 
       const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
       const bonus = computeScore(targets, effectiveN);
@@ -3655,7 +3812,7 @@
       const bombSpot = spawnBomb ? eraseCountPos : null;
       startGastonRain(); // 横ライン消去が発生した瞬間にガストン降臨タイムを開始
       popWithWave(targets, null, 'popping', ()=>{
-        boardFrozen = false; // 演出が終わったら盤面の時間を再開
+        unfreezeBoard(); // 演出が終わったら盤面の時間を再開
         refillIfNeeded(targets.map(t=>t.x));
         finishSkill();
         checkFeverTrigger();
@@ -3724,7 +3881,7 @@
     boardFrozen = true;
     pauseTimer(1500);
     showBuzzCutin(()=>{
-      boardFrozen = false;
+      unfreezeBoard();
       startBuzzTapMode();
     });
   }
@@ -3807,7 +3964,7 @@
       clearTimeout(namineEndTimer);
       const prevOriginalType = TSUM_TYPES.find(t=>t.key===namineTransformedKey);
       if(prevOriginalType){
-        tsums.filter(t=> t.type.key==='sora' && !t.isBomb && !t.ghost)
+        tsums.filter(t=> t.type.key==='sora' && !t.isBomb && !(t.ghost || t.popScheduled))
           .forEach(t=> transformTsumType(t, prevOriginalType));
       }
       namineActive = false;
@@ -3817,7 +3974,7 @@
     // マイツム（ナミネ）以外のサブツムを種類ごとに集計し、2番目に多い種類を探す
     const counts = {};
     tsums.forEach(t=>{
-      if(t.isMine || t.isBomb || t.ghost || t.type.key==='sora') return;
+      if(t.isMine || t.isBomb || (t.ghost || t.popScheduled) || t.type.key==='sora') return;
       counts[t.type.key] = (counts[t.type.key]||0) + 1;
     });
     const ranked = Object.entries(counts).sort((a,b)=> b[1]-a[1]);
@@ -3830,7 +3987,7 @@
     }
 
     const targetKey = ranked[1][0];
-    const targets = tsums.filter(t=> t.type.key===targetKey && !t.isBomb && !t.ghost);
+    const targets = tsums.filter(t=> t.type.key===targetKey && !t.isBomb && !(t.ghost || t.popScheduled));
     if(targets.length===0){
       showSkillLabel('メモリーチェイン！ 対象がいなかった…');
       finishSkill();
@@ -3856,7 +4013,7 @@
 
     setTimeout(()=>{
       targets.forEach(t=> transformTsumType(t, SORA_TYPE));
-      boardFrozen = false;
+      unfreezeBoard();
       finishSkill();
       namineActive = true;
       clearTimeout(namineEndTimer);
@@ -3867,7 +4024,7 @@
   // 効果終了時、ソラを元の種類に戻す
   function endNamineSkill(){
     namineActive = false;
-    const soraTsums = tsums.filter(t=> t.type.key==='sora' && !t.isBomb && !t.ghost);
+    const soraTsums = tsums.filter(t=> t.type.key==='sora' && !t.isBomb && !(t.ghost || t.popScheduled));
     const originalType = TSUM_TYPES.find(t=>t.key===namineTransformedKey);
     if(originalType){
       soraTsums.forEach(t=>{
@@ -3973,7 +4130,7 @@
   const HOOK_REVERT_ANIM_MS = 700; // .tsum.hookReverting のアニメーション時間（CSSのanimation時間と合わせる）
   function endHookSkill(){
     hookActive = false;
-    const hookAngryTsums = tsums.filter(t=> t.type.key==='hookAngry' && !t.isBomb && !t.ghost);
+    const hookAngryTsums = tsums.filter(t=> t.type.key==='hookAngry' && !t.isBomb && !(t.ghost || t.popScheduled));
     const originalType = TSUM_TYPES.find(t=>t.key==='hook');
     if(originalType && hookAngryTsums.length>0){
       hookAnimFreeze = true; // 入力・スキル効果時間の経過を止める（斜め消去演出と同様）
@@ -4028,14 +4185,14 @@
     const bandHalf = tsumRadius * BEAST_BAND_HALF_RATIO;
     // ボムも巻き込んで消せるため、!t.isBomb の除外はしない（ghostだけ除外）
     const targets = tsums.filter(t=>{
-      if(t.ghost) return false;
+      if((t.ghost || t.popScheduled)) return false;
       const dx = t.x-cx, dy = t.y-cy;
       const distFromLine = Math.abs(dx*dirY - dy*dirX);
       return distFromLine <= bandHalf;
     });
 
     showBeastClawAnim(()=>{
-      if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
+      if(targets.length===0){ unfreezeBoard(); finishSkill(); return; }
 
       const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
       const bonus = computeScore(targets, effectiveN);
@@ -4055,7 +4212,7 @@
       showEraseCount(targets, effectiveN);
 
       popWithWave(targets, {x:cx, y:cy}, 'popping', ()=>{
-        boardFrozen = false; // 演出が終わったら盤面の時間を再開
+        unfreezeBoard(); // 演出が終わったら盤面の時間を再開
         refillIfNeeded(targets.map(t=>t.x));
         finishSkill();
         checkFeverTrigger();
@@ -4122,7 +4279,7 @@
     boardFrozen = true;
 
     const isTransformPhase = (duffySkillPhase===0);
-    const candidates = tsums.filter(t=> !t.isBomb && !t.ghost && isInDuffyTrapezoid(t));
+    const candidates = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && isInDuffyTrapezoid(t));
 
     if(isTransformPhase){
       // 1回目：逆台形の範囲内にあるサブツムを先にマイツムへ変化させ、その後に同じ範囲を消去する
@@ -4162,7 +4319,7 @@
 
   // 逆台形の範囲を実際に消去する共通処理（変化フェーズ・非変化フェーズの両方から呼ばれる）
   function duffyEraseTrapezoid(targets){
-    if(targets.length===0){ boardFrozen = false; finishSkill(); return; }
+    if(targets.length===0){ unfreezeBoard(); finishSkill(); return; }
 
     const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     const bonus = computeScore(targets, effectiveN);
@@ -4184,7 +4341,7 @@
     const spawnBomb = effectiveN >= bombChainThreshold;
     const bombSpot = spawnBomb ? eraseCountPos : null;
     popWithWave(targets, {x:boardW/2, y:boardH*DUFFY_TRAP_TOP_Y_RATIO}, 'popping', ()=>{
-      boardFrozen = false;
+      unfreezeBoard();
       refillIfNeeded(targets.map(t=>t.x));
       finishSkill();
       checkFeverTrigger();
@@ -4238,7 +4395,7 @@
       const r2 = {x: boardW*0.72, y: boardH*0.72};
       stitchCircleErase(r1, ()=>{
         stitchCircleErase(r2, ()=>{
-          boardFrozen = false;
+          unfreezeBoard();
           stitchSkillActive = false;
           finishSkill();
           checkFeverTrigger();
@@ -4291,7 +4448,7 @@
 
     setTimeout(()=>{
       layer.remove();
-      const targets = tsums.filter(t=> !t.isBomb && !t.ghost && Math.abs(t.y-bandY)<=bandHalf);
+      const targets = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && Math.abs(t.y-bandY)<=bandHalf);
       if(targets.length===0){ onDone && onDone(); return; }
 
       const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
@@ -4325,7 +4482,7 @@
 
     setTimeout(()=>{
       const targets = tsums.filter(t=>{
-        if(t.isBomb || t.ghost) return false;
+        if(t.isBomb || (t.ghost || t.popScheduled)) return false;
         const dx = t.x-p.x, dy = t.y-p.y;
         return (dx*dx+dy*dy) <= eraseRadius*eraseRadius;
       });
@@ -4369,7 +4526,7 @@
     board.appendChild(flash);
     setTimeout(()=> flash.remove(), 520);
 
-    const targets = tsums.filter(t=> t.isMine && !t.isBomb && !t.ghost &&
+    const targets = tsums.filter(t=> t.isMine && !t.isBomb && !(t.ghost || t.popScheduled) &&
       (t.type.key==='stitch' || t.type.key==='stitchForm1' || t.type.key==='stitchForm2'));
     targets.forEach(t=> t.el.classList.add('soraTransforming'));
 
@@ -4381,7 +4538,7 @@
         // 第2形態になったら、盤面に残っている赤いかごは（消去ではなく）静かに取り除く
         removeAllRedBaskets();
       }
-      boardFrozen = false;
+      unfreezeBoard();
       stitchSkillActive = false;
       finishSkill();
     }, 500);
@@ -4389,7 +4546,7 @@
 
   // 盤面上の「赤いかご」を、スコア・コイン・チェーン等には一切影響させずに静かに取り除く
   function removeAllRedBaskets(){
-    const baskets = tsums.filter(t=> t.type.key==='redbasket' && !t.isBomb && !t.ghost);
+    const baskets = tsums.filter(t=> t.type.key==='redbasket' && !t.isBomb && !(t.ghost || t.popScheduled));
     baskets.forEach(t=>{
       t.el.style.transition = 'opacity .35s ease, transform .35s ease';
       t.el.style.opacity = '0';
@@ -4439,7 +4596,7 @@
     appEl.classList.add('timeStopDimmed'); // 時間停止中であることが分かるよう画面を薄暗くする
     skillTimeFreeze = true; // 発動中はサリーの効果残り時間なども一緒に止める（finishSkillで解除）
 
-    const subCandidates = tsums.filter(t=> !t.isMine && !t.isBomb && !t.ghost && t.type.key!=='jack' && t.type.key!=='sally');
+    const subCandidates = tsums.filter(t=> !t.isMine && !t.isBomb && !(t.ghost || t.popScheduled) && t.type.key!=='jack' && t.type.key!=='sally');
     shuffleArr(subCandidates);
     const targets = subCandidates.slice(0, Math.min(15, subCandidates.length));
     targets.forEach(t=> t.el.classList.add('jackTargetSpotlight')); // 選ばれたツムだけ薄暗くならないようにする
@@ -4494,7 +4651,7 @@
     finishUp(targets, label, gainedCoins, ()=>{
       waitUntilAllSettled(()=>{
         // 待機中に補充されて降ってきたジャック＆サリーも巻き込むため、ここで改めて取得する
-        const jackSallyTargets = tsums.filter(t=> t.isMine && !t.isBomb && !t.ghost && (t.type.key==='jack' || t.type.key==='sally'));
+        const jackSallyTargets = tsums.filter(t=> t.isMine && !t.isBomb && !(t.ghost || t.popScheduled) && (t.type.key==='jack' || t.type.key==='sally'));
         jackSallyTargets.forEach(t=> t.el.classList.add('jackTargetSpotlight')); // ジャック＆サリー本体も薄暗くならないようにする
         if(jackSallyTargets.length===0){
           showSkillLabel(label);
@@ -4547,7 +4704,7 @@
     sallyAuraLayer.classList.add('show');
     sallyRemainingMs = SALLY_DURATION*1000; // 以後 frameLoop 内で、時間停止中でない間だけ減っていく
     setTimeout(()=>{
-      boardFrozen = false;
+      unfreezeBoard();
       appEl.classList.remove('timeStopDimmed');
       finishSkill();
     }, 900);
@@ -4608,7 +4765,7 @@
     const baseRadius = tsumRadius * SALLY_GATHER_RANGE;
     const nearbySet = new Set();
     tsums.forEach(t=>{
-      if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
+      if(pathIds.has(t.id) || t.isBomb || (t.ghost || t.popScheduled)) return;
       for(const c of path){
         // 大ツムは通常ツムよりサイズが大きい分、巻き込む範囲もそのサイズに見合って広くする
         const radius = c.isBig ? baseRadius * (c.r/tsumRadius) : baseRadius;
@@ -4645,7 +4802,7 @@
     // 「最後のツムのところにまとめて消える」：最後のツムを中心に一気に（ノーウェーブで）消す
     // サリー単独スキル効果中になぞって消したマイツムは、スキルゲージへの反映率を70%にする
     popWithWave(allErased, {x:last.x, y:last.y}, 'popping', ()=>{
-      boardFrozen = false;
+      unfreezeBoard();
       appEl.classList.remove('timeStopDimmed');
       refillIfNeeded(allErased.map(t=>t.x));
       checkFeverTrigger();
@@ -4657,7 +4814,7 @@
     showBuzzTapCircle(p, eraseRadius);
 
     const targets = tsums.filter(t=>{
-      if(t.isBomb || t.ghost) return false;
+      if(t.isBomb || (t.ghost || t.popScheduled)) return false;
       const dx = t.x-p.x, dy = t.y-p.y;
       return (dx*dx+dy*dy) <= eraseRadius*eraseRadius;
     });
@@ -4744,7 +4901,7 @@
     // 指定座標に最も近い（まだボムでない）ツムをボム化する
     let best = null, bestD = Infinity;
     for(const t of tsums){
-      if(t.isBomb || t.ghost) continue;
+      if(t.isBomb || (t.ghost || t.popScheduled)) continue;
       const dx = t.x-spot.x, dy = t.y-spot.y;
       const d = dx*dx+dy*dy;
       if(d < bestD){ bestD = d; best = t; }
@@ -4760,14 +4917,14 @@
   }
 
   function detonateBomb(bombTsum){
-    if(!gameActive || skillActive) return;
+    if(!gameActive || skillActive || gamePaused) return;
     // ボムの爆発は、盤面上で消去演出待ち（幽霊状態）のツムを強制的に0フレームで消し切り、
     // 詰まっていた落下を即座に再開させる（ボムキャンセル）
     forceFinishAllGhosts();
 
     const radius = bombTsum.r * 3.2; // 周囲を巻き込む範囲
     const affected = tsums.filter(t=>{
-      if(t.ghost || t.isBomb) return false;
+      if((t.ghost || t.popScheduled) || t.isBomb) return false;
       const dx = t.x-bombTsum.x, dy = t.y-bombTsum.y;
       return Math.sqrt(dx*dx+dy*dy) <= radius;
     });
@@ -5004,8 +5161,11 @@
     // 1) 重力・移動の積分（選択中／消去演出中のツムは物理演算をスキップし、その場に留まる＝幽霊状態）
     // フィーバー時の重力変化：フィーバー中は重力を強めて落下を速くする
     const gravityNow = inFever ? GRAVITY * FEVER_GRAVITY_MULT : GRAVITY;
+    // ジャイロ有効時は重力ベクトルを傾きに応じて回転させる。無効時は常に真下 (0,1)。
+    const gAxisX = gyroEnabled ? gravityDirX : 0;
+    const gAxisY = gyroEnabled ? gravityDirY : 1;
     for(const t of tsums){
-      if(t.selected || t.ghost) continue;
+      if(t.selected || (t.ghost || t.popScheduled)) continue;
       // 他のツムに乗っかって静止しているとみなせる場合は重力・移動の積分自体をスキップする。
       //
       // 【設計の経緯】
@@ -5031,7 +5191,8 @@
         t.x += t.vx*dt;
         t.y += t.vy*dt;
       } else {
-        t.vy = Math.min(t.vy + gravityNow*dt, MAX_FALL_SPEED);
+        t.vx = Math.min(Math.max(t.vx + gAxisX*gravityNow*dt, -MAX_FALL_SPEED), MAX_FALL_SPEED);
+        t.vy = Math.min(t.vy + gAxisY*gravityNow*dt, MAX_FALL_SPEED);
         t.vx *= FRICTION;
         t.vy *= 0.995;
         t.x += t.vx*dt;
@@ -5277,6 +5438,12 @@
   }
 
   function frameLoop(now){
+    if(gamePaused){
+      // 一時停止中はdtの積算を止め、再開時に経過時間が一気に流れ込まないようにする
+      lastFrameTime = now;
+      rafHandle = requestAnimationFrame(frameLoop);
+      return;
+    }
     if(!lastFrameTime) lastFrameTime = now;
     const dt = (now - lastFrameTime)/1000;
     lastFrameTime = now;
@@ -5322,12 +5489,12 @@
   // ------------------------------------------------------------
   function hasAnyMove(){
     // ナミネ・ソラが盤面にいるなら、両者は距離を問わず必ずつながる特殊ペアなので即座に手ありと判定
-    const namineSoraCount = tsums.filter(t=> !t.isBomb && !t.ghost && (t.type.key==='namine' || t.type.key==='sora')).length;
+    const namineSoraCount = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && (t.type.key==='namine' || t.type.key==='sora')).length;
     if(namineSoraCount>=3) return true;
 
     const visited = new Set();
     for(const start of tsums){
-      if(visited.has(start.id) || start.isBomb || start.ghost) continue;
+      if(visited.has(start.id) || start.isBomb || (start.ghost || start.popScheduled)) continue;
       const stack = [start];
       visited.add(start.id);
       let count = 0;
@@ -5359,7 +5526,7 @@
   }
 
   function ensurePlayable(){
-    if(!gameActive || skillActive) return;
+    if(!gameActive || skillActive || gamePaused) return;
     let attempts = 0;
     while(!hasAnyMove() && attempts<20){
       reshuffleTypes();
@@ -5370,7 +5537,7 @@
   function reshuffleTypes(){
     // 座標は維持したまま色（type）だけをシャッフルする救済措置（ボム対象外）。
     // ナミネのスキル効果中はソラ（およびナミネ自身）の種類が壊れないよう対象から除外する。
-    const targets = tsums.filter(t=>!t.isBomb && !t.ghost && t.type.key!=='sora' && t.type.key!=='namine');
+    const targets = tsums.filter(t=>!t.isBomb && !(t.ghost || t.popScheduled) && t.type.key!=='sora' && t.type.key!=='namine');
     const types = targets.map(t=>t.type);
     for(let i=types.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
@@ -5416,6 +5583,8 @@
   // Timer / game flow
   // ------------------------------------------------------------
   function startGame(){
+    gamePaused = false;
+    pauseOverlay.classList.remove('show');
     score = 0; coins = 0; maxChain = 0; feverCount = 0;
     timeLeft = GAME_TIME + (itemExtraTime ? 5 : 0);
     comboCount = 0;
@@ -5488,8 +5657,8 @@
   }
 
   function tick(){
-    // ゲーム全体の残り時間も、あらゆる時間停止演出（boardFrozen・hookAnimFreeze・skillTimeFreeze）の間は減らさない。
-    if(boardFrozen || hookAnimFreeze || skillTimeFreeze) return;
+    // ゲーム全体の残り時間も、あらゆる時間停止演出（boardFrozen・hookAnimFreeze・skillTimeFreeze・一時停止）の間は減らさない。
+    if(boardFrozen || hookAnimFreeze || skillTimeFreeze || gamePaused) return;
     timeLeft--;
     timeVal.textContent = timeLeft;
     if(timeLeft<=10) timerBox.classList.add('warn');
@@ -5498,6 +5667,8 @@
 
   function endGame(){
     gameActive = false;
+    gamePaused = false;
+    pauseOverlay.classList.remove('show');
     clearInterval(timerHandle);
     clearTimeout(timerResumeTimeout);
     clearTimeout(feverEndTimer);
@@ -5588,6 +5759,47 @@
 
   // ------------------------------------------------------------
   // Events
+  // ------------------------------------------------------------
+  // 一時停止機能：タイマー・盤面(物理演算)を完全停止してメニューを表示する
+  // ------------------------------------------------------------
+  function updateGyroToggleUI(){
+    gyroToggleBtn.classList.toggle('on', gyroEnabled);
+    if(gyroEnabled){
+      gyroStatusNoteEl.textContent = '端末を傾けると、傾けた方向にツムが落ちます';
+    }
+  }
+
+  function openPauseMenu(){
+    if(!gameActive || gamePaused) return;
+    gamePaused = true;
+    clearInterval(timerHandle);
+    pauseOverlay.classList.add('show');
+    updateGyroToggleUI();
+  }
+
+  function closePauseMenu(){
+    if(!gamePaused) return;
+    gamePaused = false;
+    pauseOverlay.classList.remove('show');
+    lastFrameTime = 0; // 再開直後のdt急増を防ぐ（frameLoop側でも保険をかけているが念のため）
+    if(gameActive) timerHandle = setInterval(tick, 1000);
+  }
+
+  pauseBtn.addEventListener('click', ()=>{
+    openPauseMenu();
+  });
+  pauseResumeBtn.addEventListener('click', ()=>{
+    closePauseMenu();
+  });
+  gyroToggleBtn.addEventListener('click', ()=>{
+    if(gyroEnabled){
+      disableGyro();
+    } else {
+      gyroStatusNoteEl.textContent = '許可をリクエスト中…';
+      enableGyro();
+    }
+  });
+
   // ------------------------------------------------------------
   // キャラ選択 → アイテム選択 → ゲーム開始 の3段階フロー
   startBtn.addEventListener('click', ()=>{
