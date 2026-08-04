@@ -1437,6 +1437,14 @@
       myTsumFallBoost:true, // おまけ効果：ダッフィーをマイツムに設定している間、マイツムが降ってきやすくなる
       skillName:'フォーチュン・トラペゾイド',
       skillDesc:'2種類のスキルが交互に発動。1回目：盤面に逆台形型にマイツムを増やしてから、その逆台形の範囲を消去。2回目：同じ逆台形の範囲をそのまま消去。（発動中は時間停止・ツムの物理も停止）' },
+    // ヒーロースタイルスティッチ<変身>：スキルのたびに1/3の確率で変身が進み、姿と最終スキルが変わっていく多段変身ツム。
+    // 専用サブツム「赤いかご」を常に一緒に降らせる（extraSubKeyで指定）。
+    { key:'stitch', name:'ヒーロースタイルスティッチ<変身>', color:'#3fa9e0', dark:'#1f6fa8', motif:'stitchEars', score:230, skillNeed:14, colorGroup:'blue2', coinBonus:3,
+      extraSubKey:'redbasket',
+      skillName:'ヒーロー・トランスフォーム',
+      skillDesc:'1/3の確率で「縦幅2ツム分の横ライン消去」「縦幅3ツム分の横ライン消去」「変身（演出あり）」のいずれかが発動。青い水着→赤いマントと2段階変身し、最終形態では左上→右下の順に直径6ツム分の円形消去を放つ。' },
+    // 赤いかご：スティッチ専用の追加サブツム。見た目以外は通常のサブツムと同じ。
+    { key:'redbasket', name:'赤いかご', color:'#e05a3f', dark:'#a3341f', motif:'basket', score:130, colorGroup:'redBasketGroup', pairHidden:true },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -1445,6 +1453,11 @@
 
   // ソラ：ナミネのスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
   const SORA_TYPE = { key:'sora', name:'ソラ', color:'#2b2f4a', dark:'#181a2e', motif:'key', score:0, colorGroup:'navy' };
+
+  // ヒーロースタイルスティッチ<変身>：変身後の見た目専用ツム（通常のTSUM_TYPESには含めず、変身時にtransformTsumTypeで差し替える）
+  const STITCH_FORM1_TYPE = { key:'stitchForm1', name:'ヒーロースタイルスティッチ（青い水着）', color:'#2f7ad9', dark:'#164a8f', motif:'stitchEarsForm1', score:230, colorGroup:'blue2' };
+  const STITCH_FORM2_TYPE = { key:'stitchForm2', name:'ヒーロースタイルスティッチ（赤いマント）', color:'#d94b3a', dark:'#8f1f16', motif:'stitchEarsForm2', score:230, colorGroup:'blue2' };
+  let stitchStage = 0; // 0:初期形態 1:青い水着(第1段階) 2:赤いマント(第2段階)
 
   // 盤面に実際に降ってくるツムの種類（アイテムで5種/4種に変化）
   let activeTsumTypes = TSUM_TYPES.slice();
@@ -1503,7 +1516,15 @@
   function isMineType(type){
     if(type.key===myTsumKey) return true;
     if(isPairMode() && type.key===pairPartnerKey()) return true;
+    if(myTsumKey==='stitch' && (type.key==='stitchForm1' || type.key==='stitchForm2')) return true;
     return false;
+  }
+
+  // 現在の変身段階に応じた、スティッチの「今の見た目」の型を返す
+  function currentStitchType(){
+    if(stitchStage>=2) return STITCH_FORM2_TYPE;
+    if(stitchStage>=1) return STITCH_FORM1_TYPE;
+    return TSUM_TYPES.find(t=>t.key==='stitch');
   }
 
   // ------------------------------------------------------------
@@ -1675,40 +1696,68 @@
       }
       picked = activeTsumTypes[idx];
     } else {
-      picked = activeTsumTypes[Math.floor(Math.random()*activeTsumTypes.length)];
+      let pool = activeTsumTypes;
+      // スティッチが第2形態になったら、以降は赤いかごを新規に生成しない
+      if(myTsumKey==='stitch' && stitchStage>=2){
+        pool = activeTsumTypes.filter(t=> t.key!=='redbasket');
+        if(pool.length===0) pool = activeTsumTypes;
+      }
+      picked = pool[Math.floor(Math.random()*pool.length)];
     }
     // ナミネのスキル効果中、変化対象に選ばれた種類が新規に降ってくる場合はソラとして生成する
     if(namineActive && picked.key===namineTransformedKey){
       return SORA_TYPE;
+    }
+    // スティッチが変身中は、新しく降ってくるマイツムも今の変身後の姿にする
+    if(myTsumKey==='stitch' && picked.key==='stitch' && stitchStage>0){
+      return currentStitchType();
     }
     return picked;
   }
 
   // マイツムを必ず含めつつ、盤面に出す種類数（4 or 5）をランダムに選ぶ。
   // 配色の法則：同系色グループ（colorGroup）からは1種類までしか選ばない（視認性の確保）
+  // colorGroupは種類ごとに細分化されているが、見た目の色味としては同じに見える
+  // グループ同士があるため（例：プリンス='blue' とスティッチ='blue2' はどちらも青系）、
+  // 同時出現の判定ではこのエイリアスを通して「見た目のグループ」に正規化する。
+  const VISUAL_GROUP_ALIAS = {
+    blue2: 'blue',        // スティッチ（変身含む）とプリンス／バズは同じ青系として扱う
+    skinTone: 'cream',    // フック船長とナミネはどちらも薄いクリーム／肌色系として扱う
+  };
+  function visualGroup(t){
+    return VISUAL_GROUP_ALIAS[t.colorGroup] || t.colorGroup;
+  }
+
   function buildActiveTsumTypes(count){
     const mine = TSUM_TYPES.find(t=>t.key===myTsumKey);
-    const usedGroups = new Set([mine.colorGroup]);
+    const usedGroups = new Set([visualGroup(mine)]);
     const picked = [mine];
 
     // ペアツム（ジャック＆サリーなど）を選んでいる場合は、相方も必ず一緒に盤面へ出す
     if(mine.pairKey){
       const partner = TSUM_TYPES.find(t=>t.key===mine.pairKey);
-      if(partner) picked.push(partner);
+      if(partner){ picked.push(partner); usedGroups.add(visualGroup(partner)); }
     }
 
-    const rest = TSUM_TYPES.filter(t=>t.key!==myTsumKey && t.key!==mine.pairKey);
+    // 専用の追加サブツム（スティッチの「赤いかご」など）を選んでいる場合は必ず一緒に盤面へ出す
+    if(mine.extraSubKey){
+      const extra = TSUM_TYPES.find(t=>t.key===mine.extraSubKey);
+      if(extra){ picked.push(extra); usedGroups.add(visualGroup(extra)); }
+    }
+
+    const rest = TSUM_TYPES.filter(t=>t.key!==myTsumKey && t.key!==mine.pairKey && t.key!==mine.extraSubKey);
     for(let i=rest.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [rest[i], rest[j]] = [rest[j], rest[i]];
     }
 
-    // 第1パス：まだ使われていない色グループからのみ選ぶ
+    // 第1パス：まだ使われていない「見た目の色グループ」からのみ選ぶ
     for(const t of rest){
       if(picked.length>=count) break;
-      if(!usedGroups.has(t.colorGroup)){
+      const vg = visualGroup(t);
+      if(!usedGroups.has(vg)){
         picked.push(t);
-        usedGroups.add(t.colorGroup);
+        usedGroups.add(vg);
       }
     }
     // 種類数が色グループの数より多く必要な場合のみ、やむを得ず同系色も許容して埋める
@@ -1734,6 +1783,69 @@
   // ------------------------------------------------------------
   function addMotif(face, type, size){
     switch(type.motif){
+      case 'stitchEars':
+      case 'stitchEarsForm1':
+      case 'stitchEarsForm2': {
+        // 大きく丸みのある2本のスティッチの耳
+        [ -1, 1 ].forEach(sign=>{
+          const ear = document.createElement('div');
+          ear.className='motif';
+          ear.style.width = size*0.2+'px';
+          ear.style.height = size*0.46+'px';
+          ear.style.background = `linear-gradient(180deg, ${lighten(type.color)}, ${type.color})`;
+          ear.style.borderRadius='50% 50% 50% 50% / 65% 65% 35% 35%';
+          ear.style.left = (50+sign*26)+'%';
+          ear.style.top = '-34%';
+          ear.style.transform = `translateX(-50%) rotate(${sign*20}deg)`;
+          ear.style.boxShadow='inset 0 -3px 4px rgba(0,0,0,0.15)';
+          face.appendChild(ear);
+        });
+        if(type.motif==='stitchEarsForm1'){
+          // 第1段階：青い水着（胸元のバンド）
+          const band = document.createElement('div');
+          band.className='motif';
+          band.style.left='18%'; band.style.top='66%';
+          band.style.width='64%'; band.style.height='16%';
+          band.style.background='#1a5fbf';
+          band.style.borderRadius='6px';
+          band.style.boxShadow='inset 0 2px 3px rgba(255,255,255,0.35)';
+          face.appendChild(band);
+        }
+        if(type.motif==='stitchEarsForm2'){
+          // 第2段階：赤いマント
+          const cape = document.createElement('div');
+          cape.className='motif';
+          cape.style.left='-6%'; cape.style.top='30%';
+          cape.style.width='30%'; cape.style.height='70%';
+          cape.style.background='linear-gradient(160deg, #ff5c46, #a3201a)';
+          cape.style.borderRadius='0 40% 20% 60%';
+          cape.style.transform='rotate(-8deg)';
+          cape.style.boxShadow='inset 0 2px 4px rgba(255,255,255,0.25)';
+          face.appendChild(cape);
+        }
+        break;
+      }
+      case 'basket': {
+        // 赤いかご：半楕円のかご本体＋持ち手
+        const body = document.createElement('div');
+        body.className='motif';
+        body.style.left='20%'; body.style.top='48%';
+        body.style.width='60%'; body.style.height='34%';
+        body.style.background=`linear-gradient(180deg, ${lighten(type.color)}, ${type.dark})`;
+        body.style.borderRadius='0 0 45% 45% / 0 0 90% 90%';
+        body.style.boxShadow='inset 0 -3px 4px rgba(0,0,0,0.2)';
+        face.appendChild(body);
+        const handle = document.createElement('div');
+        handle.className='motif';
+        handle.style.left='32%'; handle.style.top='30%';
+        handle.style.width='36%'; handle.style.height='22%';
+        handle.style.border=`${Math.max(2,size*0.035)}px solid ${type.dark}`;
+        handle.style.borderBottom='none';
+        handle.style.borderRadius='50% 50% 0 0 / 100% 100% 0 0';
+        handle.style.background='transparent';
+        face.appendChild(handle);
+        break;
+      }
       case 'ears': {
         [ -1, 1 ].forEach(sign=>{
           const ear = document.createElement('div');
@@ -2728,8 +2840,15 @@
     const suckTo = suckTargets && suckTargets.get(t);
     if(!suckTo) return; // 吸い込み対象外（＝ゲージ演出を伴わない消し方）のツムは何もしない
     const weight = t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1;
-    if(t.isMine && !isMySkillGaugeFull()){
-      addSkillGauge(weight, [t], rate, ignoreGastonRain);
+    if(t.isMine){
+      // マイツムは、スキルゲージ（満タンでなければ）に加えて、常にフィーバーゲージにも同時に加算する
+      if(!isMySkillGaugeFull()){
+        addSkillGauge(weight, [t], rate, ignoreGastonRain);
+      }
+      if(!inFever){
+        feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + weight*FEVER_GAUGE_PER_TSUM);
+        updateFeverGaugeUI();
+      }
     } else if(!inFever){
       feverGauge = Math.min(FEVER_GAUGE_MAX, feverGauge + weight*FEVER_GAUGE_PER_TSUM);
       updateFeverGaugeUI();
@@ -3288,6 +3407,7 @@
       hook: skillHookFinalBattle,
       beast: skillBeastClaw,
       duffy: skillDuffyTrapezoid,
+      stitch: skillStitchHero,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -4041,6 +4161,185 @@
       layer.remove();
       onDone && onDone();
     }, DUFFY_ANIM_MS);
+  }
+
+  // ------------------------------------------------------------
+  // ヒーロースタイルスティッチ<変身>
+  // スキル発動のたびに1/3の確率抽選を行う：
+  //   通常時／第1形態時：[横ライン消去(2ツム分)] [横ライン消去(3ツム分)] [変身]
+  //   第2形態時：常に「左上→右下」の順で直径6ツム分の円形消去×2
+  // ------------------------------------------------------------
+  const STITCH_ANIM_MS = 480; // ライン・円の光の演出時間
+
+  function skillStitchHero(){
+    boardFrozen = true;
+
+    if(stitchStage>=2){
+      // 第2段階（赤いマント）：左上→右下の順に直径6ツム分の円形消去を2回行う
+      pauseTimer(STITCH_ANIM_MS*2 + 700);
+      showSkillLabel('ヒーロー・トランスフォーム！ ファイナルバスター');
+      const r1 = {x: boardW*0.22, y: boardH*0.22};
+      const r2 = {x: boardW*0.78, y: boardH*0.78};
+      stitchCircleErase(r1, ()=>{
+        stitchCircleErase(r2, ()=>{
+          boardFrozen = false;
+          finishSkill();
+          checkFeverTrigger();
+        });
+      });
+      return;
+    }
+
+    const roll = Math.floor(Math.random()*3); // 0,1,2 の3分の1抽選
+    // 最低保証：第1変身は残り41秒以降、第2変身は残り21秒以降になったら確定で変身させる
+    const forceTransform =
+      (stitchStage===0 && timeLeft<=41) ||
+      (stitchStage===1 && timeLeft<=21);
+    if(forceTransform){
+      pauseTimer(STITCH_ANIM_MS + 600);
+      stitchTransformStage();
+      return;
+    }
+    if(roll===0){
+      pauseTimer(STITCH_ANIM_MS + 500);
+      showSkillLabel('ヒーロー・トランスフォーム！ 横ライン消去');
+      stitchLineErase(2, ()=>{ boardFrozen=false; finishSkill(); checkFeverTrigger(); });
+    } else if(roll===1){
+      pauseTimer(STITCH_ANIM_MS + 500);
+      showSkillLabel('ヒーロー・トランスフォーム！ 横ライン消去');
+      stitchLineErase(3, ()=>{ boardFrozen=false; finishSkill(); checkFeverTrigger(); });
+    } else {
+      // 変身（消去は行わない）
+      pauseTimer(STITCH_ANIM_MS + 600);
+      stitchTransformStage();
+    }
+  }
+
+  // 横一列（縦幅rows分）を光らせてから消去する
+  function stitchLineErase(rows, onDone){
+    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
+    const bandY = myTsums.length>0 ? myTsums.reduce((s,t)=>s+t.y,0)/myTsums.length : boardH/2;
+    const bandHalf = tsumRadius*rows;
+
+    const layer = document.createElement('div');
+    layer.className = 'duffyTrapezoidLayer';
+    layer.style.left = '0px';
+    layer.style.top = (bandY-bandHalf)+'px';
+    layer.style.width = boardW+'px';
+    layer.style.height = (bandHalf*2)+'px';
+    layer.style.clipPath = 'none';
+    layer.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(63,169,224,0.4) 60%, transparent 100%)';
+    layer.style.boxShadow = '0 0 18px 6px rgba(63,169,224,0.65)';
+    board.appendChild(layer);
+
+    setTimeout(()=>{
+      layer.remove();
+      const targets = tsums.filter(t=> !t.isBomb && !t.ghost && Math.abs(t.y-bandY)<=bandHalf);
+      if(targets.length===0){ onDone && onDone(); return; }
+
+      const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(targets, effectiveN);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(effectiveN, TSUM_TYPES.find(t=>t.key==='stitch').coinBonus);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(effectiveN > maxChain) maxChain = effectiveN;
+      chainVal.textContent = maxChain;
+
+      burstSparkles(targets);
+      const suckTargets = buildSuckTargets(targets);
+      if(gainedCoins>0) burstCoins(targets, gainedCoins);
+      const eraseCountPos = showEraseCount(targets, effectiveN);
+      const spawnBomb = effectiveN >= bombChainThreshold;
+      const bombSpot = spawnBomb ? eraseCountPos : null;
+
+      popWithWave(targets, null, 'popping', ()=>{
+        refillIfNeeded(targets.map(t=>t.x));
+        onDone && onDone();
+      }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets);
+    }, STITCH_ANIM_MS);
+  }
+
+  // 指定座標を中心に直径6ツム分の円形消去を行う（第2段階専用）
+  function stitchCircleErase(p, onDone){
+    const eraseRadius = tsumRadius*6; // 直径6ツム分の円
+    showBuzzTapCircle(p, eraseRadius);
+
+    setTimeout(()=>{
+      const targets = tsums.filter(t=>{
+        if(t.isBomb || t.ghost) return false;
+        const dx = t.x-p.x, dy = t.y-p.y;
+        return (dx*dx+dy*dy) <= eraseRadius*eraseRadius;
+      });
+      if(targets.length===0){ onDone && onDone(); return; }
+
+      const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(targets, effectiveN);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(effectiveN, TSUM_TYPES.find(t=>t.key==='stitch').coinBonus);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(effectiveN > maxChain) maxChain = effectiveN;
+      chainVal.textContent = maxChain;
+
+      burstSparkles(targets);
+      const suckTargets = buildSuckTargets(targets);
+      if(gainedCoins>0) burstCoins(targets, gainedCoins);
+      const eraseCountPos = showEraseCount(targets, effectiveN);
+      const spawnBomb = effectiveN >= bombChainThreshold;
+      const bombSpot = spawnBomb ? eraseCountPos : null;
+
+      popWithWave(targets, p, 'popping', ()=>{
+        refillIfNeeded(targets.map(t=>t.x));
+        onDone && onDone();
+      }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot); }, false, suckTargets);
+    }, 260);
+  }
+
+  // 変身演出：盤面上の（今の姿の）スティッチを全て次の形態の見た目へ差し替える
+  function stitchTransformStage(){
+    stitchStage = stitchStage + 1;
+    const newType = currentStitchType();
+    const label = stitchStage>=2 ? '赤いマントを羽織って第2形態に変身！' : '青い水着を着て第1形態に変身！';
+
+    const flash = document.createElement('div');
+    flash.className = 'namineTransformFlashLayer';
+    flash.style.background = stitchStage>=2
+      ? 'radial-gradient(circle, rgba(255,255,255,0.9), rgba(217,75,58,0.35) 60%, transparent 75%)'
+      : 'radial-gradient(circle, rgba(255,255,255,0.9), rgba(63,169,224,0.35) 60%, transparent 75%)';
+    board.appendChild(flash);
+    setTimeout(()=> flash.remove(), 520);
+
+    const targets = tsums.filter(t=> t.isMine && !t.isBomb && !t.ghost &&
+      (t.type.key==='stitch' || t.type.key==='stitchForm1' || t.type.key==='stitchForm2'));
+    targets.forEach(t=> t.el.classList.add('soraTransforming'));
+
+    showSkillLabel(`ヒーロー・トランスフォーム！ ${label}`);
+
+    setTimeout(()=>{
+      targets.forEach(t=> transformTsumType(t, newType));
+      if(stitchStage>=2){
+        // 第2形態になったら、盤面に残っている赤いかごは（消去ではなく）静かに取り除く
+        removeAllRedBaskets();
+      }
+      boardFrozen = false;
+      finishSkill();
+    }, 500);
+  }
+
+  // 盤面上の「赤いかご」を、スコア・コイン・チェーン等には一切影響させずに静かに取り除く
+  function removeAllRedBaskets(){
+    const baskets = tsums.filter(t=> t.type.key==='redbasket' && !t.isBomb && !t.ghost);
+    baskets.forEach(t=>{
+      t.el.style.transition = 'opacity .35s ease, transform .35s ease';
+      t.el.style.opacity = '0';
+      t.el.style.transform += ' scale(0.6)';
+      const idx = tsums.indexOf(t);
+      if(idx>=0) tsums.splice(idx,1);
+      setTimeout(()=>{ t.el.remove(); }, 380);
+    });
   }
 
   // ------------------------------------------------------------
@@ -5099,6 +5398,7 @@
     hookAnimGhostRef = null;
     duffySkillPhase = 0;
     hookPhysicsPause = false;
+    stitchStage = 0;
     appEl.classList.remove('hookAnimDimmed');
     appEl.classList.remove('timeStopDimmed');
 
