@@ -1354,7 +1354,7 @@
   const FEVER_GAUGE_DECAY_PER_SEC = 1.0; // (未使用) 以前は時間経過でゲージが減衰していたが、現在は合計消去数のみでフィーバー突入を判定する
   const FEVER_TIME_BONUS = 5;
   const FEVER_DURATION = 11;
-  const FEVER_POP_SPEED_MULT = 1.5;     // フィーバー中はツムの消える速度が1.5倍
+  const FEVER_POP_SPEED_MULT = 2;     // フィーバー中はツムの消える速度が2倍
   const SKILL_GAUGE_MAX = 100;
 
   // 物理パラメータ（資料の「円形ヒットボックス」「重力落下」「衝突による位置の遊び」を反映）
@@ -1644,7 +1644,7 @@
     ropeSvg.style.width = boardW+'px';
     ropeSvg.style.height = boardH+'px';
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05));
+    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1));
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
@@ -2600,7 +2600,10 @@
   // （キャプテンライトイヤーのタップ消去のように、範囲内が即座に判定・消去される演出に使う）
   // suckTargets: Map<tsum, {x,y}>（盤面座標＝boardRect基準）を渡すと、そのツムだけ
   // 通常のpopOutではなく「suckPopping」演出（指定座標へ吸い込まれながら縮小して消える）になる。
-  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady, skipGhost, suckTargets, gaugeRate, gaugeIgnoreGastonRain){
+  // explicitDelays: Map<tsum, delayMs> を渡すと、そのツムは通常の順序×間隔計算を使わず、
+  // 指定されたミリ秒だけ待ってから消える（ナミネ・ソラに巻き込まれたツムを、巻き込んだ
+  // ナミネ/ソラ本体と同じタイミングで消すために使う）。
+  function popWithWave(list, centerPoint, popClass, onAllDone, instant, onBombReady, skipGhost, suckTargets, gaugeRate, gaugeIgnoreGastonRain, explicitDelays){
     if(list.length===0){ onAllDone && onAllDone(); return; }
     const ordered = list.slice();
     if(centerPoint && !instant){
@@ -2612,7 +2615,8 @@
     }
     const feverSpeed = inFever ? FEVER_POP_SPEED_MULT : 1;
     const POP_DURATION = 420 / feverSpeed;
-    const totalWave = instant ? 0 : Math.min(2200, 160*(ordered.length-1)) / feverSpeed;
+    // 1個ずつ消えていく間隔を通常より44%遅くする（連続消去の波が伝わる速度）
+    const totalWave = instant ? 0 : Math.min(2200, 160*(ordered.length-1)) / feverSpeed * 1.2 * 1.2;
     const stagger = (!instant && ordered.length>1) ? totalWave/(ordered.length-1) : 0;
 
     // このウェーブ全体で共有する状態。ボムキャン（forceFinishAllGhosts）で個々のタイマーを
@@ -2627,7 +2631,8 @@
 
     let maxFinish = 0;
     ordered.forEach((t, i)=>{
-      const delay = Math.round(i*stagger);
+      const explicitDelay = explicitDelays && explicitDelays.get(t);
+      const delay = explicitDelay!=null ? explicitDelay : Math.round(i*stagger);
       setTimeout(()=>{
         if(!tsums.includes(t)) return; // 既にボム等で強制終了済み
         t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable');
@@ -2757,6 +2762,7 @@
     // 周囲のツムも巻き込んで一緒に消す。スキル効果外では通常のチェーンとして扱う。
     const hasNamineOrSora = namineActive && path.some(t=> t.type.key==='namine' || t.type.key==='sora');
     let extraTargets = [];
+    let extraOwnerMap = new Map(); // 巻き込まれたツム → 巻き込んだナミネ/ソラ本体（pathの中のツム）
     if(hasNamineOrSora){
       const pathIds = new Set(path.map(t=>t.id));
       const radius = tsumRadius * NAMINE_SKILL_RANGE;
@@ -2766,7 +2772,11 @@
         if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
         for(const c of centers){
           const dx = t.x-c.x, dy = t.y-c.y;
-          if(dx*dx+dy*dy <= radius*radius){ nearbySet.add(t); break; }
+          if(dx*dx+dy*dy <= radius*radius){
+            nearbySet.add(t);
+            extraOwnerMap.set(t, c);
+            break;
+          }
         }
       });
       extraTargets = Array.from(nearbySet);
@@ -2806,9 +2816,23 @@
     // 降臨タイムによる制限を無視する（＝そのツムたちは通常どおりスキルへ反映する）。
     const gaugeIgnoreGastonRain = !gastonRainActive;
 
-    // 巻き込み分は一気に（ノーウェーブで）先に消し、なぞった本体はいつも通りウェーブで消す
+    // path側（なぞった本体）のウェーブ間隔と同じ計算式で、各ナミネ/ソラが何ミリ秒後に消えるかを求める。
+    // 巻き込まれたツムは、自分を巻き込んだナミネ/ソラ本体と全く同じタイミングで消えるようにする。
+    const pathFeverSpeed = inFever ? FEVER_POP_SPEED_MULT : 1;
+    const pathTotalWave = path.length>1 ? Math.min(2200, 160*(path.length-1)) / pathFeverSpeed * 1.2 * 1.2 : 0;
+    const pathStagger = path.length>1 ? pathTotalWave/(path.length-1) : 0;
+    const namineDelayByTsum = new Map();
+    path.forEach((t, i)=>{ namineDelayByTsum.set(t, Math.round(i*pathStagger)); });
+
+    // 巻き込み分は、巻き込んだナミネ/ソラ本体（extraOwnerMap）と同時に消える。
     if(extraTargets.length>0){
-      popWithWave(extraTargets, null, 'popping', ()=>{}, true, undefined, false, suckTargets, undefined, gaugeIgnoreGastonRain);
+      const explicitDelays = new Map();
+      extraTargets.forEach(t=>{
+        const owner = extraOwnerMap.get(t);
+        const ownerDelay = owner ? namineDelayByTsum.get(owner) : undefined;
+        explicitDelays.set(t, ownerDelay!=null ? ownerDelay : 0);
+      });
+      popWithWave(extraTargets, null, 'popping', ()=>{}, false, undefined, false, suckTargets, undefined, gaugeIgnoreGastonRain, explicitDelays);
     }
 
     // 起点→終点の順にウェーブ状で消えていく（なぞった順番のまま）。
@@ -4142,11 +4166,13 @@
           if(gainedCoins2>0) burstCoins(jackSallyTargets, gainedCoins2);
 
           showSkillLabel(`ドリームスクランブル！ サブツム${targets.length}個＋ジャック&サリー${jackSallyTargets.length}個消去`, 'jackSallyLabel');
+          // ジャック＆サリーの重ねがけスキルで消えるマイツム（ジャック＆サリー本体）は、
+          // スキルゲージへの反映率を0%にする（このスキルではゲージが溜まらない）
           popWithWave(jackSallyTargets, {x:boardW/2, y:boardH/2}, 'popping', ()=>{
             refillIfNeeded(jackSallyTargets.map(t=>t.x));
             finishSkill();
             checkFeverTrigger();
-          }, true, undefined, false, suckTargets2);
+          }, true, undefined, false, suckTargets2, 0);
         }, 700);
       }, 1500);
     });
@@ -4222,11 +4248,13 @@
 
   function finishSallyChain(path){
     const pathIds = new Set(path.map(t=>t.id));
-    const radius = tsumRadius * SALLY_GATHER_RANGE;
+    const baseRadius = tsumRadius * SALLY_GATHER_RANGE;
     const nearbySet = new Set();
     tsums.forEach(t=>{
       if(pathIds.has(t.id) || t.isBomb || t.ghost) return;
       for(const c of path){
+        // 大ツムは通常ツムよりサイズが大きい分、巻き込む範囲もそのサイズに見合って広くする
+        const radius = c.isBig ? baseRadius * (c.r/tsumRadius) : baseRadius;
         const dx = t.x-c.x, dy = t.y-c.y;
         if(dx*dx+dy*dy <= radius*radius){ nearbySet.add(t); break; }
       }
@@ -4258,12 +4286,13 @@
     allErased.forEach(t=> t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable','sallyTraced'));
 
     // 「最後のツムのところにまとめて消える」：最後のツムを中心に一気に（ノーウェーブで）消す
+    // サリー単独スキル効果中になぞって消したマイツムは、スキルゲージへの反映率を70%にする
     popWithWave(allErased, {x:last.x, y:last.y}, 'popping', ()=>{
       boardFrozen = false;
       appEl.classList.remove('timeStopDimmed');
       refillIfNeeded(allErased.map(t=>t.x));
       checkFeverTrigger();
-    }, true, undefined, false, suckTargets);
+    }, true, undefined, false, suckTargets, 0.7);
   }
 
   function doBuzzErase(p){
