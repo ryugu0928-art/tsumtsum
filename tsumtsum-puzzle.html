@@ -305,7 +305,7 @@
   }
   #board{
     position:absolute;
-    inset:6px 10px;
+    left:10px; right:10px; bottom:6px;
     touch-action:none;
     z-index:1;
   }
@@ -1760,14 +1760,22 @@
   // ------------------------------------------------------------
   let boardW = 0, boardH = 0;
   let tsumRadius = 0; // px
+  // 盤面の「天井」より上に、見えない枠外エリアを設ける。
+  // ツムがたくさん積み上がったときに天井で詰まらず、枠外（画面上のさらに上）へ逃げられるようにするための余白。
+  // 高さはツム6個分。tsumRadiusが決まってから計算するので、layoutBoard内で毎回更新する。
+  let TOP_OVERFLOW = 0;
+  // 演出・スキル等が「見える盤面（枠内）」を基準に座標計算する際に使うヘルパー。
+  // #boardのローカル座標系は上端(y=0)が枠外エリアの天井になったため、
+  // 「見える盤面」を基準にした位置を求めるときは常にTOP_OVERFLOWを足す必要がある。
+  function visY(yInVisibleBoard){ return yInVisibleBoard + TOP_OVERFLOW; }
   // 盤面の底を緩やかな弧（中央がわずかに深い器状）にするためのカーブ量。
   // x=0/boardWの端で0、中央(x=boardW/2)で最大となる、上向きに凹んだ放物線オフセットを返す。
   const FLOOR_CURVE_DEPTH = 70; // px（中央が最も深くなる量）
   function floorYAt(x){
-    if(boardW<=0) return boardH;
+    if(boardW<=0) return boardH + TOP_OVERFLOW;
     const t = (x/boardW)*2 - 1; // -1(左端)〜0(中央)〜1(右端)
     const curve = -FLOOR_CURVE_DEPTH * t*t; // 中央(t=0)で0のまま、端に近づくほど浅く(上へ)なる
-    return boardH + curve;
+    return boardH + TOP_OVERFLOW + curve; // #board要素のローカル座標系（上端=0が枠外エリアの天井）における床のy座標
   }
 
   let tsums = [];      // 全ツム（物理オブジェクト）の配列。grid[][]は廃止。
@@ -1843,18 +1851,25 @@
     layoutAppFrame();
     const {w,h} = computeBoardSize();
     boardW = w; boardH = h;
+    // 枠外エリア（天井のさらに上、ツム6個分の高さ）を確保する。
+    // tsumRadiusは通常このlayoutBoard内で後ほど更新されるが、初回は0のことがあるので
+    // 前回値（またはデフォルト）を暫定的に使い、tsumRadius確定後に高さを再設定する。
+    const provisionalR = tsumRadius>0 ? tsumRadius : Math.max(13, Math.round(boardW/6/2*0.8));
+    TOP_OVERFLOW = provisionalR * 6;
     board.style.width = boardW+'px';
-    board.style.height = boardH+'px';
+    board.style.height = (boardH + TOP_OVERFLOW)+'px';
+    // ropeSvg・floorCurveSvgは#board内の子要素なので、#boardのローカル座標系（上端=0が枠外エリアの天井）に合わせて
+    // 高さ・オフセットにTOP_OVERFLOW分を加算する。
     ropeSvg.setAttribute('width', boardW);
-    ropeSvg.setAttribute('height', boardH);
+    ropeSvg.setAttribute('height', boardH + TOP_OVERFLOW);
     ropeSvg.style.width = boardW+'px';
-    ropeSvg.style.height = boardH+'px';
+    ropeSvg.style.height = (boardH + TOP_OVERFLOW)+'px';
     // 盤面の底の弧を描画（視覚的にも「少し湾曲した底」であることが分かるように）
     {
       const fc = document.getElementById('floorCurveSvg');
       if(fc){
         const h = FLOOR_CURVE_DEPTH + 4;
-        fc.style.top = (boardH - h)+'px';
+        fc.style.top = (boardH + TOP_OVERFLOW - h)+'px';
         fc.style.bottom = 'auto';
         fc.setAttribute('viewBox', `0 0 ${boardW} ${h}`);
         fc.setAttribute('width', boardW);
@@ -1864,7 +1879,7 @@
         let d = `M0,${h}`;
         for(let i=0;i<=steps;i++){
           const x = boardW*i/steps;
-          const y = h + (floorYAt(x) - boardH); // 中央=h(下端)、端はfloorYAtが小さいほど上へ
+          const y = h + (floorYAt(x) - (boardH + TOP_OVERFLOW)); // 中央=h(下端)、端はfloorYAtが小さいほど上へ
           d += ` L${x.toFixed(1)},${y.toFixed(1)}`;
         }
         d += ` L${boardW},${h} Z`;
@@ -1881,6 +1896,15 @@
       t.el.style.width = size+'px';
       t.el.style.height = size+'px';
     });
+    // tsumRadiusが確定したので、枠外エリアの高さ（ツム6個分）を正確な値に更新する。
+    const prevOverflow = TOP_OVERFLOW;
+    TOP_OVERFLOW = tsumRadius * 6;
+    board.style.height = (boardH + TOP_OVERFLOW)+'px';
+    // 枠外の高さが変わった分、既存ツムのy座標をずらしてリサイズ前後で見た目の位置がズレないようにする。
+    if(prevOverflow !== TOP_OVERFLOW && tsums.length){
+      const dy = TOP_OVERFLOW - prevOverflow;
+      tsums.forEach(t=>{ t.y += dy; t._lastY = undefined; });
+    }
   }
 
   // ダッフィーをマイツムに設定している間、マイツム自身の出現重みを上げて降ってきやすくする（おまけ効果）。
@@ -3295,7 +3319,7 @@
     hookAngry.vx = 0; hookAngry.vy = 0;
     hookAngry.ghost = true;
     hookAngry.x = boardW/2 + tsumRadius*HOOK_LINE_X_OFFSET_RATIO;
-    hookAngry.y = boardH/2;
+    hookAngry.y = visY(boardH/2);
     renderTsumPosition(hookAngry);
 
     // 中央へ戻るアニメーション（.tsumのtransform transitionによる短い移動）が
@@ -3394,8 +3418,10 @@
     feverLights.innerHTML = '';
     if(boardW<=0 || boardH<=0) return;
 
-    const offsetX = board.offsetLeft;
-    const offsetY = board.offsetTop;
+    // 光の縁取りは「見える盤面(boardFrame)」の輪郭に沿わせたいので、
+    // #board（枠外エリアぶん高さが拡張されている）ではなくboardFrameのoffsetを基準にする。
+    const offsetX = boardFrame.offsetLeft;
+    const offsetY = boardFrame.offsetTop;
     const spacing = 26; // 電球同士の間隔（px）
     const perimeter = 2*(boardW+boardH);
     const count = Math.max(8, Math.round(perimeter/spacing));
@@ -3674,7 +3700,7 @@
     if(gainedCoins>0) burstCoins(myTsums, gainedCoins);
 
     // 消去系スキルは中心点から外側へ同心円状（ウェーブ）に消えていく
-    const center = {x:boardW/2, y:boardH/2};
+    const center = {x:boardW/2, y:visY(boardH/2)};
     const spawnBomb = effectiveN >= bombChainThreshold;
     const bombSpot = spawnBomb ? eraseCountPos : null;
     popWithWave(myTsums, center, 'popping', ()=>{
@@ -3710,7 +3736,7 @@
     const suckTargets = buildSuckTargets(targets);
     if(gainedCoins>0) burstCoins(targets, gainedCoins);
 
-    const center = {x:boardW/2, y:boardH/2};
+    const center = {x:boardW/2, y:visY(boardH/2)};
     const spawnBomb = effectiveN >= bombChainThreshold;
     const bombSpot = spawnBomb ? eraseCountPos : null;
     popWithWave(targets, center, 'popping', ()=>{
@@ -3796,7 +3822,7 @@
     pauseTimer(1300);
 
     // 横一列の高さは盤面中央に固定（マイツムの位置によって毎回変わらないようにする）
-    const bandY = boardH/2;
+    const bandY = visY(boardH/2);
     const bandHalf = tsumRadius*1.8; // 約1.8列分の縦幅（以前より狭く）
     const targets = tsums
       .filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && Math.abs(t.y-bandY) <= bandHalf)
@@ -4080,7 +4106,7 @@
 
     // 画面（盤面）中央に、大ツムと同じ大きさで怒ったフック船長を新規出現させる。
     const bigR = Math.round(tsumRadius*BIG_TSUM_SCALE);
-    const boardCx = boardW/2, boardCy = boardH/2;
+    const boardCx = boardW/2, boardCy = visY(boardH/2);
     const hookAngry = spawnTsum(boardCx, boardCy, 0, 0, HOOK_ANGRY_TYPE, false);
     resizeTsum(hookAngry, bigR);
     hookAngry.vx = 0; hookAngry.vy = 0;
@@ -4191,7 +4217,7 @@
     // 盤面中央を通る斜めライン（右上から左下）を基準に、帯状の範囲を巻き込む。
     // 見た目が少し左寄りに感じられたため、基準点を少し右へオフセットしている。
     // 方向ベクトル：右上→左下方向を、鉛直から BEAST_LINE_ANGLE_DEG 度傾けた形で表す。
-    const cx = boardW/2 + tsumRadius*BEAST_LINE_X_OFFSET_RATIO, cy = boardH/2;
+    const cx = boardW/2 + tsumRadius*BEAST_LINE_X_OFFSET_RATIO, cy = visY(boardH/2);
     const angleRad = BEAST_LINE_ANGLE_DEG * Math.PI/180;
     const dirX = -Math.sin(angleRad), dirY = Math.cos(angleRad); // 右上→左下の帯の向き
     const bandHalf = tsumRadius * BEAST_BAND_HALF_RATIO;
@@ -4270,8 +4296,8 @@
 
   // 与えたy座標における逆台形の許容半幅を求める（範囲外のyなら null）
   function duffyTrapezoidHalfWidthAt(y){
-    const topY = boardH*DUFFY_TRAP_TOP_Y_RATIO;
-    const bottomY = boardH*DUFFY_TRAP_BOTTOM_Y_RATIO;
+    const topY = visY(boardH*DUFFY_TRAP_TOP_Y_RATIO);
+    const bottomY = visY(boardH*DUFFY_TRAP_BOTTOM_Y_RATIO);
     if(y < topY || y > bottomY) return null;
     const topHalf = boardW*DUFFY_TRAP_TOP_HALF_RATIO;
     const bottomHalf = boardW*DUFFY_TRAP_BOTTOM_HALF_RATIO;
@@ -4352,7 +4378,7 @@
 
     const spawnBomb = effectiveN >= bombChainThreshold;
     const bombSpot = spawnBomb ? eraseCountPos : null;
-    popWithWave(targets, {x:boardW/2, y:boardH*DUFFY_TRAP_TOP_Y_RATIO}, 'popping', ()=>{
+    popWithWave(targets, {x:boardW/2, y:visY(boardH*DUFFY_TRAP_TOP_Y_RATIO)}, 'popping', ()=>{
       unfreezeBoard();
       refillIfNeeded(targets.map(t=>t.x));
       finishSkill();
@@ -4362,8 +4388,8 @@
 
   // 逆台形の範囲を実際のジオメトリと同じ形（clip-path）で光らせる演出
   function showDuffyTrapezoidFlash(onDone){
-    const topY = boardH*DUFFY_TRAP_TOP_Y_RATIO;
-    const bottomY = boardH*DUFFY_TRAP_BOTTOM_Y_RATIO;
+    const topY = visY(boardH*DUFFY_TRAP_TOP_Y_RATIO);
+    const bottomY = visY(boardH*DUFFY_TRAP_BOTTOM_Y_RATIO);
     const topHalf = boardW*DUFFY_TRAP_TOP_HALF_RATIO;
     const bottomHalf = boardW*DUFFY_TRAP_BOTTOM_HALF_RATIO;
     const cx = boardW/2;
@@ -4403,8 +4429,8 @@
       // 第2段階（赤いマント）：左上→右下の順に直径7ツム分の円形消去を2回行う
       pauseTimer(STITCH_ANIM_MS*2 + 700);
       showSkillLabel('ヒーロー・トランスフォーム！ ファイナルバスター');
-      const r1 = {x: boardW*0.28, y: boardH*0.28};
-      const r2 = {x: boardW*0.72, y: boardH*0.72};
+      const r1 = {x: boardW*0.28, y: visY(boardH*0.28)};
+      const r2 = {x: boardW*0.72, y: visY(boardH*0.72)};
       stitchCircleErase(r1, ()=>{
         stitchCircleErase(r2, ()=>{
           unfreezeBoard();
@@ -4444,7 +4470,7 @@
   // 横一列（縦幅rows分）を光らせてから消去する
   function stitchLineErase(rows, onDone){
     // 横一列の高さは盤面中央に固定（マイツムの位置によって毎回変わらないようにする）
-    const bandY = boardH/2;
+    const bandY = visY(boardH/2);
     const bandHalf = tsumRadius*rows;
 
     const layer = document.createElement('div');
@@ -4624,7 +4650,7 @@
         if(coinsGained>0) burstCoins(allTargets, coinsGained);
       }
       showSkillLabel(label);
-      popWithWave(allTargets, {x:boardW/2, y:boardH/2}, 'popping', ()=>{
+      popWithWave(allTargets, {x:boardW/2, y:visY(boardH/2)}, 'popping', ()=>{
         refillIfNeeded(allTargets.map(t=>t.x));
         if(onRandomEraseDone){
           onRandomEraseDone();
@@ -4694,7 +4720,7 @@
           showSkillLabel(`ドリームスクランブル！ サブツム${targets.length}個＋ジャック&サリー${jackSallyTargets.length}個消去`, 'jackSallyLabel');
           // ジャック＆サリーの重ねがけスキルで消えるマイツム（ジャック＆サリー本体）は、
           // スキルゲージへの反映率を0%にする（このスキルではゲージが溜まらない）
-          popWithWave(jackSallyTargets, {x:boardW/2, y:boardH/2}, 'popping', ()=>{
+          popWithWave(jackSallyTargets, {x:boardW/2, y:visY(boardH/2)}, 'popping', ()=>{
             refillIfNeeded(jackSallyTargets.map(t=>t.x));
             finishSkill();
             checkFeverTrigger();
@@ -4737,7 +4763,7 @@
     for(let i=0;i<LINE_COUNT;i++){
       const line = document.createElement('div');
       line.className = 'sallyStitchLine';
-      line.style.top = (18 + i*(boardH-36)/(LINE_COUNT-1))+'px';
+      line.style.top = visY(18 + i*(boardH-36)/(LINE_COUNT-1))+'px';
       line.style.animationDelay = (i*120)+'ms';
       layer.appendChild(line);
     }
@@ -5023,7 +5049,7 @@
       // 画面（盤面）の中心へ向かう方向へ、ツム1個分ほど寄せて表示する。
       // これにより、盤面の端で消したときにラベルが盤面の外へはみ出しにくくなり、
       // 見やすい位置（中心寄り）に表示される。
-      const boardCx = boardW/2, boardCy = boardH/2;
+      const boardCx = boardW/2, boardCy = visY(boardH/2);
       let dx = boardCx - cx, dy = boardCy - cy;
       const dist = Math.sqrt(dx*dx+dy*dy);
       const pull = Math.min(dist, tsumRadius*1.6); // 中心に十分近い場合は寄せすぎない
@@ -5140,11 +5166,12 @@
     const spacing = tsumRadius*2; // 1段内でのツム間隔（重なりすぎないように直径ぶん空ける）
     const perRow = Math.max(1, Math.floor(boardW / spacing)); // 1段に並ぶ最大数
 
-    // 画面（盤面の見える範囲＝boardH）の外に確実に隠れる開始位置。
+    // #board要素（枠外エリアを含む）の外に確実に隠れる開始位置。
     // 以前は boardH 丸ごと分（画面の高さ全部）も上から降らせていたため、
     // 生成されてから見え始めるまでの待ち時間が長すぎた。
-    // ツム直径の数個分だけ画面外に隠せば「上空から降ってくる」演出としては十分なので、
+    // ツム直径の数個分だけ枠外エリアのさらに外に隠せば「上空から降ってくる」演出としては十分なので、
     // その最低限の高さまで開始位置を下げる。
+    // #board要素の上端はy=0（＝枠外エリアの天井）なので、そこからさらに上にオフセットする。
     const startY = -tsumRadius*3;
 
     for(let i=0;i<deficit;i++){
@@ -5232,13 +5259,15 @@
         if(Math.abs(t.vy) < 20) t.vy = 0;
       }
       // 【重要】上端の境界処理は「一度盤面内に入ったことがあるツム」にだけ適用する。
-      // refillIfNeeded は演出のため、わざと boardH よりずっと上（画面外上空）にツムを生成し、
+      // refillIfNeeded は演出のため、わざと枠外エリアよりさらに上（画面外上空）にツムを生成し、
       // そこから重力で落ちてくる様子を見せている。だが以前はここで無条件に
       // 「t.y - t.r < 0 なら t.y = t.r にスナップ」させていたため、
       // スポーン直後の次フレームで即座に画面上端へワープしてしまい、
       // 「画面外上空から降ってくる」演出が実質無効化されていた。
-      // t.enteredBoard フラグを使い、一度でも画面内(y - r >= 0)に到達したツムだけ
-      // 以後は天井として扱う（＝盤面に入ってから上に飛び出すのは防ぐが、降ってくる途中は妨げない）。
+      // t.enteredBoard フラグを使い、一度でも枠外エリア内(y - r >= 0、＝#board要素の内側)に
+      // 到達したツムだけ、以後は「枠外エリアの天井（#board要素の上端、y=0）」として扱う。
+      // 従来の「見える盤面の天井」(y = TOP_OVERFLOW)ではなく、さらに上のTOP_OVERFLOW分だけ
+      // 余裕を持たせることで、積み上がったツムが見える天井の外（枠外）へ逃げられるようにしている。
       if(!t.enteredBoard){
         if(t.y - t.r >= 0) t.enteredBoard = true;
       } else {
