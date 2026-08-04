@@ -1444,29 +1444,41 @@
   const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
 
   // ジャイロ（端末の傾き）機能：重力方向を傾きに応じて変化させる。
-  // gravityDirX/Y は正規化されていない「重力の向きベクトル」で、通常は真下 (0, 1)。
+  // gravityDirX/Y は正規化された「画面平面に投影した重力の向きベクトル」で、通常（水平に構えた状態）は真下 (0, 1)。
   // ジャイロOFF時や非対応端末では常に (0, 1) のまま。
   let gyroEnabled = false;
   let gravityDirX = 0, gravityDirY = 1;
-  const GYRO_MAX_TILT_DEG = 35; // この角度でほぼ真横まで倒れる（感度の上限）
   let gyroListenerAttached = false;
 
   function handleDeviceOrientation(e){
     if(!gyroEnabled) return;
-    // beta: 前後の傾き(-180〜180, 0が水平) / gamma: 左右の傾き(-90〜90, 0が水平)
-    const beta = e.beta || 0;
-    const gamma = e.gamma || 0;
-    const clampedBeta = Math.max(-GYRO_MAX_TILT_DEG, Math.min(GYRO_MAX_TILT_DEG, beta - 90 > -180 ? beta : beta));
-    // 端末を縦持ち基準：正面を上にして構えたときbeta≈90(前に傾けて画面を覗き込む角度)を基準の「立った状態」とみなす端末もあるため、
-    // ここでは単純にbeta自体を「奥/手前の傾き」、gammaを「左右の傾き」として扱う（大半のスマホ縦持ち利用を想定）
-    const tiltX = Math.max(-GYRO_MAX_TILT_DEG, Math.min(GYRO_MAX_TILT_DEG, gamma)) / GYRO_MAX_TILT_DEG;
-    const tiltY = Math.max(-GYRO_MAX_TILT_DEG, Math.min(GYRO_MAX_TILT_DEG, beta)) / GYRO_MAX_TILT_DEG;
-    // 常に「ある程度は下向き」の重力を保ちつつ、傾きぶんだけ横・縦に混ぜる
-    let dx = tiltX;
-    let dy = 1 - Math.abs(tiltX)*0.3 + tiltY*0.6;
-    const len = Math.sqrt(dx*dx + dy*dy) || 1;
-    gravityDirX = dx/len;
-    gravityDirY = dy/len;
+    if(e.beta==null || e.gamma==null) return;
+    computeGravityFromOrientation(e.beta, e.gamma);
+  }
+
+  // 端末の3軸回転（beta, gamma／度数法）から、画面平面（X:右+, Y:下+）に投影した
+  // 重力方向の単位ベクトルを求める。
+  // W3C DeviceOrientation の定義（Z軸=alpha→X軸=beta→Y軸=gammaの順の内因性回転）に基づき、
+  // 地球座標系での重力ベクトル(0,0,-1)を端末のローカル座標系へ変換した結果、
+  // 画面のX成分・Y成分（画面に映る向き）は次の式になる：
+  //   screenGravityX = sin(gamma)
+  //   screenGravityY = sin(beta) * cos(gamma)
+  // （alphaは画面内での回転＝コンパス方位のみに影響し、画面に対する重力の傾きには影響しないため使わない）
+  // ※盤面座標系はYが下向き正のため、"通常の縦持ち構え(beta=90,gamma=0)で重力が画面下(+Y)を向く"
+  //   という向きに合わせて符号を決めている。
+  function computeGravityFromOrientation(beta, gamma){
+    const b = beta * Math.PI/180;
+    const g = gamma * Math.PI/180;
+    const dxOut = Math.sin(g);
+    const dyOut = Math.sin(b) * Math.cos(g);
+    const len = Math.sqrt(dxOut*dxOut + dyOut*dyOut);
+    if(len < 0.05){
+      // ほぼ真上・真下を向いていて画面上での重力方向がほぼ0になる場合は
+      // 直前の向きを維持する（急に重力が消えて浮遊状態になるのを防ぐ）
+      return;
+    }
+    gravityDirX = dxOut/len;
+    gravityDirY = dyOut/len;
   }
 
   function attachGyroListener(){
