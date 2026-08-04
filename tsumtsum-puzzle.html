@@ -3626,8 +3626,8 @@
     boardFrozen = true;
     pauseTimer(1300);
 
-    // マイツム（ガストン）が集まっている高さを狙って一列を決める
-    const bandY = myTsums.reduce((s,t)=>s+t.y, 0) / myTsums.length;
+    // 横一列の高さは盤面中央に固定（マイツムの位置によって毎回変わらないようにする）
+    const bandY = boardH/2;
     const bandHalf = tsumRadius*1.8; // 約1.8列分の縦幅（以前より狭く）
     const targets = tsums
       .filter(t=> !t.isBomb && !t.ghost && Math.abs(t.y-bandY) <= bandHalf)
@@ -4274,8 +4274,8 @@
 
   // 横一列（縦幅rows分）を光らせてから消去する
   function stitchLineErase(rows, onDone){
-    const myTsums = tsums.filter(t=>t.isMine && !t.isBomb && !t.ghost);
-    const bandY = myTsums.length>0 ? myTsums.reduce((s,t)=>s+t.y,0)/myTsums.length : boardH/2;
+    // 横一列の高さは盤面中央に固定（マイツムの位置によって毎回変わらないようにする）
+    const bandY = boardH/2;
     const bandHalf = tsumRadius*rows;
 
     const layer = document.createElement('div');
