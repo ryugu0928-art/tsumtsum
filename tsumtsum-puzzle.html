@@ -1242,6 +1242,7 @@
     <div id="board">
       <div id="sallyAuraLayer" class="sallyAuraLayer"></div>
       <svg id="ropeSvg"></svg>
+      <svg id="floorCurveSvg" style="position:absolute;left:0;width:100%;pointer-events:none;z-index:2;"></svg>
       <div id="chainCountBadge"></div>
     </div>
   </div>
@@ -1606,6 +1607,15 @@
   // ------------------------------------------------------------
   let boardW = 0, boardH = 0;
   let tsumRadius = 0; // px
+  // 盤面の底を緩やかな弧（中央がわずかに深い器状）にするためのカーブ量。
+  // x=0/boardWの端で0、中央(x=boardW/2)で最大となる、上向きに凹んだ放物線オフセットを返す。
+  const FLOOR_CURVE_DEPTH = 70; // px（中央が最も深くなる量）
+  function floorYAt(x){
+    if(boardW<=0) return boardH;
+    const t = (x/boardW)*2 - 1; // -1(左端)〜0(中央)〜1(右端)
+    const curve = -FLOOR_CURVE_DEPTH * t*t; // 中央(t=0)で0のまま、端に近づくほど浅く(上へ)なる
+    return boardH + curve;
+  }
 
   let tsums = [];      // 全ツム（物理オブジェクト）の配列。grid[][]は廃止。
   let score = 0;
@@ -1685,8 +1695,30 @@
     ropeSvg.setAttribute('height', boardH);
     ropeSvg.style.width = boardW+'px';
     ropeSvg.style.height = boardH+'px';
+    // 盤面の底の弧を描画（視覚的にも「少し湾曲した底」であることが分かるように）
+    {
+      const fc = document.getElementById('floorCurveSvg');
+      if(fc){
+        const h = FLOOR_CURVE_DEPTH + 4;
+        fc.style.top = (boardH - h)+'px';
+        fc.style.bottom = 'auto';
+        fc.setAttribute('viewBox', `0 0 ${boardW} ${h}`);
+        fc.setAttribute('width', boardW);
+        fc.setAttribute('height', h);
+        fc.style.height = h+'px';
+        const steps = 24;
+        let d = `M0,${h}`;
+        for(let i=0;i<=steps;i++){
+          const x = boardW*i/steps;
+          const y = h + (floorYAt(x) - boardH); // 中央=h(下端)、端はfloorYAtが小さいほど上へ
+          d += ` L${x.toFixed(1)},${y.toFixed(1)}`;
+        }
+        d += ` L${boardW},${h} Z`;
+        fc.innerHTML = `<path d="${d}" fill="rgba(0,0,0,0.10)"></path>`;
+      }
+    }
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1));
+    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1 * 1.1));
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
@@ -4200,8 +4232,8 @@
       // 第2段階（赤いマント）：左上→右下の順に直径7ツム分の円形消去を2回行う
       pauseTimer(STITCH_ANIM_MS*2 + 700);
       showSkillLabel('ヒーロー・トランスフォーム！ ファイナルバスター');
-      const r1 = {x: boardW*0.22, y: boardH*0.22};
-      const r2 = {x: boardW*0.78, y: boardH*0.78};
+      const r1 = {x: boardW*0.28, y: boardH*0.28};
+      const r2 = {x: boardW*0.72, y: boardH*0.72};
       stitchCircleErase(r1, ()=>{
         stitchCircleErase(r2, ()=>{
           boardFrozen = false;
@@ -5019,8 +5051,8 @@
     for(const t of tsums){
       if(t.x - t.r < 0){ t.x = t.r; t.vx = -t.vx*RESTITUTION; }
       if(t.x + t.r > boardW){ t.x = boardW - t.r; t.vx = -t.vx*RESTITUTION; }
-      if(t.y + t.r > boardH){
-        t.y = boardH - t.r;
+      if(t.y + t.r > floorYAt(t.x)){
+        t.y = floorYAt(t.x) - t.r;
         if(t.vy > 0) t.vy = -t.vy*RESTITUTION;
         if(Math.abs(t.vy) < 20) t.vy = 0;
       }
@@ -5057,7 +5089,7 @@
     const cellSize = maxR*2.2;
     // 「下に支えがあるか」「深い重なりが残っているか」を毎フレーム再判定するため、まずリセットする
     for(const t of tsums){
-      t.supportedBelow = (t.y + t.r >= boardH - 0.5); // 床に接地していればそれ自体が支え
+      t.supportedBelow = (t.y + t.r >= floorYAt(t.x) - 0.5); // 床に接地していればそれ自体が支え
       t.hasDeepOverlap = false;
     }
     {
@@ -5191,7 +5223,7 @@
       for(const t of tsums){
         if(t.x - t.r < 0) t.x = t.r;
         if(t.x + t.r > boardW) t.x = boardW - t.r;
-        if(t.y + t.r > boardH) t.y = boardH - t.r;
+        if(t.y + t.r > floorYAt(t.x)) t.y = floorYAt(t.x) - t.r;
         if(t.enteredBoard && t.y - t.r < 0) t.y = t.r;
       }
     }
