@@ -285,7 +285,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:60px 14px;
+    padding:0 14px;
     min-height:0;
     overflow:hidden;
   }
@@ -1837,7 +1837,7 @@
   }
 
   function computeBoardSize(){
-    // #board は #boardFrame（見た目の枠）と全く同じ inset:6px 10px の絶対配置。
+    // #board は #boardFrame（見た目の枠）と左右10px・下6pxを揃えた絶対配置（上端はTOP_OVERFLOW分だけ枠外に広い）。
     // 当たり判定を見た目通りにするため、実際にレンダリングされた #boardFrame の
     // サイズをそのまま採用する（padding計算を独自にやり直して二重にズレるのを防ぐ）。
     const frameRect = boardFrame.getBoundingClientRect();
@@ -1848,17 +1848,45 @@
 
   function layoutBoard(){
     layoutAppFrame();
-    const {w,h} = computeBoardSize();
+    // 1st pass: #boardWrapの現在のpadding-topのままで#boardFrameの実サイズを測る。
+    // tsumRadius（ひいてはTOP_OVERFLOW）はboardWidth（左右方向）のみで決まり、
+    // padding-top（上下方向）には依存しないため、この時点のboardWで最終的なtsumRadiusを確定できる。
+    let {w,h} = computeBoardSize();
     boardW = w; boardH = h;
+    // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
+    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1 * 1.1 * 0.95));
     // 枠外エリア（天井のさらに上、ツム6個分の高さ）を確保する。
-    // tsumRadiusは通常このlayoutBoard内で後ほど更新されるが、初回は0のことがあるので
-    // 前回値（またはデフォルト）を暫定的に使い、tsumRadius確定後に高さを再設定する。
-    const provisionalR = tsumRadius>0 ? tsumRadius : Math.max(13, Math.round(boardW/6/2*0.8));
-    TOP_OVERFLOW = provisionalR * 6;
+    const prevOverflow = TOP_OVERFLOW;
+    TOP_OVERFLOW = tsumRadius * 6;
+    // #boardWrapのpadding-topを枠外エリアの高さ（TOP_OVERFLOW）に常に一致させる。
+    // こうすることで、#boardWrapのoverflow:hiddenによる可視領域の上端（枠外の端）が、
+    // 「盤面の枠（#boardFrame）の実際の天井から、ちょうどTOP_OVERFLOW分だけ上」に常に一致し、
+    // 枠外エリアが意図せず途中で切れたり、逆に余分な隙間ができたりしないようにする。
+    if(boardWrap.style.paddingTop !== TOP_OVERFLOW+'px'){
+      boardWrap.style.paddingTop = TOP_OVERFLOW+'px';
+      // padding-topの変更で#boardFrameの実サイズ（高さ）が変わるため、再計測して反映する。
+      // （boardWは左右padding変更なしのため変わらない想定だが、念のため両方取り直す）
+      const resized = computeBoardSize();
+      boardW = resized.w; boardH = resized.h;
+    }
     board.style.width = boardW+'px';
     board.style.height = (boardH + TOP_OVERFLOW)+'px';
+    // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
+    tsums.forEach(t=>{
+      t.baseR = tsumRadius;
+      t.r = t.isBig ? Math.round(tsumRadius*BIG_TSUM_SCALE) : tsumRadius;
+      const size = t.r*2;
+      t.el.style.width = size+'px';
+      t.el.style.height = size+'px';
+    });
+    // 枠外の高さが変わった分、既存ツムのy座標をずらしてリサイズ前後で見た目の位置がズレないようにする。
+    if(prevOverflow !== TOP_OVERFLOW && tsums.length){
+      const dy = TOP_OVERFLOW - prevOverflow;
+      tsums.forEach(t=>{ t.y += dy; t._lastY = undefined; });
+    }
     // ropeSvg・floorCurveSvgは#board内の子要素なので、#boardのローカル座標系（上端=0が枠外エリアの天井）に合わせて
-    // 高さ・オフセットにTOP_OVERFLOW分を加算する。
+    // 高さ・オフセットにTOP_OVERFLOW分を加算する。tsumRadius・TOP_OVERFLOW・boardW/boardHが確定した後に描画することで、
+    // 暫定値のまま描いてしまう二度手間・ズレを防ぐ。
     ropeSvg.setAttribute('width', boardW);
     ropeSvg.setAttribute('height', boardH + TOP_OVERFLOW);
     ropeSvg.style.width = boardW+'px';
@@ -1884,25 +1912,6 @@
         d += ` L${boardW},${h} Z`;
         fc.innerHTML = `<path d="${d}" fill="rgba(0,0,0,0.10)"></path>`;
       }
-    }
-    // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
-    tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1 * 1.1 * 0.95));
-    // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
-    tsums.forEach(t=>{
-      t.baseR = tsumRadius;
-      t.r = t.isBig ? Math.round(tsumRadius*BIG_TSUM_SCALE) : tsumRadius;
-      const size = t.r*2;
-      t.el.style.width = size+'px';
-      t.el.style.height = size+'px';
-    });
-    // tsumRadiusが確定したので、枠外エリアの高さ（ツム6個分）を正確な値に更新する。
-    const prevOverflow = TOP_OVERFLOW;
-    TOP_OVERFLOW = tsumRadius * 6;
-    board.style.height = (boardH + TOP_OVERFLOW)+'px';
-    // 枠外の高さが変わった分、既存ツムのy座標をずらしてリサイズ前後で見た目の位置がズレないようにする。
-    if(prevOverflow !== TOP_OVERFLOW && tsums.length){
-      const dy = TOP_OVERFLOW - prevOverflow;
-      tsums.forEach(t=>{ t.y += dy; t._lastY = undefined; });
     }
   }
 
