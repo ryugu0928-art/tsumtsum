@@ -1848,29 +1848,21 @@
 
   function layoutBoard(){
     layoutAppFrame();
-    // 1st pass: #boardWrapの現在のpadding-topのままで#boardFrameの実サイズを測る。
-    // tsumRadius（ひいてはTOP_OVERFLOW）はboardWidth（左右方向）のみで決まり、
-    // padding-top（上下方向）には依存しないため、この時点のboardWで最終的なtsumRadiusを確定できる。
-    let {w,h} = computeBoardSize();
+    const {w,h} = computeBoardSize();
     boardW = w; boardH = h;
     // ツムの半径：横に約6個並ぶくらいのサイズを基準にする
     tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1 * 1.1 * 0.95));
-    // 枠外エリア（天井のさらに上、ツム6個分の高さ）を確保する。
+    // 枠外エリア（天井のさらに上、ツム6個分の高さ。積み上がったツムが詰まらず逃げるための余白）を確保する。
     const prevOverflow = TOP_OVERFLOW;
     TOP_OVERFLOW = tsumRadius * 6;
-    // #boardWrapのpadding-topを枠外エリアの高さ（TOP_OVERFLOW）に常に一致させる。
-    // こうすることで、#boardWrapのoverflow:hiddenによる可視領域の上端（枠外の端）が、
-    // 「盤面の枠（#boardFrame）の実際の天井から、ちょうどTOP_OVERFLOW分だけ上」に常に一致し、
-    // 枠外エリアが意図せず途中で切れたり、逆に余分な隙間ができたりしないようにする。
-    if(boardWrap.style.paddingTop !== TOP_OVERFLOW+'px'){
-      boardWrap.style.paddingTop = TOP_OVERFLOW+'px';
-      // padding-topの変更で#boardFrameの実サイズ（高さ）が変わるため、再計測して反映する。
-      // （boardWは左右padding変更なしのため変わらない想定だが、念のため両方取り直す）
-      const resized = computeBoardSize();
-      boardW = resized.w; boardH = resized.h;
-    }
     board.style.width = boardW+'px';
     board.style.height = (boardH + TOP_OVERFLOW)+'px';
+    // 枠外エリアはあくまで物理演算（衝突判定）上の余白であり、見た目には出したくない。
+    // #boardWrapのpaddingで余白を作ると、盤面の枠（#boardFrame、角丸の縁）の外側にツムがはみ出して見えてしまう
+    // （「枠外の端」が「盤面の枠の端」からズレて見える）ため、#board自身をclip-pathで
+    // 「#boardFrameの実際の天井（ローカル座標でy=TOP_OVERFLOW）」の位置で常に切り取る。
+    // これにより、TOP_OVERFLOWの値がどう変化しても、見た目上のツムの可視範囲は必ず盤面の枠と一致する。
+    board.style.clipPath = `inset(${TOP_OVERFLOW}px 0px 0px 0px)`;
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
