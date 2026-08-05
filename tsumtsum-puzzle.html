@@ -839,6 +839,118 @@
 
   /* タップ範囲消去モード中のカーソルと範囲エフェクト */
   #boardWrap.buzzTapMode #board{ cursor:crosshair; }
+  #boardWrap.lukeDragMode #board{ cursor:crosshair; }
+  .lukeSlashPreview{
+    position:absolute; left:0; top:0; pointer-events:none; z-index:15;
+    background:linear-gradient(90deg, rgba(92,255,122,0.05), rgba(92,255,122,0.85), rgba(92,255,122,0.05));
+    box-shadow:0 0 10px 2px rgba(92,255,122,0.7);
+    border-radius:999px;
+    transform-origin:0 50%;
+  }
+  /* 指の位置に追従する緑の輪っか。消去範囲（帯の太さ）が広いほど輪っかは小さくなる。 */
+  .lukeFingerRing{
+    position:absolute; left:0; top:0; pointer-events:none; z-index:16;
+    border-radius:50%;
+    border:3px solid rgba(92,255,122,0.95);
+    box-shadow:0 0 10px 3px rgba(92,255,122,0.65), inset 0 0 8px 2px rgba(92,255,122,0.4);
+    transform:translate(-50%,-50%);
+    opacity:0;
+    transition:width .08s ease-out, height .08s ease-out;
+  }
+
+  /* ---------- ジェダイルーク：発動演出（巨大ルークがライトセーバーをキャッチする）---------- */
+  /* アニメーション専用の巨大ルーク本体。盤面には一切干渉しない、板面中央に浮かぶ演出用レイヤー。 */
+  #lukeIntroLayer{
+    position:absolute; inset:0;
+    pointer-events:none;
+    z-index:60;
+    opacity:0;
+  }
+  #lukeIntroLayer.show{ opacity:1; }
+  #lukeIntroBig{
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%) scale(0.2);
+    opacity:0;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,0.35));
+  }
+  /* 効果時間中はずっと表示し続けるための固定表示状態（appear/ready/slashMotionの一時アニメーションが
+     終わった後もopacity:0に戻らないよう、これらとは別にopacityを保持する） */
+  #lukeIntroBig.visible{
+    opacity:1;
+    transform:translate(-50%,-50%) scale(1);
+  }
+  #lukeIntroBig.appear{
+    animation: lukeIntroAppear 0.5s cubic-bezier(.25,1.4,.4,1) forwards;
+  }
+  @keyframes lukeIntroAppear{
+    0%{ opacity:0; transform:translate(-50%,-50%) scale(0.2) rotate(-12deg); }
+    60%{ opacity:1; transform:translate(-50%,-50%) scale(1.12) rotate(4deg); }
+    100%{ opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+  }
+  /* 右上から落ちてくるライトセーバー（柄）。キャッチされる位置へ落下する。 */
+  #lukeIntroSaber{
+    position:absolute;
+    left:88%; top:-8%;
+    width:10px; height:70px;
+    margin-left:-5px;
+    border-radius:5px;
+    background:linear-gradient(180deg,#c7ccd2,#8a8f96 45%,#5cff7a 45%,#5cff7a 100%);
+    box-shadow:0 0 10px 3px rgba(92,255,122,0.7);
+    opacity:0;
+    transform-origin:center;
+  }
+  #lukeIntroSaber.fall{
+    animation: lukeSaberFall 0.55s cubic-bezier(.5,0,.75,0) forwards;
+  }
+  @keyframes lukeSaberFall{
+    0%{ opacity:1; left:88%; top:-8%; transform:rotate(-35deg); }
+    100%{ opacity:1; left:var(--lukeCatchXPct,50%); top:var(--lukeCatchYPct,44%); transform:rotate(0deg); }
+  }
+  /* キャッチした瞬間の閃光エフェクト */
+  #lukeIntroFlash{
+    position:absolute;
+    left:50%; top:44%;
+    width:14px; height:14px;
+    margin:-7px 0 0 -7px;
+    border-radius:50%;
+    background:radial-gradient(circle, #fff, #5cff7a 55%, transparent 75%);
+    opacity:0;
+  }
+  #lukeIntroFlash.flash{
+    animation: lukeCatchFlash 0.45s ease-out forwards;
+  }
+  @keyframes lukeCatchFlash{
+    0%{ opacity:0; transform:scale(0.3); }
+    30%{ opacity:1; transform:scale(2.6); }
+    100%{ opacity:0; transform:scale(4.2); }
+  }
+  /* 巨大ルークが構え直す軽いモーション（キャッチ後） */
+  #lukeIntroBig.ready{
+    animation: lukeIntroReady 0.35s ease-out forwards;
+  }
+  @keyframes lukeIntroReady{
+    0%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+    50%{ transform:translate(-50%,-50%) scale(1.08) rotate(-6deg); }
+    100%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+  }
+  /* 演出が終わって退場する際のフェード（.visibleより優先させるため、後にopacity:1→0を明示する） */
+  #lukeIntroBig.exit{
+    animation: lukeIntroExit 0.3s ease-in forwards;
+  }
+  @keyframes lukeIntroExit{
+    0%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+    100%{ opacity:0; transform:translate(-50%,-50%) scale(0.7); }
+  }
+  /* ---------- ジェダイルーク：スキル効果中、なぞった方向へ自身も斬るモーション ---------- */
+  #lukeIntroBig.slashMotion{
+    animation: lukeSlashSwing 0.4s ease-out;
+  }
+  @keyframes lukeSlashSwing{
+    0%{ transform:translate(-50%,-50%) rotate(0deg) scale(1); }
+    40%{ transform:translate(-50%,-50%) rotate(var(--lukeSwingAngle,-30deg)) scale(1.06); }
+    100%{ transform:translate(-50%,-50%) rotate(0deg) scale(1); }
+  }
   .buzzTapCircle{
     position:absolute;
     border-radius:50%;
@@ -1319,6 +1431,11 @@
       <svg id="ropeSvg"></svg>
       <svg id="floorCurveSvg" style="position:absolute;left:0;width:100%;pointer-events:none;z-index:2;"></svg>
       <div id="chainCountBadge"></div>
+      <div id="lukeIntroLayer">
+        <div id="lukeIntroSaber"></div>
+        <div id="lukeIntroFlash"></div>
+        <div id="lukeIntroBig"></div>
+      </div>
     </div>
   </div>
 
@@ -1618,6 +1735,11 @@
       skillDesc:'1/3の確率で「縦幅2ツム分の横ライン消去」「縦幅3ツム分の横ライン消去」「変身（演出あり）」のいずれかが発動。青い水着→赤いマントと2段階変身し、最終形態では左上→右下の順に直径6ツム分の円形消去を放つ。' },
     // 赤いかご：スティッチ専用の追加サブツム。見た目以外は通常のサブツムと同じ。
     { key:'redbasket', name:'赤いかご', color:'#e05a3f', dark:'#a3341f', motif:'basket', score:130, colorGroup:'redBasketGroup', pairHidden:true },
+    // ジェダイルーク：なぞった軌跡（始点→終点の直線）に沿ってツムを消去する。
+    // なぞる速さで消去範囲の太さが変わる（速い＝細い／遅い＝太い）。スキル中は時間停止するがツムの物理は働く。
+    { key:'luke', name:'ジェダイルーク', color:'#dfe6ea', dark:'#a9b4bc', motif:'lightsaber', eyeColor:'#1c1f22', score:220, skillNeed:20, colorGroup:'jediGroup', coinBonus:-4,
+      skillName:'ジェダイの一閃',
+      skillDesc:'巨大ルークが登場し、落ちてくるライトセーバーをキャッチ！キャッチした瞬間から4秒間、なぞった方向に何度でも消せるよ！ゆっくりなぞると太く消すよ！（指を置いた地点から離した地点を結ぶ直線上を消去。最速で消すと1ツム分、ゆっくりなぞった最大は3ツム分の太さ）発動中は時間停止（ツムの物理は働く）' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -1640,6 +1762,28 @@
   let gastonRainTimer = null;
   let buzzTapMode = false;
   let buzzTapsLeft = 0;
+
+  // ジェダイルーク：スキル中はなぞった始点〜終点の直線上を消去する（効果時間中は何度でもなぞれる）
+  let lukeDragMode = false;
+  let lukeDragStart = null;   // {x,y}
+  let lukeDragStartTime = 0;
+  let lukePreviewLayer = null;
+  let lukeFingerRing = null;
+  let lukeLastMoveTime = 0;
+  let lukeLastMovePoint = null;
+  let lukeSkillActive = false;      // 発動演出〜効果時間終了までtrue（このフラグの間、盤面をなぞってもツム自体は通常操作を受け付けない）
+  let lukeIntroPlaying = false;     // 発動演出（巨大ルーク登場〜ライトセーバーキャッチ）の再生中フラグ。この間はまだなぞり操作を受け付けない
+  let lukeEffectEndTimer = null;    // 効果時間(4秒)終了タイマー
+  const LUKE_MIN_BAND_TSUM = 1;   // 最速でなぞった時の消去幅（ツム何個分）
+  const LUKE_MAX_BAND_TSUM = 3;   // ゆっくりなぞった時の消去幅（ツム何個分）
+  const LUKE_FAST_MSPPX = 0.3;    // これ以下のms/px（＝速い動き）で最小幅になる
+  const LUKE_SLOW_MSPPX = 4.0;    // これ以上のms/px（＝遅い動き）で最大幅になる
+  const LUKE_EFFECT_DURATION_MS = 4000; // スキル効果時間：ライトセーバーをキャッチしてから4秒間、何度でも消去できる
+  const LUKE_SABER_FALL_MS = 550;       // ライトセーバーが右上から落ちてくる時間
+  const LUKE_CATCH_FLASH_MS = 450;      // キャッチ時の閃光演出時間
+  const LUKE_INTRO_APPEAR_MS = 500;     // 巨大ルークが登場するアニメーション時間
+  const LUKE_RING_MAX_R = 34; // 輪っかの最大半径（＝最速でなぞった＝最も細い消去帯の時）
+  const LUKE_RING_MIN_R = 14; // 輪っかの最小半径（＝最もゆっくりなぞった＝最も太い消去帯の時）
 
   // ナミネ：スキル効果中はサブツムの1種類がソラに変化する
   let namineActive = false;
@@ -1732,6 +1876,10 @@
   const chainVal = document.getElementById('chainVal');
   const linkCountEl = document.getElementById('linkCount');
   const chainCountBadge = document.getElementById('chainCountBadge');
+  const lukeIntroLayer = document.getElementById('lukeIntroLayer');
+  const lukeIntroSaber = document.getElementById('lukeIntroSaber');
+  const lukeIntroFlash = document.getElementById('lukeIntroFlash');
+  const lukeIntroBig = document.getElementById('lukeIntroBig');
   const comboDisplay = document.getElementById('comboDisplay');
   const feverBanner = document.getElementById('feverBanner');
   const feverFill = document.getElementById('feverFill');
@@ -2465,6 +2613,40 @@
           fang.style.transform = 'translateX(-50%)';
           face.appendChild(fang);
         });
+        break;
+      }
+      case 'lightsaber': {
+        // ジェダイルーク：頭に巻いたフードの縁と、右上に構えた緑のライトセーバー
+        const hood = document.createElement('div');
+        hood.className='motif';
+        hood.style.width = size*0.86+'px';
+        hood.style.height = size*0.34+'px';
+        hood.style.left = '50%'; hood.style.top = '6%';
+        hood.style.background = '#c9a76b';
+        hood.style.borderRadius = '50% 50% 0 0 / 100% 100% 0 0';
+        hood.style.transform = 'translateX(-50%)';
+        face.appendChild(hood);
+
+        const hilt = document.createElement('div');
+        hilt.className='motif';
+        hilt.style.width = size*0.07+'px';
+        hilt.style.height = size*0.14+'px';
+        hilt.style.left = '78%'; hilt.style.top = '46%';
+        hilt.style.background = '#8a8f96';
+        hilt.style.borderRadius = '20%';
+        hilt.style.transform = 'translateX(-50%) rotate(28deg)';
+        face.appendChild(hilt);
+
+        const blade = document.createElement('div');
+        blade.className='motif';
+        blade.style.width = size*0.06+'px';
+        blade.style.height = size*0.46+'px';
+        blade.style.left = '78%'; blade.style.top = '2%';
+        blade.style.background = '#5cff7a';
+        blade.style.boxShadow = `0 0 ${size*0.05}px #5cff7a`;
+        blade.style.borderRadius = '40%';
+        blade.style.transform = 'translateX(-50%) rotate(28deg)';
+        face.appendChild(blade);
         break;
       }
       case 'jackSkull': {
@@ -3660,6 +3842,7 @@
       beast: skillBeastClaw,
       duffy: skillDuffyTrapezoid,
       stitch: skillStitchHero,
+      luke: skillLukeSlash,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -3993,6 +4176,284 @@
     const p = getBoardLocalPoint(e);
     doBuzzErase(p);
   });
+
+  // ------------------------------------------------------------
+  // ジェダイルーク：なぞった始点〜終点を結ぶ直線上を消去（速さで太さが変わる）
+  // ------------------------------------------------------------
+  board.addEventListener('pointerdown', (e)=>{
+    if(!lukeDragMode || !gameActive || lukeIntroPlaying) return;
+    e.preventDefault();
+    lukeDragStart = getBoardLocalPoint(e);
+    lukeDragStartTime = performance.now();
+    lukeLastMoveTime = lukeDragStartTime;
+    lukeLastMovePoint = lukeDragStart;
+    if(!lukePreviewLayer){
+      lukePreviewLayer = document.createElement('div');
+      lukePreviewLayer.className = 'lukeSlashPreview';
+      board.appendChild(lukePreviewLayer);
+    }
+    if(!lukeFingerRing){
+      lukeFingerRing = document.createElement('div');
+      lukeFingerRing.className = 'lukeFingerRing';
+      board.appendChild(lukeFingerRing);
+    }
+    lukePreviewLayer.style.opacity = '1';
+    lukeFingerRing.style.opacity = '1';
+    updateLukePreview(lukeDragStart, lukeDragStart);
+    updateLukeFingerRing(lukeDragStart, LUKE_SLOW_MSPPX); // 置いた瞬間はまだ動いていないため最大幅（最小輪っか）から開始
+  });
+
+  board.addEventListener('pointermove', (e)=>{
+    if(!lukeDragMode || !gameActive || !lukeDragStart || lukeIntroPlaying) return;
+    e.preventDefault();
+    const p = getBoardLocalPoint(e);
+    updateLukePreview(lukeDragStart, p);
+
+    // 直近の移動区間の速さ(ms/px)から、輪っかの大きさをリアルタイムに反映する
+    const now = performance.now();
+    if(lukeLastMovePoint){
+      const segDx = p.x - lukeLastMovePoint.x, segDy = p.y - lukeLastMovePoint.y;
+      const segDist = Math.sqrt(segDx*segDx + segDy*segDy);
+      const segMs = Math.max(1, now - lukeLastMoveTime);
+      if(segDist >= 2){
+        const msPerPx = segMs / segDist;
+        updateLukeFingerRing(p, msPerPx);
+        lukeLastMoveTime = now;
+        lukeLastMovePoint = p;
+      } else {
+        // ほとんど動いていない場合は位置だけ更新し、速度は前回の値を維持する
+        updateLukeFingerRing(p, null);
+      }
+    }
+  });
+
+  window.addEventListener('pointerup', (e)=>{
+    if(!lukeDragMode || !gameActive || !lukeDragStart || lukeIntroPlaying) return;
+    const p = getBoardLocalPoint(e);
+    const start = lukeDragStart;
+    const elapsedMs = Math.max(1, performance.now() - lukeDragStartTime);
+    lukeDragStart = null;
+    lukeLastMovePoint = null;
+    if(lukePreviewLayer) lukePreviewLayer.style.opacity = '0';
+    if(lukeFingerRing) lukeFingerRing.style.opacity = '0';
+    doLukeSlash(start, p, elapsedMs);
+  });
+
+  function updateLukePreview(p1, p2){
+    if(!lukePreviewLayer) return;
+    const dx = p2.x-p1.x, dy = p2.y-p1.y;
+    const dist = Math.max(1, Math.sqrt(dx*dx+dy*dy));
+    const angle = Math.atan2(dy, dx) * 180/Math.PI;
+    lukePreviewLayer.style.width = dist+'px';
+    lukePreviewLayer.style.height = Math.max(6, tsumRadius*0.5)+'px';
+    lukePreviewLayer.style.left = p1.x+'px';
+    lukePreviewLayer.style.top = p1.y+'px';
+    lukePreviewLayer.style.transform = `translateY(-50%) rotate(${angle}deg)`;
+  }
+
+  // 指の位置に緑の輪っかを追従させる。msPerPxがnullの場合は位置のみ更新し、大きさは変更しない。
+  function updateLukeFingerRing(p, msPerPx){
+    if(!lukeFingerRing) return;
+    lukeFingerRing.style.left = p.x+'px';
+    lukeFingerRing.style.top = p.y+'px';
+    if(msPerPx==null) return;
+    // 消去帯の太さ(bandHalf)と同じ計算式を使い、太いほど（＝ゆっくりなぞるほど）輪っかを小さくする
+    const bandHalf = lukeBandHalfFromSpeed(msPerPx);
+    const bandRatio = (bandHalf - tsumRadius*LUKE_MIN_BAND_TSUM) / (tsumRadius*(LUKE_MAX_BAND_TSUM - LUKE_MIN_BAND_TSUM));
+    const ringR = LUKE_RING_MAX_R - (LUKE_RING_MAX_R - LUKE_RING_MIN_R) * Math.max(0, Math.min(1, bandRatio));
+    lukeFingerRing.style.width = (ringR*2)+'px';
+    lukeFingerRing.style.height = (ringR*2)+'px';
+  }
+
+  // なぞる速さ(ms/px)から、消去帯の半幅（ツム半径基準）を求める
+  function lukeBandHalfFromSpeed(msPerPx){
+    const clamped = Math.min(LUKE_SLOW_MSPPX, Math.max(LUKE_FAST_MSPPX, msPerPx));
+    const ratio = (clamped - LUKE_FAST_MSPPX) / (LUKE_SLOW_MSPPX - LUKE_FAST_MSPPX);
+    const bandTsum = LUKE_MIN_BAND_TSUM + (LUKE_MAX_BAND_TSUM - LUKE_MIN_BAND_TSUM) * ratio;
+    return tsumRadius * bandTsum; // 幅＝ツムn個分 → 半幅はそのままtsumRadius*n（直径基準）
+  }
+
+  function doLukeSlash(p1, p2, elapsedMs){
+    // 効果時間中は何度でもなぞれるため、ここではモードを解除しない（効果時間終了時にfinishLukeEffectで解除する）
+    const dx = p2.x-p1.x, dy = p2.y-p1.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    // 移動距離がほぼ0（タップ相当）の場合は「非常にゆっくりなぞった」とみなし最大幅にする
+    const msPerPx = dist < 4 ? LUKE_SLOW_MSPPX : elapsedMs/dist;
+    const bandHalf = lukeBandHalfFromSpeed(msPerPx);
+
+    // 始点〜終点を結ぶ線分（両端をツム半径分だけ延長し、端でも自然に巻き込めるようにする）上の距離で対象を判定
+    let ux = dx, uy = dy;
+    const len = Math.max(1, dist);
+    ux/=len; uy/=len;
+    const ext = tsumRadius;
+    const sx = p1.x - ux*ext, sy = p1.y - uy*ext;
+    const ex = p2.x + ux*ext, ey = p2.y + uy*ext;
+    const segLen = Math.max(1, Math.hypot(ex-sx, ey-sy));
+
+    const targets = tsums.filter(t=>{
+      if(t.isBomb || (t.ghost || t.popScheduled)) return false;
+      const vx = t.x-sx, vy = t.y-sy;
+      let proj = (vx*ux + vy*uy);
+      proj = Math.max(0, Math.min(segLen, proj));
+      const cx = sx + ux*proj, cy = sy + uy*proj;
+      const ddx = t.x-cx, ddy = t.y-cy;
+      return Math.sqrt(ddx*ddx+ddy*ddy) <= bandHalf;
+    });
+
+    // 巨大ルークが、なぞった方向に自身もライトセーバーで切るモーションを行う
+    playLukeSlashMotion(p1, p2);
+
+    if(targets.length===0){
+      showSkillLabel('ジェダイの一閃！ 対象がいなかった…');
+      return;
+    }
+
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(effectiveN, TSUM_TYPES.find(t=>t.key==='luke').coinBonus);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(effectiveN > maxChain) maxChain = effectiveN;
+    chainVal.textContent = maxChain;
+
+    showSkillLabel(`ジェダイの一閃！ ${targets.length}個消去 +${bonus}`);
+    const eraseCountPos = showEraseCount(targets, effectiveN);
+    burstSparkles(targets);
+    const suckTargets = buildSuckTargets(targets);
+    if(gainedCoins>0) burstCoins(targets, gainedCoins);
+
+    const mid = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2};
+    // スキルで消したマイツムのスキルゲージ反映率は50%（gaugeRate=0.5）。ジェダイルークのスキルではボムは生成しない。
+    popWithWave(targets, mid, 'popping', ()=>{
+      refillIfNeeded(targets.map(t=>t.x));
+      checkFeverTrigger();
+    }, true, undefined, true, suckTargets, 0.5);
+  }
+
+  // なぞった方向(p1→p2)に合わせて、盤面中央に浮かぶ巨大ルークがライトセーバーで切るモーションを行う
+  function playLukeSlashMotion(p1, p2){
+    if(!lukeIntroBig) return;
+    const dx = p2.x-p1.x, dy = p2.y-p1.y;
+    const angleDeg = Math.atan2(dy, dx) * 180/Math.PI;
+    // なぞった向きに沿って軽く振りかぶるように角度を反映する
+    lukeIntroBig.style.setProperty('--lukeSwingAngle', `${Math.max(-45, Math.min(45, angleDeg*0.35 - 20))}deg`);
+    lukeIntroBig.classList.remove('slashMotion');
+    void lukeIntroBig.offsetWidth;
+    lukeIntroBig.classList.add('slashMotion');
+  }
+
+  // ジェダイルーク：スキル発動。まず演出専用の巨大ルークが盤面中央に登場し、
+  // 右上から落ちてくるライトセーバーをキャッチする。キャッチした瞬間から4秒間の効果時間が始まり、
+  // その間は何度でもなぞって消去できる（時間停止するがツムの物理は働く）。
+  function skillLukeSlash(){
+    lukeSkillActive = true;
+    lukeIntroPlaying = true;
+    lukeDragMode = false; // 演出中はまだなぞり操作を受け付けない
+    lukeDragStart = null;
+    // 時間停止するがツムの物理は働く＝skillTimeFreezeのみON（boardFrozenは使わない）
+    skillTimeFreeze = true;
+    appEl.classList.add('timeStopDimmed');
+    showSkillLabel('ジェダイの一閃！ ライトセーバーを構えるルーク…');
+    playLukeIntroAnim();
+  }
+
+  // 発動演出：巨大ルーク登場 → ライトセーバー落下 → キャッチ → 効果時間開始
+  function playLukeIntroAnim(){
+    lukeIntroLayer.classList.add('show');
+
+    // 巨大ルーク本体を（アニメーション専用として）盤面中央に描画する
+    lukeIntroBig.innerHTML = '';
+    const lukeType = TSUM_TYPES.find(t=>t.key==='luke');
+    const heroSize = Math.round(tsumRadius * BIG_TSUM_SCALE * 2.6);
+    const heroEl = createTsumEl(lukeType, true, heroSize);
+    heroEl.style.position = 'relative';
+    heroEl.style.left = '0'; heroEl.style.top = '0'; heroEl.style.transform = 'none';
+    heroEl.style.pointerEvents = 'none';
+    lukeIntroBig.appendChild(heroEl);
+    lukeIntroBig.classList.remove('appear','ready','exit','slashMotion','visible');
+    void lukeIntroBig.offsetWidth;
+    lukeIntroBig.classList.add('appear');
+
+    // ライトセーバーが右上から、ルークの手元（キャッチ位置）へ落下してくる
+    lukeIntroSaber.style.setProperty('--lukeCatchXPct', '58%');
+    lukeIntroSaber.style.setProperty('--lukeCatchYPct', '46%');
+    lukeIntroSaber.classList.remove('fall');
+    lukeIntroSaber.style.opacity = '0';
+    lukeIntroFlash.classList.remove('flash');
+
+    setTimeout(()=>{
+      void lukeIntroSaber.offsetWidth;
+      lukeIntroSaber.classList.add('fall');
+    }, LUKE_INTRO_APPEAR_MS * 0.4);
+
+    // ライトセーバーが手元に届いた＝キャッチした瞬間
+    setTimeout(()=>{
+      lukeIntroSaber.style.opacity = '0';
+      lukeIntroSaber.classList.remove('fall');
+      lukeIntroFlash.classList.remove('flash');
+      void lukeIntroFlash.offsetWidth;
+      lukeIntroFlash.classList.add('flash');
+      lukeIntroBig.classList.remove('appear');
+      void lukeIntroBig.offsetWidth;
+      lukeIntroBig.classList.add('ready','visible');
+      startLukeEffectWindow();
+    }, LUKE_INTRO_APPEAR_MS * 0.4 + LUKE_SABER_FALL_MS);
+  }
+
+  // ライトセーバーをキャッチした瞬間から、4秒間の効果時間（何度でもなぞって消去できる）を開始する
+  function startLukeEffectWindow(){
+    lukeIntroPlaying = false;
+    lukeDragMode = true;
+    lukeDragStart = null;
+    boardWrap.classList.add('lukeDragMode');
+    showSkillLabel('ジェダイの一閃！ なぞった方向に消すよ');
+
+    clearTimeout(lukeEffectEndTimer);
+    lukeEffectEndTimer = setTimeout(()=>{
+      finishLukeEffect();
+    }, LUKE_EFFECT_DURATION_MS);
+  }
+
+  // 効果時間(4秒)終了：なぞり操作を締め切り、巨大ルークの演出を退場させてスキルを終了する
+  function finishLukeEffect(){
+    clearTimeout(lukeEffectEndTimer);
+    lukeEffectEndTimer = null;
+
+    // まだ指が離されていない（なぞっている最中）場合は、その時点までの軌跡を強制的に消去してから終了する
+    if(lukeDragStart){
+      const start = lukeDragStart;
+      const end = lukeLastMovePoint || lukeDragStart;
+      const elapsedMs = Math.max(1, performance.now() - lukeDragStartTime);
+      lukeDragStart = null;
+      lukeLastMovePoint = null;
+      if(lukePreviewLayer) lukePreviewLayer.style.opacity = '0';
+      if(lukeFingerRing) lukeFingerRing.style.opacity = '0';
+      doLukeSlash(start, end, elapsedMs);
+    }
+
+    lukeDragMode = false;
+    lukeDragStart = null;
+    boardWrap.classList.remove('lukeDragMode');
+    if(lukePreviewLayer) lukePreviewLayer.style.opacity = '0';
+    if(lukeFingerRing) lukeFingerRing.style.opacity = '0';
+    lukeLastMovePoint = null;
+
+    lukeIntroBig.classList.remove('appear','ready','slashMotion','visible');
+    lukeIntroBig.classList.add('exit');
+    setTimeout(()=>{
+      lukeIntroLayer.classList.remove('show');
+      lukeIntroBig.classList.remove('exit');
+      lukeIntroBig.innerHTML = '';
+    }, 320);
+
+    lukeSkillActive = false;
+    skillTimeFreeze = false;
+    appEl.classList.remove('timeStopDimmed');
+    finishSkill();
+    checkFeverTrigger();
+  }
 
   // ------------------------------------------------------------
   // ナミネ：スキル効果中、盤面で2番目に多いサブツムをソラに変化させる
@@ -5661,6 +6122,19 @@
     buzzTapMode = false;
     buzzTapsLeft = 0;
     boardWrap.classList.remove('buzzTapMode');
+    lukeDragMode = false;
+    lukeDragStart = null;
+    boardWrap.classList.remove('lukeDragMode');
+    if(lukePreviewLayer){ lukePreviewLayer.style.opacity = '0'; }
+    if(lukeFingerRing){ lukeFingerRing.style.opacity = '0'; }
+    lukeSkillActive = false;
+    lukeIntroPlaying = false;
+    clearTimeout(lukeEffectEndTimer);
+    lukeEffectEndTimer = null;
+    if(lukeIntroLayer){ lukeIntroLayer.classList.remove('show'); }
+    if(lukeIntroBig){ lukeIntroBig.classList.remove('appear','ready','exit','slashMotion','visible'); lukeIntroBig.innerHTML=''; }
+    if(lukeIntroSaber){ lukeIntroSaber.classList.remove('fall'); lukeIntroSaber.style.opacity='0'; }
+    if(lukeIntroFlash){ lukeIntroFlash.classList.remove('flash'); }
     namineActive = false;
     clearTimeout(namineEndTimer);
     namineTransformedKey = null;
@@ -5722,6 +6196,19 @@
     sallyActive = false; sallyRemainingMs = 0;
     buzzTapMode = false;
     boardWrap.classList.remove('buzzTapMode');
+    lukeDragMode = false;
+    lukeDragStart = null;
+    boardWrap.classList.remove('lukeDragMode');
+    if(lukePreviewLayer){ lukePreviewLayer.style.opacity = '0'; }
+    if(lukeFingerRing){ lukeFingerRing.style.opacity = '0'; }
+    lukeSkillActive = false;
+    lukeIntroPlaying = false;
+    clearTimeout(lukeEffectEndTimer);
+    lukeEffectEndTimer = null;
+    if(lukeIntroLayer){ lukeIntroLayer.classList.remove('show'); }
+    if(lukeIntroBig){ lukeIntroBig.classList.remove('appear','ready','exit','slashMotion','visible'); lukeIntroBig.innerHTML=''; }
+    if(lukeIntroSaber){ lukeIntroSaber.classList.remove('fall'); lukeIntroSaber.style.opacity='0'; }
+    if(lukeIntroFlash){ lukeIntroFlash.classList.remove('flash'); }
     clearTimeout(namineEndTimer);
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
