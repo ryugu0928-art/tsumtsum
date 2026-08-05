@@ -4281,13 +4281,26 @@
     const msPerPx = dist < 4 ? LUKE_SLOW_MSPPX : elapsedMs/dist;
     const bandHalf = lukeBandHalfFromSpeed(msPerPx);
 
-    // 始点〜終点を結ぶ線分（両端をツム半径分だけ延長し、端でも自然に巻き込めるようにする）上の距離で対象を判定
+    // 始点〜終点を結ぶ線分を、なぞった方向のまま盤面の端（積み上がったツムが隠れる枠外エリアの天井も含む）
+    // まで延長し、画面上では見えない・指の届かない範囲にいるツムも巻き込めるようにする。
     let ux = dx, uy = dy;
     const len = Math.max(1, dist);
     ux/=len; uy/=len;
-    const ext = tsumRadius;
-    const sx = p1.x - ux*ext, sy = p1.y - uy*ext;
-    const ex = p2.x + ux*ext, ey = p2.y + uy*ext;
+    // 盤面のローカル座標系（#board基準）における四辺：上端は枠外エリアの天井(y=0)まで含む
+    const boardTop = 0, boardBottom = visY(boardH), boardLeft = 0, boardRight = boardW;
+    // 線分の方向ベクトルに沿って、点pからboard境界に届くまでの距離tを求める（tが負なら逆方向）
+    function distToBoundary(px, py, dirX, dirY){
+      let best = 0;
+      if(dirX > 1e-6) best = Math.max(best, (boardRight - px)/dirX);
+      else if(dirX < -1e-6) best = Math.max(best, (boardLeft - px)/dirX);
+      if(dirY > 1e-6) best = Math.max(best, (boardBottom - py)/dirY);
+      else if(dirY < -1e-6) best = Math.max(best, (boardTop - py)/dirY);
+      return Math.max(tsumRadius, best);
+    }
+    const extStart = distToBoundary(p1.x, p1.y, -ux, -uy);
+    const extEnd = distToBoundary(p2.x, p2.y, ux, uy);
+    const sx = p1.x - ux*extStart, sy = p1.y - uy*extStart;
+    const ex = p2.x + ux*extEnd, ey = p2.y + uy*extEnd;
     const segLen = Math.max(1, Math.hypot(ex-sx, ey-sy));
 
     const targets = tsums.filter(t=>{
