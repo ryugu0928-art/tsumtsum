@@ -1587,6 +1587,12 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">スキルゲージ連打が反応しない不具合を修正</div>
+          <ul>
+            <li>ダブルタップズーム防止の処理が、スキルゲージ等のボタン連打まで無効化してしまっていたため、ボタン類は対象から除外しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">iPhone Safariでのダブルタップズームを防止</div>
           <ul>
             <li>iPhoneのSafariで遊んでいる際、短い間隔で連続タップするとページがズームされ、戻せなくなる不具合を修正しました。</li>
@@ -3136,10 +3142,15 @@
   // ページ全体がダブルタップズームされてしまうことがある（一度拡大されるとuser-scalable=noでも
   // 手動では戻せなくなる）。touchend時点でのタップ間隔を監視し、ダブルタップとみなせる場合は
   // ブラウザ標準のズーム挙動そのものをキャンセルすることで、拡大が起きないようにする。
+  // ただし、スキルゲージやボタンなど「連打して操作するUI要素」の上でpreventDefaultしてしまうと、
+  // touchendに続いて発火するはずのclickイベントごと握りつぶされ、連打が反応しなくなってしまう。
+  // そのため、操作可能なUI要素の上でのタップはこの対象から除外する。
+  const DOUBLE_TAP_ZOOM_GUARD_EXCLUDE_SELECTOR = 'button, .skillRingWrap, a, input, select, textarea, [role="button"]';
   let lastTouchEndTime = 0;
   document.addEventListener('touchend', (e)=>{
     const now = Date.now();
-    if(now - lastTouchEndTime <= 350){
+    const isInteractiveTarget = e.target.closest && e.target.closest(DOUBLE_TAP_ZOOM_GUARD_EXCLUDE_SELECTOR);
+    if(!isInteractiveTarget && now - lastTouchEndTime <= 350){
       e.preventDefault();
     }
     lastTouchEndTime = now;
