@@ -1402,11 +1402,14 @@
 
   .resultRow{
     display:flex;
+    flex-wrap:wrap;
     justify-content:space-around;
+    row-gap:8px;
     margin:10px 0 4px;
     font-size:12px;
     color:#9a86b8;
   }
+  .resultRow > div{ min-width:64px; }
   .resultRow b{ display:block; font-size:16px; color:var(--accent-purple); }
 
   #skillInfoBox{
@@ -1587,6 +1590,31 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">プレイ時間の計算方法を変更</div>
+          <ul>
+            <li>リザルト画面のプレイ時間を、タイムボーナスの合計ではなく実際に経過した時間（スキルなどの時間停止演出中の秒数も含む）を計測する方式に変更しました。一時停止メニューを開いていた時間は引き続き含みません。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">ボムが消えずに残ってしまう不具合を修正</div>
+          <ul>
+            <li>ボムの爆発演出中（消去演出のDOM要素が残っている約0.3秒の間）に連打すると、同じボムが二重に発火してしまう場合があったため、一度発火したボムは即座にタップを受け付けないようにしました。</li>
+            <li>周囲に巻き込めるツムが1つも無い場合に、ボム自身も消えずに残ってしまう不具合も合わせて修正しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">リザルト画面にプレイ時間を追加</div>
+          <ul>
+            <li>タイムボーナスなどで延長した分も含めた、実際にプレイした合計時間をリザルト画面に表示するようにしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">盤面の端にツムが積み上がりやすい問題を緩和</div>
+          <ul>
+            <li>不足分のツムを補充する際、盤面の横幅からはみ出した分がすべて同じ端の座標に重なって生成されていたのが原因でした。はみ出した場合は少しばらけて生成されるようにし、端に固まって積み上がりにくくしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">ツムが消えるアニメーション速度を調整</div>
           <ul>
             <li>ツムが1個ずつ消えるアニメーションの速度を20%遅くしました。</li>
@@ -1692,6 +1720,7 @@
         <div>コイン<b id="finalCoin">0</b></div>
         <div>フィーバー回数<b id="finalFever">0</b></div>
         <div>Exp<b id="finalExp">0</b></div>
+        <div>プレイ時間<b id="finalPlayTime">0:00</b></div>
       </div>
       <button class="btn" id="retryBtn">もういちど</button>
     </div>
@@ -2082,6 +2111,7 @@
   const finalCoin = document.getElementById('finalCoin');
   const finalFever = document.getElementById('finalFever');
   const finalExp = document.getElementById('finalExp');
+  const finalPlayTime = document.getElementById('finalPlayTime');
   const charPreview = document.getElementById('charPreview');
   const skillInfoBox = document.getElementById('skillInfoBox');
   const itemOverlay = document.getElementById('itemOverlay');
@@ -2121,6 +2151,10 @@
   let coins = 0;
   let exp = 0;
   let timeLeft = GAME_TIME;
+  let totalPlayTimeSec = 0; // 実際にプレイした合計時間（秒）。スキル等の時間停止演出中の秒数も含む（一時停止メニューを開いていた時間は除く）。リザルト表示用。
+  let gameStartTimestamp = 0;   // ゲーム開始時刻（Date.now()）
+  let pausedAccumMs = 0;        // 一時停止メニューを開いていた合計時間（ミリ秒）。プレイ時間の計算から差し引く。
+  let pauseStartTimestamp = 0;  // 直近の一時停止開始時刻（Date.now()）
   let maxChain = 0;
   let feverCount = 0;
   let timerHandle = null;
@@ -5711,6 +5745,14 @@
 
   function detonateBomb(bombTsum){
     if(!gameActive || skillActive || gamePaused) return;
+    // 爆発演出中（removeTsumで配列からは消えているがDOM要素はまだ300ms残っている間）に、
+    // 連打やチェーンで同じボムへ再度触れてしまうと、この関数が二重に実行され、
+    // スコアやコイン・エフェクトが二重発生したり、最悪DOM要素の削除タイミングがずれて
+    // 「消えずに残ってもう一回使える」ように見える不具合につながる。
+    // detonating フラグを立てて即座にガードすることで、同じボムへの二重発火を防ぐ。
+    if(bombTsum.detonating) return;
+    bombTsum.detonating = true;
+    bombTsum.el.style.pointerEvents = 'none';
     // ボムの爆発は、盤面上で消去演出待ち（幽霊状態）のツムを強制的に0フレームで消し切り、
     // 詰まっていた落下を即座に再開させる（ボムキャンセル）
     forceFinishAllGhosts();
@@ -5722,7 +5764,17 @@
       return Math.sqrt(dx*dx+dy*dy) <= radius;
     });
     const n = affected.length;
-    if(n===0) return;
+    if(n===0){
+      // 周囲に巻き込めるツムが1つも無い場合でも、タップされたボム自身は必ず消す
+      bombTsum.el.classList.add('bombPopping');
+      removeTsum(bombTsum);
+      setTimeout(()=>{
+        bombTsum.el.remove();
+        refillIfNeeded([bombTsum.x]);
+        checkFeverTrigger();
+      }, 300);
+      return;
+    }
     const bombType = bombTsum.bombType || 'normal';
     const effectiveN = affected.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
     bumpCombo();
@@ -5960,7 +6012,13 @@
       const half = Math.ceil(indexInRow/2);
       const offset = (indexInRow % 2 === 0 ? half : -half);
       const rawX = centerX + offset*spacing;
-      const x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, rawX));
+      // 盤面端をはみ出す場合にそのままクランプすると、複数個のツムが端の同じx座標に
+      // 重なって生成されてしまい、そこが起点になって端に積み上がりやすくなる。
+      // そのため、はみ出した分は少しランダムにばらけさせて、同じ場所に固まらないようにする。
+      let x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, rawX));
+      if(rawX < tsumRadius || rawX > boardW-tsumRadius){
+        x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, x + (Math.random()-0.5)*spacing*0.8));
+      }
       // 段が上がるほど、さらに高い画面外から降ってくる
       const y = startY - rowIdx*(tsumRadius*2.2) - Math.random()*tsumRadius*0.6;
       const t = spawnTsum(x, y, (Math.random()-0.5)*20, 0);
@@ -6440,6 +6498,10 @@
     pauseOverlay.classList.remove('show');
     score = 0; coins = 0; exp = 0; maxChain = 0; feverCount = 0;
     timeLeft = GAME_TIME + (itemExtraTime ? 5 : 0);
+    totalPlayTimeSec = 0;
+    gameStartTimestamp = Date.now(); // 実際の経過時間（スキル等の時間停止演出中の秒数も含む）を計測する基準時刻
+    pausedAccumMs = 0;
+    pauseStartTimestamp = 0;
     comboCount = 0;
     if(comboTimer) clearTimeout(comboTimer);
     feverGauge = 0; inFever = false; feverRemainingMs = 0;
@@ -6568,7 +6630,21 @@
     finalCoin.textContent = coins.toLocaleString();
     finalFever.textContent = feverCount;
     finalExp.textContent = exp;
+    // 実際に経過した時間から、一時停止メニューを開いていた時間だけを差し引く。
+    // スキル等の時間停止演出（boardFrozen・skillTimeFreeze等）中の秒数はここでは除外せず、
+    // そのままプレイ時間としてカウントする。
+    if(pauseStartTimestamp){ pausedAccumMs += Date.now() - pauseStartTimestamp; pauseStartTimestamp = 0; }
+    totalPlayTimeSec = gameStartTimestamp ? Math.max(0, (Date.now() - gameStartTimestamp - pausedAccumMs)/1000) : 0;
+    finalPlayTime.textContent = formatPlayTime(totalPlayTimeSec);
     setTimeout(()=>{ resultOverlay.classList.remove('hidden'); }, 400);
+  }
+
+  // プレイ時間（秒）を「分:秒」形式の文字列に整形する（例：1分5秒→'1:05'）
+  function formatPlayTime(totalSec){
+    const s = Math.max(0, Math.round(totalSec));
+    const m = Math.floor(s/60);
+    const rem = s%60;
+    return m+':'+String(rem).padStart(2,'0');
   }
 
   // ------------------------------------------------------------
@@ -6650,6 +6726,7 @@
   function openPauseMenu(){
     if(!gameActive || gamePaused) return;
     gamePaused = true;
+    pauseStartTimestamp = Date.now(); // 一時停止していた時間はプレイ時間から除外するため開始時刻を記録
     clearInterval(timerHandle);
     pauseOverlay.classList.add('show');
     updateGyroToggleUI();
@@ -6658,6 +6735,8 @@
   function closePauseMenu(){
     if(!gamePaused) return;
     gamePaused = false;
+    if(pauseStartTimestamp) pausedAccumMs += Date.now() - pauseStartTimestamp;
+    pauseStartTimestamp = 0;
     pauseOverlay.classList.remove('show');
     lastFrameTime = 0; // 再開直後のdt急増を防ぐ（frameLoop側でも保険をかけているが念のため）
     if(gameActive) timerHandle = setInterval(tick, 1000);
