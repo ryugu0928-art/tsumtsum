@@ -957,6 +957,67 @@
     40%{ transform:translate(-50%,-50%) rotate(var(--lukeSwingAngle,-30deg)) scale(1.06); }
     100%{ transform:translate(-50%,-50%) rotate(0deg) scale(1); }
   }
+
+  /* ---------- ガーディアンルーク：発動演出（巨大ガーディアンルークが中央に登場）---------- */
+  /* アニメーション専用の巨大ガーディアンルーク本体。盤面には一切干渉しない演出用レイヤー。 */
+  #guardianLukeIntroLayer{
+    position:absolute; inset:0;
+    pointer-events:none;
+    z-index:60;
+    opacity:0;
+  }
+  #guardianLukeIntroLayer.show{ opacity:1; }
+  #guardianLukeIntroBig{
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%) scale(0.2);
+    opacity:0;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,0.4)) drop-shadow(0 0 14px rgba(92,255,122,0.5));
+  }
+  #guardianLukeIntroBig.visible{
+    opacity:1;
+    transform:translate(-50%,-50%) scale(1);
+  }
+  #guardianLukeIntroBig.appear{
+    animation: guardianLukeIntroAppear 0.5s cubic-bezier(.25,1.4,.4,1) forwards;
+  }
+  @keyframes guardianLukeIntroAppear{
+    0%{ opacity:0; transform:translate(-50%,-50%) scale(0.2) rotate(-12deg); }
+    60%{ opacity:1; transform:translate(-50%,-50%) scale(1.12) rotate(4deg); }
+    100%{ opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+  }
+  #guardianLukeIntroBig.exit{
+    animation: guardianLukeIntroExit 0.3s ease-in forwards;
+  }
+  @keyframes guardianLukeIntroExit{
+    0%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+    100%{ opacity:0; transform:translate(-50%,-50%) scale(0.7); }
+  }
+  /* 横ライン消去のたびに軽く構え直すモーション */
+  #guardianLukeIntroBig.slashMotion{
+    animation: guardianLukeSlash 0.4s ease-out;
+  }
+  @keyframes guardianLukeSlash{
+    0%{ transform:translate(-50%,-50%) rotate(0deg) scale(1); }
+    40%{ transform:translate(-50%,-50%) rotate(-16deg) scale(1.08); }
+    100%{ transform:translate(-50%,-50%) rotate(0deg) scale(1); }
+  }
+
+  /* ガーディアンルークの緑ボム：ドラッグ中に追従する引き寄せ範囲円 */
+  .guardianPullCircle{
+    position:absolute;
+    border-radius:50%;
+    pointer-events:none;
+    z-index:55;
+    border:3px solid rgba(92,255,122,0.85);
+    background:radial-gradient(circle, rgba(92,255,122,0.16), rgba(92,255,122,0.04) 70%, transparent 100%);
+    box-shadow:0 0 16px 4px rgba(92,255,122,0.5), inset 0 0 12px 3px rgba(92,255,122,0.3);
+    transform:translate(-50%,-50%);
+    opacity:0;
+    transition:opacity .12s ease-out;
+  }
+  .guardianPullCircle.show{ opacity:1; }
+
   .buzzTapCircle{
     position:absolute;
     border-radius:50%;
@@ -1020,6 +1081,14 @@
       #ff6fa5 0deg, #ff9640 90deg, #ff6fa5 180deg, #ff2d55 270deg, #ff6fa5 360deg);
   }
   .tsum.bomb.bombScore .face::before{ content:'×2'; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.65em; color:#a80030; background:radial-gradient(circle at 35% 30%, #ffffff, #ffe0ea 55%, #ffb0c8 100%); }
+  .tsum.bomb.bombGuardian .face{
+    background: conic-gradient(from 0deg,
+      #5cff7a 0deg, #2fbf50 90deg, #135c22 180deg, #2fbf50 270deg, #5cff7a 360deg);
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.18), inset 0 5px 8px rgba(255,255,255,0.4),
+      0 0 0 3px #fff, 0 0 14px 3px rgba(92,255,122,0.85);
+  }
+  .tsum.bomb.bombGuardian .face::before{ content:'⚔'; display:flex; align-items:center; justify-content:center; font-size:0.85em; color:#135c22; background:radial-gradient(circle at 35% 30%, #eaffef, #b7ffc7 55%, #5cff7a 100%); }
+  .tsum.bomb.bombGuardian::after{ border-color: rgba(92,255,122,0.9); }
 
   .burstText{
     position:absolute;
@@ -1550,6 +1619,9 @@
         <div id="lukeIntroFlash"></div>
         <div id="lukeIntroBig"></div>
       </div>
+      <div id="guardianLukeIntroLayer">
+        <div id="guardianLukeIntroBig"></div>
+      </div>
     </div>
   </div>
 
@@ -1590,6 +1662,52 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">ガーディアンルークの数値・演出調整</div>
+          <ul>
+            <li>スキル効果中に降ってくるツムの比率を、ガーディアンルーク：ダークトルーパー＝1：9に調整しました。</li>
+            <li>最初の横ライン消去、ガーディアンルークをつないでの横ライン消去、特別なボムのドラッグ中〜消去までの間、それぞれしっかり時間が止まるように演出を調整しました。</li>
+            <li>特別なボムを割ったあと〜再度ガーディアンルークをつなぐまでの間、時間が止まったままになっていた不具合を修正しました。</li>
+            <li>スキル効果中はフィーバーに突入できなかった不具合を修正し、通常時と同じくゲージが溜まればフィーバーに突入できるようにしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">ガーディアンルークの不具合修正</div>
+          <ul>
+            <li>ガーディアンルークをつないでも、盤面中央の横一列の範囲外にいると消えない不具合を修正しました。つないだガーディアンルーク自身は、範囲外にいても必ず消去対象に含まれるようにしました。</li>
+            <li>特別な緑のボムが、繋いだ最後のツムの位置に出現していたのを、常に画面（盤面）中央に出現するように修正しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">ガーディアンルークの数値調整</div>
+          <ul>
+            <li>特別な緑のボムの引き寄せ範囲を、半径8ツム分に拡大しました。</li>
+            <li>スキル効果中に降ってくるツムの比率を、ガーディアンルーク：ダークトルーパー＝1.5：8.5に調整しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">ガーディアンルークのバランス調整</div>
+          <ul>
+            <li>特別な緑のボムの引き寄せ範囲を、直径8ツム分から直径12ツム分に拡大しました。</li>
+            <li>スキル効果中に新しく降ってくるツムを、ガーディアンルークよりダークトルーパーの方が多くなる比率（3:7）に調整しました。</li>
+            <li>スキル効果中（発動演出が終わったあと）はスキルゲージが溜まらないようにしました（ガストンのハンティングショット後と同様の仕様）。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">ガーディアンルークの仕様を調整</div>
+          <ul>
+            <li>スキル発動時、盤面のサブツムを全てガーディアンルーク・ダークトルーパーに変化させ、効果中に新しく降ってくるツムもこの2種類のみになるようにしました（元のサブツムが残らないように）。</li>
+            <li>特別な緑のボムは、使うたびに必ず消えるようにし、再びガーディアンルークをつなぐことで次のボムが出現する流れに変更しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">新ツム「ガーディアンルーク」を追加</div>
+          <ul>
+            <li>スキル発動時、盤面の一部がダークトルーパーに変化し、2ツム分の幅の横ライン消去。その後、盤面のガーディアンルーク同士をつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、特別な緑のボムが出現します。</li>
+            <li>緑のボムはドラッグして直径8ツム分の範囲内のダークトルーパーやマジカルボムを引き寄せ、指を離すとまとめて消去。5回使うとスキル効果が終了します。</li>
+            <li>スキル発動に必要なツム数は15個、横ライン消去のコイン補正-2、特別なボムのコイン補正-4です。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">プレイ時間の計算方法を変更</div>
           <ul>
             <li>リザルト画面のプレイ時間を、タイムボーナスの合計ではなく実際に経過した時間（スキルなどの時間停止演出中の秒数も含む）を計測する方式に変更しました。一時停止メニューを開いていた時間は引き続き含みません。</li>
@@ -1949,6 +2067,12 @@
     { key:'luke', name:'ジェダイルーク', color:'#dfe6ea', dark:'#a9b4bc', motif:'lightsaber', eyeColor:'#1c1f22', score:220, skillNeed:20, colorGroup:'jediGroup', coinBonus:-4,
       skillName:'ジェダイの一閃',
       skillDesc:'巨大ルークが登場し、落ちてくるライトセーバーをキャッチ！キャッチした瞬間から4秒間、なぞった方向に何度でも消せるよ！ゆっくりなぞると太く消すよ！（指を置いた地点から離した地点を結ぶ直線上を消去。最速で消すと1ツム分、ゆっくりなぞった最大は3ツム分の太さ）発動中は時間停止（ツムの物理は働く）' },
+    // ガーディアンルーク：スキル中は盤面の一部がダークトルーパーに変化し、まず2ツム分の横ライン消去。
+    // その後、盤面のガーディアンルーク同士をチェーンでつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、
+    // 特別な緑のボムが出現する。緑のボムはドラッグして範囲内のツムを引き寄せてから指を離すと消去（5回まで）。
+    { key:'guardianluke', name:'ガーディアンルーク', color:'#4a5a6a', dark:'#242e38', motif:'guardianHelmet', eyeColor:'#5cff7a', score:240, skillNeed:15, colorGroup:'jediGroup2', coinBonus:-2,
+      skillName:'ガーディアン・オーダー',
+      skillDesc:'横ライン+少しの間2種類になるよ！（発動時、大きなガーディアンルークが中央に出現し、盤面の一部がダークトルーパーに変化してから2ツム分の幅の横ライン消去。その後、ガーディアンルークをチェーンでつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、特別な緑のボムが出現する。緑のボムはドラッグして直径8ツム分の範囲内のダークトルーパー・マジカルボムを引き寄せ、指を離すとまとめて消去。5回使うと効果終了）' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -1957,6 +2081,9 @@
 
   // ソラ：ナミネのスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
   const SORA_TYPE = { key:'sora', name:'ソラ', color:'#2b2f4a', dark:'#181a2e', motif:'key', score:0, colorGroup:'navy' };
+
+  // ダークトルーパー：ガーディアンルークのスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
+  const DARKTROOPER_TYPE = { key:'darktrooper', name:'ダークトルーパー', color:'#2a2d33', dark:'#121316', eyeColor:'#ff3b3b', motif:'darktrooper', score:0, colorGroup:'navy2' };
 
   // ヒーロースタイルスティッチ<変身>：変身後の見た目専用ツム（通常のTSUM_TYPESには含めず、変身時にtransformTsumTypeで差し替える）
   const STITCH_FORM1_TYPE = { key:'stitchForm1', name:'ヒーロースタイルスティッチ（青い水着）', color:'#2f7ad9', dark:'#164a8f', motif:'stitchEarsForm1', score:230, colorGroup:'blue2' };
@@ -1999,6 +2126,19 @@
   let namineActive = false;
   let namineRemainingMs = 0; // 残り時間（ミリ秒）。frameLoop内で、時間停止中や一時停止中は減らさない。
   let namineTransformedKey = null; // ソラに変化させた元のツムのkey（効果終了時に戻すため）
+
+  // ガーディアンルーク：発動演出〜緑ボム5回消費までの一連の流れを管理する
+  let guardianLukeActive = false;       // スキル発動〜効果終了までtrue（この間、ガーディアンルークのチェーンは専用フローで処理する）
+  let guardianLukeIntroPlaying = false; // 発動演出（巨大ガーディアンルーク登場〜ダークトルーパー変化〜1回目の横ライン消去）の再生中フラグ
+  let guardianLukeTransformedKeys = []; // ダークトルーパーに変化させた元のツムのkey一覧（効果終了時に戻すため）
+  let guardianBombActive = false;       // 特別な緑のボムが盤面に出現している間true
+  let guardianBombUsesLeft = 0;         // 緑のボムの残り使用回数（最大5回）
+  let guardianBombDragging = false;     // 現在ドラッグ中かどうか
+  let guardianBombTsum = null;          // 現在盤面にある緑のボムのツム参照
+  let guardianBombDragPoint = null;     // ドラッグ中の指の座標（盤面ローカル座標）
+  let guardianPullCircle = null;        // ドラッグ中に表示する引き寄せ範囲円のDOM要素
+  const GUARDIAN_BOMB_MAX_USES = 5;
+  const GUARDIAN_BOMB_PULL_RADIUS_TSUM = 8; // 半径8ツム分
 
   // 最終決戦フック船長：スキル効果中は「怒ったフック船長」が盤面に出現し、
   // フック船長本体と繋ぐたびに斜めライン消去が発生、消去範囲がどんどん拡大していく。
@@ -2091,6 +2231,8 @@
   const lukeIntroSaber = document.getElementById('lukeIntroSaber');
   const lukeIntroFlash = document.getElementById('lukeIntroFlash');
   const lukeIntroBig = document.getElementById('lukeIntroBig');
+  const guardianLukeIntroLayer = document.getElementById('guardianLukeIntroLayer');
+  const guardianLukeIntroBig = document.getElementById('guardianLukeIntroBig');
   const comboDisplay = document.getElementById('comboDisplay');
   const feverBanner = document.getElementById('feverBanner');
   const feverFill = document.getElementById('feverFill');
@@ -2312,6 +2454,12 @@
     // ナミネのスキル効果中、変化対象に選ばれた種類が新規に降ってくる場合はソラとして生成する
     if(namineActive && picked.key===namineTransformedKey){
       return SORA_TYPE;
+    }
+    // ガーディアンルークのスキル効果中（発動演出が終わったあと）は、新しく降ってくるサブツムも
+    // マイツム以外はすべてガーディアンルーク／ダークトルーパーのどちらかになるようにする
+    // （ガーディアンルーク：ダークトルーパー＝1：9の比率にする）
+    if(guardianLukeActive && !guardianLukeIntroPlaying && !isMineType(picked)){
+      return Math.random()<0.1 ? TSUM_TYPES.find(t=>t.key==='guardianluke') : DARKTROOPER_TYPE;
     }
     // スティッチが変身中は、新しく降ってくるマイツムも今の変身後の姿にする
     if(myTsumKey==='stitch' && picked.key==='stitch' && stitchStage>0){
@@ -2870,6 +3018,78 @@
         face.appendChild(blade);
         break;
       }
+      case 'guardianHelmet': {
+        // ガーディアンルーク：兜のバイザーの縁と、両肩の装甲、そして左手側に構えた緑のライトセーバー
+        const visor = document.createElement('div');
+        visor.className='motif';
+        visor.style.width = size*0.62+'px';
+        visor.style.height = size*0.2+'px';
+        visor.style.left = '50%'; visor.style.top = '38%';
+        visor.style.background = '#161a1e';
+        visor.style.borderRadius = '30%';
+        visor.style.boxShadow = `inset 0 0 ${size*0.04}px #5cff7a, 0 0 ${size*0.05}px rgba(92,255,122,0.6)`;
+        visor.style.transform = 'translateX(-50%)';
+        face.appendChild(visor);
+
+        [ -1, 1 ].forEach(sign=>{
+          const pauldron = document.createElement('div');
+          pauldron.className='motif';
+          pauldron.style.width = size*0.22+'px';
+          pauldron.style.height = size*0.22+'px';
+          pauldron.style.left = (50+sign*38)+'%'; pauldron.style.top = '8%';
+          pauldron.style.background = `linear-gradient(180deg, ${lighten(type.color)}, ${type.dark})`;
+          pauldron.style.borderRadius = '30%';
+          pauldron.style.transform = `translateX(-50%) rotate(${sign*18}deg)`;
+          pauldron.style.boxShadow = 'inset 0 2px 3px rgba(255,255,255,0.25)';
+          face.appendChild(pauldron);
+        });
+
+        const hilt = document.createElement('div');
+        hilt.className='motif';
+        hilt.style.width = size*0.07+'px';
+        hilt.style.height = size*0.14+'px';
+        hilt.style.left = '22%'; hilt.style.top = '46%';
+        hilt.style.background = '#8a8f96';
+        hilt.style.borderRadius = '20%';
+        hilt.style.transform = 'translateX(-50%) rotate(-28deg)';
+        face.appendChild(hilt);
+
+        const blade = document.createElement('div');
+        blade.className='motif';
+        blade.style.width = size*0.06+'px';
+        blade.style.height = size*0.46+'px';
+        blade.style.left = '22%'; blade.style.top = '2%';
+        blade.style.background = '#5cff7a';
+        blade.style.boxShadow = `0 0 ${size*0.05}px #5cff7a`;
+        blade.style.borderRadius = '40%';
+        blade.style.transform = 'translateX(-50%) rotate(-28deg)';
+        face.appendChild(blade);
+        break;
+      }
+      case 'darktrooper': {
+        // ダークトルーパー：黒い装甲の兜と、赤く光る単眼バイザー
+        const helmet = document.createElement('div');
+        helmet.className='motif';
+        helmet.style.width = size*0.7+'px';
+        helmet.style.height = size*0.3+'px';
+        helmet.style.left = '50%'; helmet.style.top = '10%';
+        helmet.style.background = `linear-gradient(180deg, ${lighten(type.color)}, ${type.dark})`;
+        helmet.style.borderRadius = '50% 50% 20% 20% / 100% 100% 30% 30%';
+        helmet.style.transform = 'translateX(-50%)';
+        face.appendChild(helmet);
+
+        const eye = document.createElement('div');
+        eye.className='motif';
+        eye.style.width = size*0.34+'px';
+        eye.style.height = size*0.1+'px';
+        eye.style.left = '50%'; eye.style.top = '42%';
+        eye.style.background = '#ff3b3b';
+        eye.style.boxShadow = `0 0 ${size*0.06}px #ff3b3b`;
+        eye.style.borderRadius = '40%';
+        eye.style.transform = 'translateX(-50%)';
+        face.appendChild(eye);
+        break;
+      }
       case 'jackSkull': {
         // ジャック：ジグザグに縫い合わされたような大きな口
         const mouthWrap = document.createElement('div');
@@ -3112,6 +3332,8 @@
   function attachHandlers(t){
     t.el.addEventListener('pointerdown', (e)=>{
       if(!gameActive || skillActive || gamePaused || (t.ghost || t.popScheduled) || hookAnimFreeze || buzzTapMode) return;
+      if(t.isGuardianBomb) return; // 専用のドラッグ処理（board側のpointerdownリスナー）に任せる
+      if(guardianBombActive || guardianBombDragging) return; // 緑のボム出現中〜ドラッグ中は通常のチェーン入力を受け付けない
       e.preventDefault();
       // 暗黙のポインターキャプチャを解除し、boardのpointermoveで追跡できるようにする
       if(e.pointerId!=null && t.el.hasPointerCapture && t.el.hasPointerCapture(e.pointerId)){
@@ -3321,6 +3543,14 @@
     const hasHookPair = hookActive && path.some(t=> t.type.key==='hookAngry') && path.some(t=> t.type.key==='hook');
     if(hasHookPair && path.length>=3){
       resolveHookChain(path);
+      return;
+    }
+
+    // ガーディアンルークのスキル効果中：ガーディアンルーク同士を2つ以上つないだ場合、
+    // 通常のなぞり消去ではなく、つないだ数に比例して幅が広がる専用の横ライン消去を発動する。
+    const hasGuardianLukeChain = guardianLukeActive && !guardianLukeIntroPlaying && path.every(t=> t.type.key==='guardianluke');
+    if(hasGuardianLukeChain && path.length>=2){
+      resolveGuardianLukeChain(path);
       return;
     }
 
@@ -4010,6 +4240,8 @@
     // ガストンのハンティングショット後6秒間は、ガストンを消してもゲージが溜まらない
     // （ただし、効果時間外で繋ぎ始めたチェーンの場合は ignoreGastonRain によりこの制限を無視する）
     if(gastonRainActive && !ignoreGastonRain) return;
+    // ガーディアンルークのスキル効果中（発動演出が終わったあと）は、スキルゲージが溜まらない
+    if(guardianLukeActive && !guardianLukeIntroPlaying) return;
     if(skillReady) return; // 満タン後にさらに消しても、あふれた分は繰り越さない
     const gain = myCount*r*(SKILL_GAUGE_MAX/currentSkillNeed());
     skillGauge = Math.min(SKILL_GAUGE_MAX, skillGauge + gain);
@@ -4088,6 +4320,7 @@
       duffy: skillDuffyTrapezoid,
       stitch: skillStitchHero,
       luke: skillLukeSlash,
+      guardianluke: skillGuardianLuke,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -4714,6 +4947,367 @@
     lukeSkillActive = false;
     skillTimeFreeze = false;
     appEl.classList.remove('timeStopDimmed');
+    finishSkill();
+    checkFeverTrigger();
+  }
+
+  // ------------------------------------------------------------
+  // ガーディアンルーク：
+  //  1) 発動時、巨大ガーディアンルークが中央に登場（盤面には干渉しない演出専用レイヤー）
+  //  2) 盤面のサブツムの一部がダークトルーパーに変化してから、2ツム分の幅の横ライン消去（コイン補正-2）
+  //  3) 効果時間中、盤面のガーディアンルーク同士をチェーンでつなぐと、つないだ数に比例して
+  //     幅が広がる横ライン消去（コイン補正-2）が発生し、特別な緑のボムが出現する
+  //  4) 緑のボムはドラッグして直径8ツム分の範囲内のダークトルーパー・マジカルボムを引き寄せ、
+  //     指を離すとまとめて消去（コイン補正-4）。5回使い切ると効果終了。
+  // ------------------------------------------------------------
+  const GUARDIAN_LUKE_ANIM_MS = 550; // 横ラインが光ってから消えるまでの演出時間
+
+  function skillGuardianLuke(){
+    // 前回の効果がまだ残っている場合は、先に後始末してから今回の判定に入る
+    if(guardianLukeActive || guardianBombActive){
+      endGuardianLukeSkill();
+    }
+
+    boardFrozen = true;
+    guardianLukeActive = true;
+    guardianLukeIntroPlaying = true;
+    guardianLukeTransformedKeys = [];
+    appEl.classList.add('timeStopDimmed');
+    pauseTimer(GUARDIAN_LUKE_ANIM_MS*2 + 900);
+    showSkillLabel('ガーディアン・オーダー！ 巨大ガーディアンルーク登場');
+    playGuardianLukeIntroAnim();
+  }
+
+  // 発動演出：巨大ガーディアンルーク登場 → ダークトルーパーへの変化 → 1回目の横ライン消去
+  function playGuardianLukeIntroAnim(){
+    guardianLukeIntroLayer.classList.add('show');
+
+    guardianLukeIntroBig.innerHTML = '';
+    const gLukeType = TSUM_TYPES.find(t=>t.key==='guardianluke');
+    const heroSize = Math.round(tsumRadius * BIG_TSUM_SCALE * 2.6);
+    const heroEl = createTsumEl(gLukeType, true, heroSize);
+    heroEl.style.position = 'relative';
+    heroEl.style.left = '0'; heroEl.style.top = '0'; heroEl.style.transform = 'none';
+    heroEl.style.pointerEvents = 'none';
+    guardianLukeIntroBig.appendChild(heroEl);
+    guardianLukeIntroBig.classList.remove('appear','exit','slashMotion','visible');
+    void guardianLukeIntroBig.offsetWidth;
+    guardianLukeIntroBig.classList.add('appear');
+
+    setTimeout(()=>{
+      guardianLukeIntroBig.classList.remove('appear');
+      void guardianLukeIntroBig.offsetWidth;
+      guardianLukeIntroBig.classList.add('visible');
+      guardianLukeTransformToDarktrooper();
+    }, GUARDIAN_LUKE_ANIM_MS*0.8);
+  }
+
+  // 盤面のサブツム（マイツム・ガーディアンルーク以外）のうち、およそ半分をダークトルーパーに変化させる
+  function guardianLukeTransformToDarktrooper(){
+    showSkillLabel('ダークトルーパー出現！');
+    // マイツム・ガーディアンルーク以外のサブツムはすべてダークトルーパーに変化させる
+    const candidates = tsums.filter(t=> !t.isMine && !t.isBomb && !(t.ghost || t.popScheduled) && t.type.key!=='guardianluke' && t.type.key!=='darktrooper');
+    candidates.forEach(t=>{
+      if(!guardianLukeTransformedKeys.includes(t.type.key)) guardianLukeTransformedKeys.push(t.type.key);
+      transformTsumType(t, DARKTROOPER_TYPE);
+    });
+
+    setTimeout(()=>{
+      guardianLukeIntroPlaying = false;
+      // 1回目：2ツム分の幅で固定の横ライン消去（盤面中央）
+      guardianLukeLineErase(2, -2, ()=>{
+        unfreezeBoard();
+        resumeTimerNow();
+        finishSkill(); // ここで通常のチェーン入力を解禁し、ガーディアンルーク同士をつなげられるようにする
+        checkFeverTrigger();
+        showSkillLabel('ガーディアンルークをつなごう！');
+      });
+    }, GUARDIAN_LUKE_ANIM_MS*0.6);
+  }
+
+  // 横一列（縦幅rows分）を光らせてから消去する（ガーディアンルーク・ダークトルーパー問わず巻き込む）
+  function guardianLukeLineErase(rows, coinBonus, onDone, extraTargets){
+    const bandY = visY(boardH/2);
+    const bandHalf = tsumRadius*rows;
+
+    const layer = document.createElement('div');
+    layer.className = 'duffyTrapezoidLayer';
+    layer.style.left = '0px';
+    layer.style.top = (bandY-bandHalf)+'px';
+    layer.style.width = boardW+'px';
+    layer.style.height = (bandHalf*2)+'px';
+    layer.style.clipPath = 'none';
+    layer.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(92,255,122,0.45) 60%, transparent 100%)';
+    layer.style.boxShadow = '0 0 18px 6px rgba(92,255,122,0.65)';
+    board.appendChild(layer);
+
+    guardianLukeIntroBig.classList.remove('slashMotion');
+    void guardianLukeIntroBig.offsetWidth;
+    guardianLukeIntroBig.classList.add('slashMotion');
+
+    setTimeout(()=>{
+      layer.remove();
+      const bandTargets = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && Math.abs(t.y-bandY)<=bandHalf);
+      // つないだガーディアンルーク自身（extraTargets）は、帯の外にいても必ず消去対象に含める
+      const extra = (extraTargets||[]).filter(t=> tsums.includes(t) && !t.isBomb && !(t.ghost || t.popScheduled) && !bandTargets.includes(t));
+      const targets = bandTargets.concat(extra);
+      if(targets.length===0){ onDone && onDone(); return; }
+
+      const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(targets, effectiveN);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(effectiveN, coinBonus);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(effectiveN > maxChain) maxChain = effectiveN;
+      chainVal.textContent = maxChain;
+
+      burstSparkles(targets);
+      const suckTargets = buildSuckTargets(targets);
+      if(gainedCoins>0) burstCoins(targets, gainedCoins);
+      showEraseCount(targets, effectiveN);
+
+      forceFinishAllGhosts();
+      popWithWave(targets, null, 'popping', ()=>{
+        refillIfNeeded(targets.map(t=>t.x));
+        onDone && onDone();
+      }, true, undefined, false, suckTargets, 0.5);
+    }, GUARDIAN_LUKE_ANIM_MS);
+  }
+
+  // ガーディアンルーク同士をチェーンでつないだ際の専用消去処理：
+  // つないだ数に比例して幅が広がる横ライン消去を行い、消去後に特別な緑のボムを出現させる
+  function resolveGuardianLukeChain(path){
+    if(!gameActive || !guardianLukeActive){
+      path.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
+      return;
+    }
+    bumpCombo();
+    path.forEach(t=>{ t.el.classList.remove('selected'); });
+    ropeSvg.innerHTML = '';
+
+    // つないだ数(2つで最小幅2、以降1つにつき+0.5ツム分ずつ広がる)に比例して幅を決める
+    const rows = 2 + (path.length-2)*0.5;
+    const spot = { x: path[path.length-1].x, y: path[path.length-1].y };
+    boardFrozen = true;
+    appEl.classList.add('timeStopDimmed'); // つないでの横ライン消去中も画面を薄暗くし、時間が止まっていることが分かるようにする
+    pauseTimer(GUARDIAN_LUKE_ANIM_MS + 500);
+    showSkillLabel(`ガーディアン・スラッシュ！ ${path.length}個つないだ！`);
+    // つないだガーディアンルーク自身（path）は、帯の範囲外にいても必ず消去対象に含める
+    guardianLukeLineErase(rows, -2, ()=>{
+      unfreezeBoard();
+      resumeTimerNow();
+      appEl.classList.remove('timeStopDimmed');
+      checkFeverTrigger();
+      spawnGuardianBomb(spot);
+    }, path);
+  }
+
+  // 特別な緑のボムを指定座標付近に出現させる
+  function spawnGuardianBomb(spot){
+    // 既に緑のボムが盤面にある場合は、出し直す前に取り除いておく
+    if(guardianBombTsum && tsums.includes(guardianBombTsum)){
+      guardianBombTsum.el.remove();
+      removeTsum(guardianBombTsum);
+    }
+    if(guardianBombUsesLeft<=0) guardianBombUsesLeft = GUARDIAN_BOMB_MAX_USES;
+    // 特別なボムは常に画面（盤面）中央に出現させる
+    const x = boardW/2;
+    const y = visY(boardH/2);
+    const t = spawnTsum(x, y, 0, 0);
+    t.isBomb = true;
+    t.bombType = 'guardian';
+    t.isGuardianBomb = true;
+    const size = t.r*2;
+    const newEl = createBombEl(size, 'guardian');
+    newEl.style.transform = t.el.style.transform;
+    t.el.replaceWith(newEl);
+    t.el = newEl;
+    attachHandlers(t);
+    guardianBombTsum = t;
+    guardianBombActive = true;
+    showSkillLabel(`特別なボム出現！ 残り${guardianBombUsesLeft}回`);
+  }
+
+  // 緑のボムのドラッグ開始
+  board.addEventListener('pointerdown', (e)=>{
+    if(!guardianBombActive || !guardianBombTsum || !gameActive || gamePaused) return;
+    const p = getBoardLocalPoint(e);
+    const dx = p.x-guardianBombTsum.x, dy = p.y-guardianBombTsum.y;
+    if(Math.sqrt(dx*dx+dy*dy) > guardianBombTsum.r*1.6) return; // ボム自身の近くのみドラッグ開始を受け付ける
+    e.preventDefault();
+    guardianBombDragging = true;
+    guardianBombDragPoint = p;
+    boardFrozen = true;
+    appEl.classList.add('timeStopDimmed'); // ドラッグ中〜消去まで時間が止まっていることが分かるよう画面を薄暗くする
+    clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
+    if(!guardianPullCircle){
+      guardianPullCircle = document.createElement('div');
+      guardianPullCircle.className = 'guardianPullCircle';
+      board.appendChild(guardianPullCircle);
+    }
+    guardianPullCircle.classList.add('show');
+    updateGuardianPullCircle(p);
+  });
+
+  board.addEventListener('pointermove', (e)=>{
+    if(!guardianBombDragging || !guardianBombTsum) return;
+    e.preventDefault();
+    const p = getBoardLocalPoint(e);
+    guardianBombDragPoint = p;
+    // ボム自身をドラッグ位置へ追従させる
+    guardianBombTsum.x = Math.max(guardianBombTsum.r, Math.min(boardW-guardianBombTsum.r, p.x));
+    guardianBombTsum.y = Math.max(visY(guardianBombTsum.r), Math.min(visY(boardH-guardianBombTsum.r), p.y));
+    renderTsumPosition(guardianBombTsum);
+    updateGuardianPullCircle({x:guardianBombTsum.x, y:guardianBombTsum.y});
+    guardianPullTick();
+  });
+
+  window.addEventListener('pointerup', ()=>{
+    if(!guardianBombDragging) return;
+    finishGuardianBombDrag();
+  });
+
+  function updateGuardianPullCircle(p){
+    if(!guardianPullCircle) return;
+    const r = tsumRadius*GUARDIAN_BOMB_PULL_RADIUS_TSUM;
+    guardianPullCircle.style.left = p.x+'px';
+    guardianPullCircle.style.top = p.y+'px';
+    guardianPullCircle.style.width = (r*2)+'px';
+    guardianPullCircle.style.height = (r*2)+'px';
+  }
+
+  // ドラッグ中、範囲内のダークトルーパー・マジカルボムをボムへ少しずつ引き寄せる
+  function guardianPullTick(){
+    if(!guardianBombDragging || !guardianBombTsum) return;
+    const pullR = tsumRadius*GUARDIAN_BOMB_PULL_RADIUS_TSUM;
+    tsums.forEach(t=>{
+      if(t===guardianBombTsum || (t.ghost || t.popScheduled)) return;
+      const isTarget = t.type.key==='darktrooper' || (t.isBomb && !t.isGuardianBomb);
+      if(!isTarget) return;
+      const dx = guardianBombTsum.x-t.x, dy = guardianBombTsum.y-t.y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist > pullR || dist < 1) return;
+      const pullStrength = 0.18;
+      t.x += dx*pullStrength;
+      t.y += dy*pullStrength;
+      t.vx = 0; t.vy = 0;
+      t.attractedByGuardianBomb = true;
+      renderTsumPosition(t);
+    });
+  }
+
+  // 指を離した時点で、範囲内に引き寄せられたツムをまとめて消去する
+  function finishGuardianBombDrag(){
+    guardianBombDragging = false;
+    if(guardianPullCircle) guardianPullCircle.classList.remove('show');
+    if(!guardianBombTsum || !tsums.includes(guardianBombTsum)){ unfreezeBoard(); resumeTimerNow(); appEl.classList.remove('timeStopDimmed'); checkFeverTrigger(); return; }
+
+    const pullR = tsumRadius*GUARDIAN_BOMB_PULL_RADIUS_TSUM;
+    const bombPos = {x: guardianBombTsum.x, y: guardianBombTsum.y};
+    const targets = tsums.filter(t=>{
+      if(t===guardianBombTsum || (t.ghost || t.popScheduled)) return false;
+      const isTarget = t.type.key==='darktrooper' || (t.isBomb && !t.isGuardianBomb);
+      if(!isTarget) return false;
+      const dx = bombPos.x-t.x, dy = bombPos.y-t.y;
+      return Math.sqrt(dx*dx+dy*dy) <= pullR;
+    });
+
+    guardianBombUsesLeft--;
+    // ボム自身も1回分の使用を終えたら盤面から消える（自動での再出現はしない）
+    guardianBombTsum.el.remove();
+    removeTsum(guardianBombTsum);
+    guardianBombTsum = null;
+    guardianBombActive = false;
+
+    const finishUp = ()=>{
+      if(guardianBombUsesLeft<=0){
+        endGuardianLukeSkill();
+        appEl.classList.remove('timeStopDimmed');
+      } else {
+        // ボムは1回使うたびに消え、自動で再出現はしない。
+        // 再度ガーディアンルークをつなぐことで、次のボムを出現させられる。
+        unfreezeBoard();
+        resumeTimerNow();
+        appEl.classList.remove('timeStopDimmed');
+        finishSkill(); // 通常のチェーン入力を解禁し、再度ガーディアンルークをつなげられるようにする
+        checkFeverTrigger();
+        showSkillLabel(`もう一度ガーディアンルークをつなごう！ 残り${guardianBombUsesLeft}回`);
+      }
+    };
+
+    if(targets.length===0){
+      refillIfNeeded([bombPos.x]);
+      finishUp();
+      return;
+    }
+
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(effectiveN, -4);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(effectiveN > maxChain) maxChain = effectiveN;
+    chainVal.textContent = maxChain;
+
+    burstSparkles(targets);
+    // 見た目上は「ボムへ吸い込まれて消える」演出にしつつ、ゲージへの加算（スキル/フィーバー）は
+    // 通常どおり行われるよう、吸い込み先の座標だけをボムの位置に差し替えたsuckTargetsを作る。
+    const gaugeSuckTargets = buildSuckTargets(targets);
+    const suckTargets = new Map();
+    targets.forEach(t=>{ if(gaugeSuckTargets.has(t)) suckTargets.set(t, bombPos); });
+    if(gainedCoins>0) burstCoins(targets, gainedCoins);
+    showEraseCount(targets, effectiveN, {x:bombPos.x, y:bombPos.y});
+
+    forceFinishAllGhosts();
+    popWithWave(targets, bombPos, 'suckPopping', ()=>{
+      refillIfNeeded(targets.concat([{x:bombPos.x}]).map(t=>t.x));
+      finishUp();
+    }, true, undefined, false, suckTargets, 0.15);
+  }
+
+  // ガーディアンルークのスキル効果を完全に終了させる：ダークトルーパーを元の種類へ戻し、
+  // 巨大ガーディアンルークの演出を退場させる
+  function endGuardianLukeSkill(){
+    guardianLukeActive = false;
+    guardianLukeIntroPlaying = false;
+    guardianBombActive = false;
+    guardianBombDragging = false;
+    guardianBombUsesLeft = 0;
+    if(guardianBombTsum && tsums.includes(guardianBombTsum)){
+      guardianBombTsum.el.remove();
+      removeTsum(guardianBombTsum);
+    }
+    guardianBombTsum = null;
+    if(guardianPullCircle) guardianPullCircle.classList.remove('show');
+
+    const darktroopers = tsums.filter(t=> t.type.key==='darktrooper' && !t.isBomb && !(t.ghost || t.popScheduled));
+    if(darktroopers.length>0){
+      // 変化させた元の種類が複数ある場合は、ランダムに割り振って戻す
+      const originalTypes = guardianLukeTransformedKeys.length>0
+        ? guardianLukeTransformedKeys.map(k=> TSUM_TYPES.find(t=>t.key===k)).filter(Boolean)
+        : [TSUM_TYPES.find(t=>t.key==='pink')];
+      darktroopers.forEach(t=>{
+        const chosen = originalTypes[Math.floor(Math.random()*originalTypes.length)];
+        if(chosen) transformTsumType(t, chosen);
+      });
+    }
+    guardianLukeTransformedKeys = [];
+
+    guardianLukeIntroBig.classList.remove('appear','visible','slashMotion');
+    guardianLukeIntroBig.classList.add('exit');
+    setTimeout(()=>{
+      guardianLukeIntroLayer.classList.remove('show');
+      guardianLukeIntroBig.classList.remove('exit');
+      guardianLukeIntroBig.innerHTML = '';
+    }, 320);
+
+    unfreezeBoard();
+    resumeTimerNow();
     finishSkill();
     checkFeverTrigger();
   }
@@ -5679,7 +6273,8 @@
     time: 'bombTime',
     star: 'bombStar',
     coin: 'bombCoin',
-    score: 'bombScore'
+    score: 'bombScore',
+    guardian: 'bombGuardian'
   };
 
   // チェーン数 n に応じて、出現条件（min〜max）を満たすボム種類の中からランダムに1つ選ぶ。
@@ -6542,6 +7137,17 @@
     if(lukeIntroBig){ lukeIntroBig.classList.remove('appear','ready','exit','slashMotion','visible'); lukeIntroBig.innerHTML=''; }
     if(lukeIntroSaber){ lukeIntroSaber.classList.remove('fall'); lukeIntroSaber.style.opacity='0'; }
     if(lukeIntroFlash){ lukeIntroFlash.classList.remove('flash'); }
+    guardianLukeActive = false;
+    guardianLukeIntroPlaying = false;
+    guardianLukeTransformedKeys = [];
+    guardianBombActive = false;
+    guardianBombUsesLeft = 0;
+    guardianBombDragging = false;
+    guardianBombTsum = null;
+    guardianBombDragPoint = null;
+    if(guardianLukeIntroLayer){ guardianLukeIntroLayer.classList.remove('show'); }
+    if(guardianLukeIntroBig){ guardianLukeIntroBig.classList.remove('appear','visible','exit','slashMotion'); guardianLukeIntroBig.innerHTML=''; }
+    if(guardianPullCircle){ guardianPullCircle.classList.remove('show'); }
     namineActive = false;
     namineRemainingMs = 0;
     namineTransformedKey = null;
@@ -6615,6 +7221,17 @@
     if(lukeIntroBig){ lukeIntroBig.classList.remove('appear','ready','exit','slashMotion','visible'); lukeIntroBig.innerHTML=''; }
     if(lukeIntroSaber){ lukeIntroSaber.classList.remove('fall'); lukeIntroSaber.style.opacity='0'; }
     if(lukeIntroFlash){ lukeIntroFlash.classList.remove('flash'); }
+    guardianLukeActive = false;
+    guardianLukeIntroPlaying = false;
+    guardianLukeTransformedKeys = [];
+    guardianBombActive = false;
+    guardianBombUsesLeft = 0;
+    guardianBombDragging = false;
+    guardianBombTsum = null;
+    guardianBombDragPoint = null;
+    if(guardianLukeIntroLayer){ guardianLukeIntroLayer.classList.remove('show'); }
+    if(guardianLukeIntroBig){ guardianLukeIntroBig.classList.remove('appear','visible','exit','slashMotion'); guardianLukeIntroBig.innerHTML=''; }
+    if(guardianPullCircle){ guardianPullCircle.classList.remove('show'); }
     namineRemainingMs = 0;
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
