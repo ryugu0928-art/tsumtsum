@@ -1587,6 +1587,12 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">ツムが消えるアニメーション速度を調整</div>
+          <ul>
+            <li>ツムが1個ずつ消えるアニメーションの速度を20%遅くしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">スキルゲージ連打が反応しない不具合を修正</div>
           <ul>
             <li>ダブルタップズーム防止の処理が、スキルゲージ等のボタン連打まで無効化してしまっていたため、ボタン類は対象から除外しました。</li>
@@ -3348,7 +3354,8 @@
       });
     }
     const feverSpeed = inFever ? FEVER_POP_SPEED_MULT : 1;
-    const POP_DURATION = 420 / feverSpeed;
+    // ツムが1個消えるアニメーション自体の速度を通常より20%遅くする
+    const POP_DURATION = 420 / feverSpeed * 1.2;
     // 1個ずつ消えていく間隔を通常より44%遅くする（連続消去の波が伝わる速度）
     const totalWave = instant ? 0 : Math.min(2200, 160*(ordered.length-1)) / feverSpeed * 1.2 * 1.2;
     const stagger = (!instant && ordered.length>1) ? totalWave/(ordered.length-1) : 0;
