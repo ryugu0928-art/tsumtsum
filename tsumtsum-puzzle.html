@@ -1587,6 +1587,12 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">iPhone Safariでのダブルタップズームを防止</div>
+          <ul>
+            <li>iPhoneのSafariで遊んでいる際、短い間隔で連続タップするとページがズームされ、戻せなくなる不具合を修正しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">ホーム画面にパッチノートを追加</div>
           <ul>
             <li>ホーム画面から今回のような更新内容を確認できるボタンを追加しました。</li>
@@ -3125,6 +3131,22 @@
 
   window.addEventListener('pointerup', ()=>{ if(selecting) endSelection(); });
   window.addEventListener('pointercancel', ()=>{ if(selecting) endSelection(); });
+
+  // iPhoneのSafariでは、connect等の操作中に指が短い間隔で2回タップされたと判定されると、
+  // ページ全体がダブルタップズームされてしまうことがある（一度拡大されるとuser-scalable=noでも
+  // 手動では戻せなくなる）。touchend時点でのタップ間隔を監視し、ダブルタップとみなせる場合は
+  // ブラウザ標準のズーム挙動そのものをキャンセルすることで、拡大が起きないようにする。
+  let lastTouchEndTime = 0;
+  document.addEventListener('touchend', (e)=>{
+    const now = Date.now();
+    if(now - lastTouchEndTime <= 350){
+      e.preventDefault();
+    }
+    lastTouchEndTime = now;
+  }, { passive:false });
+
+  // ピンチ操作（2本指以上）によるズームもあわせて無効化しておく
+  document.addEventListener('gesturestart', (e)=>{ e.preventDefault(); });
 
   function startSelection(t){
     selecting = true;
