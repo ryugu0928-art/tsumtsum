@@ -1668,6 +1668,8 @@
             <li>最初の横ライン消去、ガーディアンルークをつないでの横ライン消去、特別なボムのドラッグ中〜消去までの間、それぞれしっかり時間が止まるように演出を調整しました。</li>
             <li>特別なボムを割ったあと〜再度ガーディアンルークをつなぐまでの間、時間が止まったままになっていた不具合を修正しました。</li>
             <li>スキル効果中はフィーバーに突入できなかった不具合を修正し、通常時と同じくゲージが溜まればフィーバーに突入できるようにしました。</li>
+            <li>スキル効果終了時、盤面に残っているガーディアンルーク／ダークトルーパーの両方が、それぞれランダムな通常のツムに戻るようにしました（今まではダークトルーパーのみ元に戻り、ガーディアンルークはそのまま残ってしまっていました）。</li>
+            <li>効果終了時にランダムで戻る種類の抽選テーブルに、ガーディアンルーク自身も候補として追加しました。</li>
           </ul>
         </div>
         <div class="patchEntry">
@@ -5286,13 +5288,21 @@
     if(guardianPullCircle) guardianPullCircle.classList.remove('show');
 
     const darktroopers = tsums.filter(t=> t.type.key==='darktrooper' && !t.isBomb && !(t.ghost || t.popScheduled));
-    if(darktroopers.length>0){
+    const remainingLukes = tsums.filter(t=> t.type.key==='guardianluke' && !t.isBomb && !(t.ghost || t.popScheduled));
+    if(darktroopers.length>0 || remainingLukes.length>0){
       // 変化させた元の種類が複数ある場合は、ランダムに割り振って戻す
+      // （ガーディアンルーク自身も候補に含め、元のマイツム構成＋ガーディアンルークの中からランダムに選ばれるようにする）
       const originalTypes = guardianLukeTransformedKeys.length>0
         ? guardianLukeTransformedKeys.map(k=> TSUM_TYPES.find(t=>t.key===k)).filter(Boolean)
         : [TSUM_TYPES.find(t=>t.key==='pink')];
+      const revertTypePool = [...originalTypes, TSUM_TYPES.find(t=>t.key==='guardianluke')].filter(Boolean);
       darktroopers.forEach(t=>{
-        const chosen = originalTypes[Math.floor(Math.random()*originalTypes.length)];
+        const chosen = revertTypePool[Math.floor(Math.random()*revertTypePool.length)];
+        if(chosen) transformTsumType(t, chosen);
+      });
+      // 効果終了時に盤面へ残っているガーディアンルーク自身も、同じくランダムな種類に戻す
+      remainingLukes.forEach(t=>{
+        const chosen = revertTypePool[Math.floor(Math.random()*revertTypePool.length)];
         if(chosen) transformTsumType(t, chosen);
       });
     }
