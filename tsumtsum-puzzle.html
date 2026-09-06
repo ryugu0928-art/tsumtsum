@@ -216,6 +216,21 @@
   #gyroStatusNote{
     font-size:11px; color:#a05a10; margin:-4px 0 12px; line-height:1.4;
   }
+  #overflowStatusNote{
+    font-size:11px; color:#a05a10; margin:-4px 0 12px; line-height:1.4;
+  }
+  /* 盤面外（天井の上、枠外エリア）を一時的に見えるようにするデバッグ表示。
+     #boardのclipPathを外している間、枠外エリアの範囲が分かるよう薄い縞模様のオーバーレイを重ねる。 */
+  #overflowDebugLayer{
+    position:absolute;
+    left:0; right:0; top:0;
+    pointer-events:none;
+    z-index:3;
+    background:repeating-linear-gradient(135deg, rgba(255,60,120,0.10) 0 10px, rgba(255,60,120,0.03) 10px 20px);
+    border-bottom:2px dashed rgba(255,60,120,0.6);
+    display:none;
+  }
+  #overflowDebugLayer.show{ display:block; }
   .pauseActionBtn{
     width:100%; padding:12px; margin-top:6px;
     border:none; border-radius:14px;
@@ -293,7 +308,7 @@
     justify-content:center;
     padding:0 14px;
     min-height:0;
-    overflow:hidden;
+    overflow:visible;
   }
   #boardFrame{
     position:absolute;
@@ -753,7 +768,7 @@
     100%{ transform: rotate(var(--beastClawAngle, -55deg)) scaleY(1); opacity:0; }
   }
 
-  /* ---------- キャプテンライトイヤーのカットイン演出 ---------- */
+  /* ---------- キャプテンライトイヤーのカットイン演出（本家準拠：本人が身構える） ---------- */
   .buzzCutinLayer{
     position:absolute;
     inset:0;
@@ -767,7 +782,7 @@
   .buzzCutinLayer.exit{ background:rgba(10,15,40,0); }
   .buzzCutinFlash{
     position:absolute; inset:0;
-    background:radial-gradient(circle at 70% 40%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%);
+    background:radial-gradient(circle at 50% 45%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%);
     opacity:0;
     animation:buzzFlashPop .5s ease-out forwards;
   }
@@ -776,63 +791,39 @@
     15%{opacity:0.9;}
     100%{opacity:0;}
   }
-  .buzzFoe{
+  /* バズ本人の巨大な顔がリング状の虹色グロー（本家のスキルゲージ演出）と共にせり出してくる */
+  .buzzHeroPortrait{
     position:absolute;
-    top:18%;
-    right:-60%;
-    width:46%;
-    max-width:170px;
-    transition:right .45s cubic-bezier(.2,.8,.3,1);
-  }
-  .buzzCutinLayer.enter .buzzFoe{ right:4%; }
-  .buzzCutinLayer.exit .buzzFoe{ right:-70%; transition:right .34s ease-in; }
-  .buzzFoeHead{
-    width:60%;
-    aspect-ratio:1/1;
-    margin:0 auto;
+    left:50%; top:44%;
+    width:150px; height:150px;
+    margin:-75px 0 0 -75px;
     border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #6b7480, #2a2f38 75%);
-    box-shadow:0 0 0 4px #14161c, 0 6px 16px rgba(0,0,0,0.45);
-    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    transform:scale(0.4);
+    opacity:0;
+    transition:transform .38s cubic-bezier(.2,.8,.3,1), opacity .3s ease;
+    box-shadow:0 0 0 6px rgba(255,255,255,0.9), 0 0 40px 14px rgba(120,180,255,0.7);
   }
-  .buzzFoeHead::after{
-    content:'';
-    position:absolute;
-    left:18%; top:32%;
-    width:64%; height:26%;
-    border-radius:50%;
-    background:linear-gradient(180deg, rgba(255,90,90,0.9), rgba(120,0,0,0.7));
-    box-shadow:0 0 8px 2px rgba(255,60,60,0.7);
+  .buzzCutinLayer.enter .buzzHeroPortrait{
+    transform:scale(1);
+    opacity:1;
+    animation:buzzHeroGlow 1s ease-in-out infinite;
   }
-  .buzzFoeArm{
-    position:absolute;
-    left:-38%; top:58%;
-    width:70%; height:14px;
-    background:linear-gradient(90deg,#3a3f47,#14161c);
-    border-radius:7px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.4);
+  .buzzCutinLayer.exit .buzzHeroPortrait{ transform:scale(1.15); opacity:0; transition:transform .34s ease-in, opacity .3s ease; }
+  @keyframes buzzHeroGlow{
+    0%,100%{ box-shadow:0 0 0 6px rgba(255,255,255,0.9), 0 0 40px 14px rgba(120,180,255,0.7); }
+    25%{ box-shadow:0 0 0 6px rgba(255,255,255,0.9), 0 0 40px 14px rgba(255,120,180,0.7); }
+    50%{ box-shadow:0 0 0 6px rgba(255,255,255,0.9), 0 0 40px 14px rgba(255,210,90,0.7); }
+    75%{ box-shadow:0 0 0 6px rgba(255,255,255,0.9), 0 0 40px 14px rgba(120,255,180,0.7); }
   }
-  .buzzFoeBeam{
-    position:absolute;
-    left:0; top:50%;
-    width:0; height:5px;
-    margin-top:-2.5px;
-    background:linear-gradient(90deg, rgba(255,80,80,0.95), rgba(255,180,180,0.9));
-    box-shadow:0 0 12px 4px rgba(255,70,70,0.85);
-    border-radius:3px;
-    transform:scaleX(-1);
-    transform-origin:right center;
-    transition:width .3s ease-out;
-  }
-  .buzzFoeBeam.fire{ width:220%; }
   .buzzCutinLine{
     position:absolute;
     left:50%; bottom:16%;
     transform:translateX(-50%) scale(0.7);
     font-size:15px;
     font-weight:900;
-    color:#ffe9e9;
-    background:linear-gradient(135deg,#d63a3a,#7a1414);
+    color:#fff8e2;
+    background:linear-gradient(135deg,#3a5fd9,#213c9e);
     padding:6px 18px;
     border-radius:20px;
     box-shadow:0 4px 0 rgba(0,0,0,0.3);
@@ -1290,6 +1281,43 @@
     text-shadow:0 1px 2px rgba(0,0,0,0.5);
   }
 
+  /* 女王のスキル効果中に表示される、老婆の巻き込み消去数を示す小さな緑のゲージ */
+  #hagGaugeWrap{
+    position:absolute;
+    left:50%; bottom:6px;
+    transform:translateX(-50%);
+    width:60%;
+    max-width:260px;
+    z-index:6;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  #hagGaugeWrap.show{ opacity:1; }
+  #hagGauge{
+    height:10px;
+    background:rgba(10,20,15,0.55);
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:inset 0 2px 3px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.35);
+    position:relative;
+  }
+  #hagGaugeFill{
+    position:absolute; left:0; top:0; bottom:0;
+    width:0%;
+    background:linear-gradient(180deg,#8fe65a,#4fbf2f 60%,#2f8f1f);
+    transition:width .2s ease;
+  }
+  #hagGaugeWrap.goalReached #hagGaugeFill{
+    background:linear-gradient(90deg,#c8ff8a,#8fe65a,#c8ff8a);
+    background-size:220% 100%;
+    animation:hagGaugeShimmer 1s linear infinite;
+  }
+  @keyframes hagGaugeShimmer{
+    0%{ background-position:0% 50%; }
+    100%{ background-position:120% 50%; }
+  }
+
   /* ---------- overlays ---------- */
   .overlay{
     position:absolute;
@@ -1597,6 +1625,11 @@
         <button id="gyroToggleBtn" class="gyroToggle" aria-label="gyro toggle"></button>
       </div>
       <div id="gyroStatusNote">端末を傾けると、傾けた方向にツムが落ちるようになります</div>
+      <div class="pauseRow">
+        <span>盤面外（天井の上）を見る</span>
+        <button id="overflowToggleBtn" class="gyroToggle" aria-label="overflow toggle"></button>
+      </div>
+      <div id="overflowStatusNote">ONにすると、盤面の天井より上に積み上がったツムを一時的に表示します（デバッグ用）</div>
       <button id="pauseResumeBtn" class="pauseActionBtn">再開する</button>
     </div>
   </div>
@@ -1610,6 +1643,7 @@
     <div id="boardFrame"></div>
     <div id="feverLights"></div>
     <div id="board">
+      <div id="overflowDebugLayer"></div>
       <div id="sallyAuraLayer" class="sallyAuraLayer"></div>
       <svg id="ropeSvg"></svg>
       <svg id="floorCurveSvg" style="position:absolute;left:0;width:100%;pointer-events:none;z-index:2;"></svg>
@@ -1622,6 +1656,7 @@
       <div id="guardianLukeIntroLayer">
         <div id="guardianLukeIntroBig"></div>
       </div>
+      <div id="hagGaugeWrap"><div id="hagGauge"><div id="hagGaugeFill"></div></div></div>
     </div>
   </div>
 
@@ -1662,6 +1697,119 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">キャプテンライトイヤーのタップ消去中は時間が止まらないように修正しました</div>
+          <ul>
+            <li>これまではカットイン演出からタップ消去終了まで、ずっとゲーム全体の残り時間が止まったままになっていました。時間停止はカットイン演出中だけにとどめ、タップして消去する効果時間中はゲームの残り時間が通常どおり進行するように修正しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">キャプテンライトイヤーのスキルをタップ操作方式に戻しました</div>
+          <ul>
+            <li>前回、自動連続ビームに変更しましたが、プレイヤーがタップした場所を中心に円範囲を消去する従来の操作方式に戻しました（5回まで）。カットイン演出（バズ本人が身構える演出）はそのまま活かしています。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">キャプテンライトイヤーのスキルを本家仕様に近づけました</div>
+          <ul>
+            <li>カットイン演出を、狙撃してくる敵キャラクターの登場からバズ本人が身構える演出に変更しました。</li>
+            <li>これまでプレイヤーがタップした場所を消していた仕様を廃止し、本家と同じくスキル発動後は操作不要で、盤面のランダムな位置へ縦一直線のビームが自動で連続発射されるようにしました。着弾点周辺の広い範囲のツムがまとめて消去され、これが5回連続でテンポよく発動します。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">なぞって消したツムと入れ替わりに降ってくるツムのタイミングを再調整しました</div>
+          <ul>
+            <li>以前の調整では、ツムを複数個つなげて消した場合など消去演出の合計時間が長くなるケースで、補充ツムが天井から見え始めるまでにワンテンポ遅れが生じていました。補充ツムの生成位置（降ってくる開始高さ）を見える盤面の天井のすぐ外まで近づけることで、なぞって消したツムの当たり判定が完全に消え終わる瞬間（＝補充が実行される瞬間）に、次のツムがほぼ同時に天井から見え始めるように修正しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">なぞって選択中（チェーン中）のツムにも物理演算が働くように修正しました</div>
+          <ul>
+            <li>これまでは、なぞって選択中のツムは重力・衝突などの物理演算が完全に止まり、他のツムがぶつかっても動かない「壁」のようになっていました。選択中のツムも通常のツムと同じく物理演算の対象になるよう修正し、なぞっている最中に他のツムがぶつかってくれば自然に押されたり、支えがなければ落下したりするようになりました（なぞりの線・つなぎ判定は引き続き現在位置に追従します）。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">なぞって消したツムが消え終わるのと同時に、補充されたツムが盤面天井から見えてくるように調整しました</div>
+          <ul>
+            <li>補充されたツムが降ってくる開始高さ（画面外上空の距離）を、重力加速度をもとに逆算して調整しました。これにより、なぞって消したツムの消去演出（ポップ）が完全に終わるタイミングと、新しく降ってきたツムが盤面の天井にちょうど姿を現すタイミングが一致するようになりました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">空中のツムを消したときに一瞬止まって見える不具合を修正しました</div>
+          <ul>
+            <li>キャプテンライトイヤーのタップ消去など、消去演出中も落下し続けるツム（空中で消えるツム）について、消去アニメーション開始後は位置の再描画を止めるようにしました。これにより、CSSの消去アニメーションと物理演算による位置更新が同じフレームで競合して一瞬カクつく／止まって見える現象を解消しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">ツムがヘッダー付近から降ってくるように修正しました</div>
+          <ul>
+            <li>ツムが補充される際に降ってくる開始位置を、盤面の天井付近ではなく、スコア表示のあるヘッダー付近まで引き上げました。盤面をクリップしていた仕組みも見直し、ヘッダー領域からツムが自然に降ってくるようになりました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">デバッグ用：盤面外（天井の上）を一時的に見えるようにする機能を追加</div>
+          <ul>
+            <li>一時停止メニューに「盤面外（天井の上）を見る」トグルを追加しました。ONにすると、盤面の天井よりさらに上（積み上がったツムが逃げるための枠外エリア）に加えて、ツムが降ってくる画面外上空の開始位置まで、縞模様のオーバーレイ付きで一時的に表示できます（確認用・デバッグ用の機能です）。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">老婆を消したときも女王のスキルゲージに反映</div>
+          <ul>
+            <li>老婆は女王が変化した姿であるにもかかわらず、これまで老婆を消してもスキルゲージ本体（女王のスキル発動に必要なゲージ）には一切反映されていませんでした。老婆を消した分も女王のスキルゲージへきちんと加算されるように修正しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">老婆ゲージが溜まらない不具合を修正</div>
+          <ul>
+            <li>女王のスキル効果中、老婆を通常のなぞり消去（チェーン）で消してもゲージが全く加算されない不具合を修正しました。これまでは鏡のマジックミラーで老婆を巻き込んで消した場合のみ加算されており、手動でなぞって消した分がカウントされていませんでした。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">女王のスキル効果中の仕様を調整</div>
+          <ul>
+            <li>女王のスキル効果中（老婆が出現中）は、新しく盤面に降ってくる女王も老婆として出現するように変更しました。効果時間中に女王が新規に混ざって見分けにくくなることがなくなります。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">女王のスキル効果中の見た目を修正</div>
+          <ul>
+            <li>女王のスキル発動中、老婆に変化したツムの目の光彩が強すぎて、盤面に老婆が並ぶと画面全体が緑色のモヤに覆われたように見えてしまう問題を修正しました。光彩の広がりを控えめにし、盤面が見やすくなるようにしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">各ツムのスコアを調整</div>
+          <ul>
+            <li>ダッフィー→1305、最終決戦フック船長→1285、キャプテンライトイヤー→1265、ジェダイルーク→1245、ジャック＆サリー→1226、ヒーロースタイルスティッチ（全形態）→1217、ガーディアンルーク→1197、ガストン→1030、ナミネ→962、野獣→678 にそれぞれ変更しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">「女王＆鏡」のツムスコアを変更</div>
+          <ul>
+            <li>女王・鏡ともに、1個消したときの基本スコアを1216に変更しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">「女王＆鏡」の視認性を改善</div>
+          <ul>
+            <li>女王の肌色がナミネ・フック船長・ジャックと似ていて見間違えやすかったため、これらと同じ「肌色系グループ」として扱うように変更し、女王をマイツムに選んだ際にこれらのツムが同時に盤面へ降ってこないようにしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">「女王＆鏡」の見た目をリメイク</div>
+          <ul>
+            <li>女王：紫系の顔色から肌色ベースに変更し、黒髪・白い襟・金の王冠・緑がかった吊り眉を追加して、原作の女王らしい気高い見た目にリメイクしました。</li>
+            <li>鏡：顔色を緑に、フレームを手鏡型から丸く縁取られた魔法の鏡風デザインに変更し、金の飾り突起を4方向に配置しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchTitle">新ツム「女王＆鏡」を追加</div>
+          <ul>
+            <li>ペアツム「女王＆鏡」を追加しました。スキル発動に必要なツム数は女王・鏡それぞれ18個です（コイン補正-2）。</li>
+            <li>女王のスキル「クイーン・トランスフォーメーション」：5秒間、女王が黒いフードを被った老婆に変化します。老婆は少し離れていてもつながり、つなぐとナミネよりも少し広い範囲で周りのツムを巻き込んで消去します（変化演出中は時間停止）。</li>
+            <li>鏡のスキル「マジックミラー」：盤面のランダムなツム1種類が選ばれて消去されます。女王のスキル効果中に発動すると、確定で老婆が選ばれ、老婆の巻き込み消去が発動します。</li>
+            <li>女王のスキル効果中は画面下部に小さな緑のゲージが表示され、老婆を合計80個消すと効果時間終了時に中央消去のおまけが発生します（ゲージの溜まり具合は次回の女王のスキルに持ち越されます）。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">ガーディアンルークの数値・演出調整</div>
           <ul>
             <li>スキル効果中に降ってくるツムの比率を、ガーディアンルーク：ダークトルーパー＝1：9に調整しました。</li>
@@ -1887,6 +2035,10 @@
   const FRICTION = 0.90;         // 横方向の摩擦（毎フレーム減衰）
   const FEVER_GRAVITY_MULT = 1.35; // フィーバー中は重力を強めて落下を速くする
   const MAX_TSUMS = 45;          // 資料仕様：盤面充填数の上限
+  // なぞって消したツムが完全に消え終わる（popWithWaveの通常時POP_DURATION）のと同じタイミングで、
+  // 補充された新しいツムがちょうど盤面天井（見える盤面の上端）に姿を現すようにするための基準時間。
+  // popWithWave内のPOP_DURATION計算（フィーバー時等の速度変化を除いた基準値）と必ず一致させること。
+  const BASE_POP_DURATION_MS = 420 * 1.2;
 
   // ジャイロ（端末の傾き）機能：重力方向を傾きに応じて変化させる。
   // gravityDirX/Y は正規化された「画面平面に投影した重力の向きベクトル」で、通常（水平に構えた状態）は真下 (0, 1)。
@@ -1894,6 +2046,10 @@
   let gyroEnabled = false;
   let gravityDirX = 0, gravityDirY = 1;
   let gyroListenerAttached = false;
+
+  // デバッグ用：盤面外（天井のさらに上、TOP_OVERFLOW分の枠外エリア）を一時的に見えるようにするトグル。
+  // ONの間は#boardのclipPathを解除し、枠外エリアの範囲が分かる縞模様のオーバーレイを重ねて表示する。
+  let overflowDebugVisible = false;
 
   function handleDeviceOrientation(e){
     if(!gyroEnabled) return;
@@ -2026,39 +2182,39 @@
       skillName:'ロイヤルクリア',   skillDesc:'マイツムを全て消してスコア＆コイン獲得' },
     { key:'orange', name:'あくまる', color:'#ff9640', dark:'#e0721f', motif:'horns',  score:140, skillNeed:11, colorGroup:'yellowOrange',
       skillName:'デビルボム',       skillDesc:'盤面のツムをランダムにボム化する' },
-    { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:160, skillNeed:20, colorGroup:'brown', coinBonus:-1,
+    { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:1030, skillNeed:20, colorGroup:'brown', coinBonus:-1,
       skillName:'ハンティングショット',
       skillDesc:'横一列に3発撃ちぬいて消去。その後6秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
-    { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:170, skillNeed:16, colorGroup:'blue', coinBonus:-1,
+    { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:1265, skillNeed:16, colorGroup:'blue', coinBonus:-1,
       skillName:'ネヴァー・ギブアップ',
-      skillDesc:'腕のビームで狙う敵がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径6ツム分の範囲を消去（5回まで）' },
-    { key:'namine', name:'ナミネ',     color:'#ffe8cc', dark:'#f0c99a', motif:'blondeHair', eyeColor:'#3f7fd9', score:180, skillNeed:19, colorGroup:'cream', coinBonus:-2,
+      skillDesc:'バズ本人がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径6ツム分の範囲を消去（5回まで）' },
+    { key:'namine', name:'ナミネ',     color:'#ffe8cc', dark:'#f0c99a', motif:'blondeHair', eyeColor:'#3f7fd9', score:962, skillNeed:19, colorGroup:'cream', coinBonus:-2,
       skillName:'メモリーチェイン',
       skillDesc:'盤面で2番目に多いサブツムを、6秒間「ソラ」に変化させる。ナミネとソラは離れていても一緒につなげられ、消すと周りのツムも巻き込んで消える' },
-    { key:'hook', name:'最終決戦フック船長', color:'#ffe3d0', dark:'#f0c3a8', motif:'hook', score:190, skillNeed:19, colorGroup:'skinTone', coinBonus:-2,
+    { key:'hook', name:'最終決戦フック船長', color:'#ffe3d0', dark:'#f0c3a8', motif:'hook', score:1285, skillNeed:19, colorGroup:'skinTone', coinBonus:-2,
       skillName:'ネヴァー・ギブアップ・アゲイン',
       skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約3秒、繋ぐたびに消去範囲が拡大していく）' },
-    { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:200, skillNeed:14, colorGroup:'brown',
+    { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:678, skillNeed:14, colorGroup:'brown',
       skillName:'ワイルドクロー',
       skillDesc:'画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去。ボムも巻き込んで消せる（発動中は時間停止）' },
     // ジャック＆サリー：ペアツム。ジャックを選ぶとサリーも一緒に「マイツム」として盤面に出現する。
     // ジャックとサリーは同じ種類ではないため互いには繋げられない（それぞれ別の色として扱う）。
     // スキルはジャック・サリーそれぞれ個別のゲージ（必要数が異なる）で溜まり、
     // ゲージが満タンになった方のスキルをボタンから発動できる。
-    { key:'jack', name:'ジャック', color:'#f4f0e6', dark:'#cfc9b8', motif:'jackSkull', eyeColor:'#141414', eyeScale:2.2, score:210, skillNeed:18, colorGroup:'jackSally', coinBonus:0,
+    { key:'jack', name:'ジャック', color:'#f4f0e6', dark:'#cfc9b8', motif:'jackSkull', eyeColor:'#141414', eyeScale:2.2, score:1226, skillNeed:18, colorGroup:'jackSally', coinBonus:0,
       pairKey:'sally', pairLabel:'ジャック&サリー',
       skillName:'ランダムスクランブル',
       skillDesc:'サブツム(ジャックとサリー以外)を15個ランダム消去（コイン補正+7）。発動中は時間停止（ツムの物理は働く）。サリーのスキル効果中に発動すると、追加でジャックとサリーを全て消去する特別演出になる（コイン補正+12）。※ペアツム：サリーとは別々のゲージ（ジャック18個／サリー36個）で管理' },
-    { key:'sally', name:'サリー', color:'#5b7691', dark:'#334656', motif:'sallyPatch', eyeColor:'#1c2230', score:210, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
+    { key:'sally', name:'サリー', color:'#5b7691', dark:'#334656', motif:'sallyPatch', eyeColor:'#1c2230', score:1226, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
       skillName:'ドリームスティッチ',
       skillDesc:'効果時間中、少し離れたツムともつなげられるようになる。チェーンすると、たどった道の周りのツムも巻き込んで最後のツムのところへまとめて消える（道をたどるアニメーション中は時間停止・ツムの物理も止まる）' },
-    { key:'duffy', name:'ダッフィー', color:'#d9a054', dark:'#9c6b28', motif:'duffyEars', score:220, skillNeed:17, colorGroup:'brown', coinBonus:0,
+    { key:'duffy', name:'ダッフィー', color:'#d9a054', dark:'#9c6b28', motif:'duffyEars', score:1305, skillNeed:17, colorGroup:'brown', coinBonus:0,
       myTsumFallBoost:true, // おまけ効果：ダッフィーをマイツムに設定している間、マイツムが降ってきやすくなる
       skillName:'フォーチュン・トラペゾイド',
       skillDesc:'2種類のスキルが交互に発動。1回目：盤面に逆台形型にマイツムを増やしてから、その逆台形の範囲を消去。2回目：同じ逆台形の範囲をそのまま消去。（発動中は時間停止・ツムの物理も停止）' },
     // ヒーロースタイルスティッチ<変身>：スキルのたびに1/3の確率で変身が進み、姿と最終スキルが変わっていく多段変身ツム。
     // 専用サブツム「赤いかご」を常に一緒に降らせる（extraSubKeyで指定）。
-    { key:'stitch', name:'ヒーロースタイルスティッチ<変身>', color:'#3fa9e0', dark:'#1f6fa8', motif:'stitchEars', score:230, skillNeed:14, colorGroup:'blue2', coinBonus:3,
+    { key:'stitch', name:'ヒーロースタイルスティッチ<変身>', color:'#3fa9e0', dark:'#1f6fa8', motif:'stitchEars', score:1217, skillNeed:14, colorGroup:'blue2', coinBonus:3,
       extraSubKey:'redbasket',
       skillName:'ヒーロー・トランスフォーム',
       skillDesc:'1/3の確率で「縦幅2ツム分の横ライン消去」「縦幅3ツム分の横ライン消去」「変身（演出あり）」のいずれかが発動。青い水着→赤いマントと2段階変身し、最終形態では左上→右下の順に直径6ツム分の円形消去を放つ。' },
@@ -2066,15 +2222,25 @@
     { key:'redbasket', name:'赤いかご', color:'#e05a3f', dark:'#a3341f', motif:'basket', score:130, colorGroup:'redBasketGroup', pairHidden:true },
     // ジェダイルーク：なぞった軌跡（始点→終点の直線）に沿ってツムを消去する。
     // なぞる速さで消去範囲の太さが変わる（速い＝細い／遅い＝太い）。スキル中は時間停止するがツムの物理は働く。
-    { key:'luke', name:'ジェダイルーク', color:'#dfe6ea', dark:'#a9b4bc', motif:'lightsaber', eyeColor:'#1c1f22', score:220, skillNeed:20, colorGroup:'jediGroup', coinBonus:-4,
+    { key:'luke', name:'ジェダイルーク', color:'#dfe6ea', dark:'#a9b4bc', motif:'lightsaber', eyeColor:'#1c1f22', score:1245, skillNeed:20, colorGroup:'jediGroup', coinBonus:-4,
       skillName:'ジェダイの一閃',
       skillDesc:'巨大ルークが登場し、落ちてくるライトセーバーをキャッチ！キャッチした瞬間から4秒間、なぞった方向に何度でも消せるよ！ゆっくりなぞると太く消すよ！（指を置いた地点から離した地点を結ぶ直線上を消去。最速で消すと1ツム分、ゆっくりなぞった最大は3ツム分の太さ）発動中は時間停止（ツムの物理は働く）' },
     // ガーディアンルーク：スキル中は盤面の一部がダークトルーパーに変化し、まず2ツム分の横ライン消去。
     // その後、盤面のガーディアンルーク同士をチェーンでつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、
     // 特別な緑のボムが出現する。緑のボムはドラッグして範囲内のツムを引き寄せてから指を離すと消去（5回まで）。
-    { key:'guardianluke', name:'ガーディアンルーク', color:'#4a5a6a', dark:'#242e38', motif:'guardianHelmet', eyeColor:'#5cff7a', score:240, skillNeed:15, colorGroup:'jediGroup2', coinBonus:-2,
+    { key:'guardianluke', name:'ガーディアンルーク', color:'#4a5a6a', dark:'#242e38', motif:'guardianHelmet', eyeColor:'#5cff7a', score:1197, skillNeed:15, colorGroup:'jediGroup2', coinBonus:-2,
       skillName:'ガーディアン・オーダー',
       skillDesc:'横ライン+少しの間2種類になるよ！（発動時、大きなガーディアンルークが中央に出現し、盤面の一部がダークトルーパーに変化してから2ツム分の幅の横ライン消去。その後、ガーディアンルークをチェーンでつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、特別な緑のボムが出現する。緑のボムはドラッグして直径8ツム分の範囲内のダークトルーパー・マジカルボムを引き寄せ、指を離すとまとめて消去。5回使うと効果終了）' },
+    // 女王＆鏡：ペアツム。ジャック＆サリーと同様、女王を選ぶと鏡も一緒に「マイツム」として盤面に出現する。
+    // 女王と鏡は同じ種類ではないため互いには繋げられない（それぞれ別の色として扱う）。
+    // スキルはそれぞれ個別のゲージ（女王18個／鏡18個）で溜まり、ゲージが満タンになった方のスキルをボタンから発動できる。
+    { key:'queen', name:'女王', color:'#fbdcc0', dark:'#e8b992', motif:'queenCrown', eyeColor:'#3f8f4a', eyeScale:0.85, score:1216, skillNeed:18, colorGroup:'queenMirror', coinBonus:-2,
+      pairKey:'mirror', pairLabel:'女王＆鏡',
+      skillName:'クイーン・トランスフォーメーション',
+      skillDesc:'5秒間、女王が黒いフードを被った老婆に変化するよ！老婆は少し離れていてもつながり、つなぐと周りのツムも巻き込んで消せる。老婆を合計80個消すと、効果終了時に中央消去のおまけ付き（溜まり具合は次回に持ち越し）。鏡のスキル効果中に発動すると、鏡は確定で老婆を選ぶようになるよ。' },
+    { key:'mirror', name:'鏡', color:'#7fae74', dark:'#557d4c', motif:'mirrorFrame', eyeColor:'#2a2a2a', eyeScale:0.7, score:1216, skillNeed:18, colorGroup:'queenMirror', coinBonus:-2, pairHidden:true,
+      skillName:'マジックミラー',
+      skillDesc:'鏡の中にランダムなツムが1種類映り、盤面のそのツムをまとめて消し去る。女王のスキル効果中（老婆が出現中）に発動すると、確定で老婆が選ばれ、老婆の巻き込み消去が発動するよ！' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -2087,9 +2253,12 @@
   // ダークトルーパー：ガーディアンルークのスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
   const DARKTROOPER_TYPE = { key:'darktrooper', name:'ダークトルーパー', color:'#2a2d33', dark:'#121316', eyeColor:'#ff3b3b', motif:'darktrooper', score:0, colorGroup:'navy2' };
 
+  // 老婆：女王のスキル発動中のみ一時的に生まれる変化専用ツム（通常は盤面に出現しない）
+  const OLDHAG_TYPE = { key:'oldhag', name:'老婆', color:'#4a4438', dark:'#221f19', eyeColor:'#7fbf5a', motif:'hagHood', score:0, colorGroup:'queenMirror' };
+
   // ヒーロースタイルスティッチ<変身>：変身後の見た目専用ツム（通常のTSUM_TYPESには含めず、変身時にtransformTsumTypeで差し替える）
-  const STITCH_FORM1_TYPE = { key:'stitchForm1', name:'ヒーロースタイルスティッチ（青い水着）', color:'#2f7ad9', dark:'#164a8f', motif:'stitchEarsForm1', score:230, colorGroup:'blue2' };
-  const STITCH_FORM2_TYPE = { key:'stitchForm2', name:'ヒーロースタイルスティッチ（赤いマント）', color:'#d94b3a', dark:'#8f1f16', motif:'stitchEarsForm2', score:230, colorGroup:'blue2' };
+  const STITCH_FORM1_TYPE = { key:'stitchForm1', name:'ヒーロースタイルスティッチ（青い水着）', color:'#2f7ad9', dark:'#164a8f', motif:'stitchEarsForm1', score:1217, colorGroup:'blue2' };
+  const STITCH_FORM2_TYPE = { key:'stitchForm2', name:'ヒーロースタイルスティッチ（赤いマント）', color:'#d94b3a', dark:'#8f1f16', motif:'stitchEarsForm2', score:1217, colorGroup:'blue2' };
   let stitchStage = 0; // 0:初期形態 1:青い水着(第1段階) 2:赤いマント(第2段階)
 
   // 盤面に実際に降ってくるツムの種類（アイテムで5種/4種に変化）
@@ -2173,6 +2342,17 @@
   let duffySkillPhase = 0; // 0: 次は変化＋消去（1回目）／1: 次はそのまま消去（2回目）
   const SALLY_TRACE_STEP_MS = 210;          // チェーンをたどるアニメーションの1体あたりの間隔
 
+  // 女王＆鏡：ペアツム関連の状態
+  let queenGauge = 0, mirrorGauge = 0;      // 女王用・鏡用の個別スキルゲージ（0〜SKILL_GAUGE_MAX）
+  let queenReady = false, mirrorReady = false;
+  let queenActive = false;                  // 女王のスキル効果中（老婆が盤面にいる間）フラグ
+  let queenRemainingMs = 0;                 // 女王効果の残り時間（ミリ秒）。時間停止中は減らさない。
+  const QUEEN_DURATION = 5;                 // 女王のスキル効果時間（秒）
+  const QUEEN_SKILL_RANGE = 3.6;            // 老婆を消す際に巻き込む範囲（ナミネよりも少し広い＝ツム半径の3.6倍）
+  const QUEEN_HAG_GOAL = 80;                // 老婆を合計何個消すと中央消去のおまけが付くか
+  let queenHagCleared = 0;                  // これまでに消した老婆の累計数（満タンで消費するまでゲームを通して持ち越し）
+  let queenHagGoalReached = false;          // 今回のスキル効果中に80個到達済みかどうか（効果終了時のおまけ演出の判定用）
+
   function isPairMode(){
     const mine = TSUM_TYPES.find(t=>t.key===myTsumKey);
     return !!(mine && mine.pairKey);
@@ -2225,6 +2405,8 @@
   const pauseOverlay = document.getElementById('pauseOverlay');
   const gyroToggleBtn = document.getElementById('gyroToggleBtn');
   const gyroStatusNoteEl = document.getElementById('gyroStatusNote');
+  const overflowToggleBtn = document.getElementById('overflowToggleBtn');
+  const overflowDebugLayer = document.getElementById('overflowDebugLayer');
   const pauseResumeBtn = document.getElementById('pauseResumeBtn');
   const chainVal = document.getElementById('chainVal');
   const linkCountEl = document.getElementById('linkCount');
@@ -2235,6 +2417,8 @@
   const lukeIntroBig = document.getElementById('lukeIntroBig');
   const guardianLukeIntroLayer = document.getElementById('guardianLukeIntroLayer');
   const guardianLukeIntroBig = document.getElementById('guardianLukeIntroBig');
+  const hagGaugeWrap = document.getElementById('hagGaugeWrap');
+  const hagGaugeFill = document.getElementById('hagGaugeFill');
   const comboDisplay = document.getElementById('comboDisplay');
   const feverBanner = document.getElementById('feverBanner');
   const feverFill = document.getElementById('feverFill');
@@ -2276,6 +2460,9 @@
   // ツムがたくさん積み上がったときに天井で詰まらず、枠外（画面上のさらに上）へ逃げられるようにするための余白。
   // 高さはツム6個分。tsumRadiusが決まってから計算するので、layoutBoard内で毎回更新する。
   let TOP_OVERFLOW = 0;
+  // ツムが補充される際、画面外のどのくらい上空から降ってくるか（refillIfNeededのstartY計算と一致させる）。
+  // デバッグ用の「盤面外を見る」表示で、この位置まで含めて見えるようにするために使う。
+  let SPAWN_ABOVE_MARGIN = 0;
   // 演出・スキル等が「見える盤面（枠内）」を基準に座標計算する際に使うヘルパー。
   // #boardのローカル座標系は上端(y=0)が枠外エリアの天井になったため、
   // 「見える盤面」を基準にした位置を求めるときは常にTOP_OVERFLOWを足す必要がある。
@@ -2308,6 +2495,9 @@
   let gamePaused = false; // 一時停止メニュー表示中フラグ（timer・盤面ともに完全停止）
   let stitchSkillActive = false; // スティッチのスキル演出中フラグ。boardFrozenと違い、この間もツムの物理演算（重力・衝突）は止めない。
   let skillTimeFreeze = false; // ジャックのスキルなど「物理は止めないが、ゲーム内の各種残り時間だけ止めたい」演出用の汎用フラグ
+  // 女王・鏡のスキル中は、盤面のツムの物理演算（重力・衝突）だけを止める。boardFrozenと違い、
+  // ゲームタイマーや女王の効果残り時間（queenRemainingMs）はそのまま進める（＝時間停止ではなく、物理停止のみ）。
+  let queenMirrorPhysicsFreeze = false;
   let idCounter = 0;
 
   let myTsumKey = TSUM_TYPES.find(t=>t.isMyTsumDefault).key;
@@ -2364,6 +2554,19 @@
     return {w, h};
   }
 
+  // overflowDebugVisibleの状態に応じて、#boardの見た目上の表示範囲を切り替える。
+  // #boardWrap自体はoverflow:visibleにしてあり（ヘッダー付近からツムが出現する演出のため）、
+  // 通常時の「盤面の天井から上を隠す」処理は#boardのclipPathのみで行う。
+  // OFF（通常時）：clipPathで枠外エリア（天井より上）を完全に隠す。
+  // ON（デバッグ表示中）：clipPathを解除し、天井より上の枠外エリア〜ツムの生成開始位置まで見えるようにする。
+  function applyOverflowClip(){
+    if(overflowDebugVisible){
+      board.style.clipPath = 'none';
+    } else {
+      board.style.clipPath = `inset(${TOP_OVERFLOW}px 0px 0px 0px)`;
+    }
+  }
+
   function layoutBoard(){
     layoutAppFrame();
     const {w,h} = computeBoardSize();
@@ -2373,6 +2576,13 @@
     // 枠外エリア（天井のさらに上、ツム6個分の高さ。積み上がったツムが詰まらず逃げるための余白）を確保する。
     const prevOverflow = TOP_OVERFLOW;
     TOP_OVERFLOW = tsumRadius * 6;
+    // 補充されたツムは refillIfNeeded() が呼ばれた瞬間（＝なぞって消したツムの当たり判定が
+    // 完全に消え終わった瞬間）に生成される。そのため、生成位置は「見える盤面の天井のすぐ外」
+    // 程度に留め、生成された直後にはもう天井から姿を見せ始めるようにする。
+    // （以前は自由落下に一定時間かかる距離から生成していたため、消えたツムが完全にいなくなって
+    // からもワンテンポ遅れて次のツムが見え始めてしまっていた。消えると同時に見え始めるよう、
+    // 開始位置を見える盤面の天井ギリギリまで近づける。）
+    SPAWN_ABOVE_MARGIN = tsumRadius*0.6;
     board.style.width = boardW+'px';
     board.style.height = (boardH + TOP_OVERFLOW)+'px';
     // 枠外エリアはあくまで物理演算（衝突判定）上の余白であり、見た目には出したくない。
@@ -2380,7 +2590,12 @@
     // （「枠外の端」が「盤面の枠の端」からズレて見える）ため、#board自身をclip-pathで
     // 「#boardFrameの実際の天井（ローカル座標でy=TOP_OVERFLOW）」の位置で常に切り取る。
     // これにより、TOP_OVERFLOWの値がどう変化しても、見た目上のツムの可視範囲は必ず盤面の枠と一致する。
-    board.style.clipPath = `inset(${TOP_OVERFLOW}px 0px 0px 0px)`;
+    applyOverflowClip();
+    // デバッグ表示レイヤー（ツムの生成開始位置(-SPAWN_ABOVE_MARGIN)〜枠外エリアの天井(TOP_OVERFLOW)までの範囲を示す縞模様）
+    if(overflowDebugLayer){
+      overflowDebugLayer.style.top = (TOP_OVERFLOW - SPAWN_ABOVE_MARGIN)+'px';
+      overflowDebugLayer.style.height = SPAWN_ABOVE_MARGIN+'px';
+    }
     // 既存ツムの半径・要素サイズを更新（大ツムは倍率を維持する）
     tsums.forEach(t=>{
       t.baseR = tsumRadius;
@@ -2457,6 +2672,10 @@
     if(namineActive && picked.key===namineTransformedKey){
       return SORA_TYPE;
     }
+    // 女王のスキル効果中（老婆が出現中）は、新しく降ってくる女王も老婆として生成する
+    if(queenActive && picked.key==='queen'){
+      return OLDHAG_TYPE;
+    }
     // ガーディアンルークのスキル効果中（発動演出が終わったあと）は、新しく降ってくるサブツムも
     // マイツム以外はすべてガーディアンルーク／ダークトルーパーのどちらかになるようにする
     // （ガーディアンルーク：ダークトルーパー＝1：9の比率にする）
@@ -2478,6 +2697,7 @@
   const VISUAL_GROUP_ALIAS = {
     blue2: 'blue',        // スティッチ（変身含む）とプリンス／バズは同じ青系として扱う
     skinTone: 'cream',    // フック船長とナミネはどちらも薄いクリーム／肌色系として扱う
+    queenMirror: 'cream', // 女王は肌色ベースのため、ナミネ・フック船長・ジャックと同系の肌色グループとして扱う
   };
   function visualGroup(t){
     return VISUAL_GROUP_ALIAS[t.colorGroup] || t.colorGroup;
@@ -3221,6 +3441,168 @@
         face.appendChild(muzzle);
         break;
       }
+      case 'queenCrown': {
+        // 女王：黒髪の前髪の上に金の王冠、白い襟、緑の吊り眉＋赤い口紅（『白雪姫』の女王をイメージ）
+        // 白い襟（マント）を顔の下側に配置
+        const collarL = document.createElement('div');
+        collarL.className='motif';
+        collarL.style.width=size*0.5+'px';
+        collarL.style.height=size*0.5+'px';
+        collarL.style.left='6%'; collarL.style.top='58%';
+        collarL.style.background='#f5f2ea';
+        collarL.style.borderRadius='0 65% 65% 0';
+        collarL.style.transform='rotate(-18deg)';
+        collarL.style.zIndex='0';
+        collarL.style.boxShadow='inset -3px -3px 6px rgba(0,0,0,0.08)';
+        face.appendChild(collarL);
+        const collarR = document.createElement('div');
+        collarR.className='motif';
+        collarR.style.width=size*0.5+'px';
+        collarR.style.height=size*0.5+'px';
+        collarR.style.right='6%'; collarR.style.top='58%';
+        collarR.style.background='#f5f2ea';
+        collarR.style.borderRadius='65% 0 0 65%';
+        collarR.style.transform='rotate(18deg)';
+        collarR.style.zIndex='0';
+        collarR.style.boxShadow='inset 3px -3px 6px rgba(0,0,0,0.08)';
+        face.appendChild(collarR);
+        // 黒髪（顔の上部を縁取るように）
+        const hair = document.createElement('div');
+        hair.className='motif';
+        hair.style.width=size*0.92+'px';
+        hair.style.height=size*0.62+'px';
+        hair.style.left='50%'; hair.style.top='-6%';
+        hair.style.transform='translateX(-50%)';
+        hair.style.background='#151018';
+        hair.style.borderRadius='50% 50% 45% 45%';
+        face.appendChild(hair);
+        // 額の肌部分（髪の下に肌色の額を見せる）
+        const brow2 = document.createElement('div');
+        brow2.className='motif';
+        brow2.style.width=size*0.66+'px';
+        brow2.style.height=size*0.42+'px';
+        brow2.style.left='50%'; brow2.style.top='6%';
+        brow2.style.transform='translateX(-50%)';
+        brow2.style.background=`radial-gradient(circle at 35% 20%, ${lighten(type.color)} 0%, ${type.color} 70%)`;
+        brow2.style.borderRadius='50% 50% 45% 45%';
+        face.appendChild(brow2);
+        // 金の王冠
+        const crown = document.createElement('div');
+        crown.className='motif';
+        crown.style.left='50%'; crown.style.top='-30%';
+        crown.style.transform='translateX(-50%)';
+        crown.style.width=size*0.5+'px';
+        crown.style.height=size*0.28+'px';
+        crown.style.background='linear-gradient(180deg,#ffdf7a,#e8ab19)';
+        crown.style.clipPath='polygon(0% 100%, 0% 50%, 18% 78%, 32% 20%, 50% 60%, 68% 20%, 82% 78%, 100% 50%, 100% 100%)';
+        crown.style.filter='drop-shadow(0 2px 1px rgba(0,0,0,0.3))';
+        face.appendChild(crown);
+        const crownBand = document.createElement('div');
+        crownBand.className='motif';
+        crownBand.style.left='50%'; crownBand.style.top='-8%';
+        crownBand.style.transform='translateX(-50%)';
+        crownBand.style.width=size*0.52+'px';
+        crownBand.style.height=size*0.08+'px';
+        crownBand.style.background='linear-gradient(180deg,#ffdf7a,#d99a10)';
+        crownBand.style.borderRadius='40%';
+        face.appendChild(crownBand);
+        const jewel = document.createElement('div');
+        jewel.className='motif';
+        jewel.style.width=size*0.09+'px';
+        jewel.style.height=size*0.09+'px';
+        jewel.style.left='50%'; jewel.style.top='-20%';
+        jewel.style.transform='translateX(-50%)';
+        jewel.style.background='#c0392b';
+        jewel.style.borderRadius='50%';
+        jewel.style.boxShadow=`0 0 ${size*0.04}px #ff6b52`;
+        face.appendChild(jewel);
+        // 吊り上がった緑がかった眉（気高く鋭い表情）
+        [ -1, 1 ].forEach(sign=>{
+          const brow = document.createElement('div');
+          brow.className='motif';
+          brow.style.width = size*0.2+'px';
+          brow.style.height = size*0.04+'px';
+          brow.style.left = (50+sign*22)+'%';
+          brow.style.top = '30%';
+          brow.style.transform = `translateX(-50%) rotate(${sign*-22}deg)`;
+          brow.style.background = '#1c1420';
+          brow.style.borderRadius = '40%';
+          face.appendChild(brow);
+        });
+        // 頬に軽く緑のアイシャドウ風の陰影
+        [ -1, 1 ].forEach(sign=>{
+          const shadow = document.createElement('div');
+          shadow.className='motif';
+          shadow.style.width = size*0.14+'px';
+          shadow.style.height = size*0.07+'px';
+          shadow.style.left = (50+sign*24)+'%';
+          shadow.style.top = '36%';
+          shadow.style.transform = `translateX(-50%) rotate(${sign*-10}deg)`;
+          shadow.style.background = 'rgba(70,140,80,0.35)';
+          shadow.style.borderRadius = '50%';
+          face.appendChild(shadow);
+        });
+        break;
+      }
+      case 'mirrorFrame': {
+        // 鏡：緑の精霊の顔を囲む、装飾的な金の丸縁フレーム（魔法の鏡をイメージ）
+        const ring = document.createElement('div');
+        ring.className='motif';
+        const s = size*0.98;
+        ring.style.width=s+'px';
+        ring.style.height=s+'px';
+        ring.style.left='50%'; ring.style.top='48%';
+        ring.style.transform='translate(-50%,-50%)';
+        ring.style.borderRadius='50%';
+        ring.style.background='transparent';
+        ring.style.border=`${Math.max(2,size*0.07)}px solid #f0c33f`;
+        ring.style.boxShadow=`inset 0 0 ${size*0.05}px rgba(255,255,255,0.4), 0 0 ${size*0.04}px rgba(0,0,0,0.25)`;
+        ring.style.zIndex='0';
+        face.appendChild(ring);
+        // フレーム上部の小さな飾り突起（4方向）
+        [0,90,180,270].forEach(angle=>{
+          const stud = document.createElement('div');
+          stud.className='motif';
+          stud.style.width=size*0.09+'px';
+          stud.style.height=size*0.09+'px';
+          stud.style.left='50%'; stud.style.top='48%';
+          const rad = (angle-90) * Math.PI/180;
+          const dist = s/2;
+          stud.style.transform = `translate(-50%,-50%) translate(${Math.cos(rad)*dist}px, ${Math.sin(rad)*dist}px)`;
+          stud.style.background='radial-gradient(circle at 35% 30%, #fff3c0, #f0c33f 70%)';
+          stud.style.borderRadius='50%';
+          stud.style.boxShadow='0 0 2px rgba(0,0,0,0.3)';
+          face.appendChild(stud);
+        });
+        break;
+      }
+      case 'hagHood': {
+        // 老婆：ぼろぼろの黒いフードをすっぽり被った不気味な影の顔
+        const hood = document.createElement('div');
+        hood.className='motif';
+        hood.style.width=size*0.86+'px';
+        hood.style.height=size*0.6+'px';
+        hood.style.left='50%'; hood.style.top='-10%';
+        hood.style.transform='translateX(-50%)';
+        hood.style.background='linear-gradient(180deg,#3a352c,#141210)';
+        hood.style.borderRadius='50% 50% 40% 40%';
+        hood.style.filter='drop-shadow(0 2px 2px rgba(0,0,0,0.5))';
+        face.appendChild(hood);
+        [ -1, 1 ].forEach(sign=>{
+          const eye = document.createElement('div');
+          eye.className='motif';
+          eye.style.width = size*0.07+'px';
+          eye.style.height = size*0.07+'px';
+          eye.style.left = (50+sign*11)+'%'; eye.style.top = '46%';
+          eye.style.transform = 'translate(-50%,-50%)';
+          eye.style.background = type.eyeColor || '#7fbf5a';
+          eye.style.borderRadius = '50%';
+          // ツムが盤面に多数並ぶと光彩が重なって画面全体が緑のモヤに見えてしまうため、グローは控えめに留める
+          eye.style.boxShadow = `0 0 ${size*0.015}px ${type.eyeColor||'#7fbf5a'}`;
+          face.appendChild(eye);
+        });
+        break;
+      }
     }
   }
 
@@ -3319,6 +3701,13 @@
 
   function renderTsumPosition(t){
     if(t.sucking) return; // ゲージへ吸い込まれる演出中は、演出側で直接transformを制御するため上書きしない
+    // popping中（.popping等のCSSアニメーションでtransform:scale()を演出させている間）は、
+    // 物理演算による位置更新をここでtransformに書き込まない。
+    // キャプテンライトイヤーのタップ消去など skipGhost 指定の消去は、ポップ中も
+    // noCollideのまま重力で動き続けるため、この関数が毎フレームtransformを上書きしてしまうと
+    // CSSアニメーション側のtransform(scale)と衝突し、ポップ演出がカクつく／一瞬止まって見える
+    // 不具合が起きる。ポップが始まった瞬間の位置で見た目を固定し、アニメーションにtransformを譲る。
+    if(t.popScheduled) return;
     // 変化がなければDOM書き込みをスキップ（静止したツムを毎フレーム書き換えるのを防ぎ負荷を減らす）
     if(t._lastX===t.x && t._lastY===t.y && t._lastRot===t.rot) return;
     t._lastX = t.x; t._lastY = t.y; t._lastRot = t.rot;
@@ -3445,6 +3834,10 @@
   function isHookPair(keyA, keyB){
     return (keyA==='hook' && keyB==='hookAngry') || (keyA==='hookAngry' && keyB==='hook');
   }
+  // 老婆同士は、女王のスキル効果中は離れていても自由につなげられる特殊ペア
+  function isOldHagPair(keyA, keyB){
+    return keyA==='oldhag' && keyB==='oldhag';
+  }
   function sameChainType(keyA, keyB){
     return keyA===keyB || isNamineSoraPair(keyA, keyB) || isHookPair(keyA, keyB);
   }
@@ -3461,8 +3854,8 @@
     }
     if(selectedPath.includes(t)) return;
     const last = selectedPath[selectedPath.length-1];
-    // ナミネ⇄ソラ、怒ったフック船長⇄フック船長本体 は、盤面上どれだけ離れていてもつながる
-    if(isNamineSoraPair(t.type.key, last.type.key) || isHookPair(t.type.key, last.type.key)){
+    // ナミネ⇄ソラ、怒ったフック船長⇄フック船長本体、老婆同士 は、盤面上どれだけ離れていてもつながる
+    if(isNamineSoraPair(t.type.key, last.type.key) || isHookPair(t.type.key, last.type.key) || isOldHagPair(t.type.key, last.type.key)){
       selectedPath.push(t);
       t.selected = true;
       t.vx = 0; t.vy = 0;
@@ -3482,6 +3875,7 @@
       t.el.classList.add('selected');
       if(t.type.key==='namine' || t.type.key==='sora') t.el.classList.add('namineLinkable');
       if(t.type.key==='hook' || t.type.key==='hookAngry') t.el.classList.add('hookLinkable');
+      if(t.type.key==='oldhag') t.el.classList.add('namineLinkable');
       if(sallyActive) t.el.classList.add('sallyLinkable');
       updateRope(); updateLinkCount();
     }
@@ -3621,7 +4015,8 @@
     }
     const feverSpeed = inFever ? FEVER_POP_SPEED_MULT : 1;
     // ツムが1個消えるアニメーション自体の速度を通常より20%遅くする
-    const POP_DURATION = 420 / feverSpeed * 1.2;
+    // （フィーバー中はfeverSpeedで速める）
+    const POP_DURATION = BASE_POP_DURATION_MS / feverSpeed;
     // 1個ずつ消えていく間隔を通常より44%遅くする（連続消去の波が伝わる速度）
     const totalWave = instant ? 0 : Math.min(2200, 160*(ordered.length-1)) / feverSpeed * 1.2 * 1.2;
     const stagger = (!instant && ordered.length>1) ? totalWave/(ordered.length-1) : 0;
@@ -3747,7 +4142,10 @@
     const suckTo = suckTargets && suckTargets.get(t);
     if(!suckTo) return; // 吸い込み対象外（＝ゲージ演出を伴わない消し方）のツムは何もしない
     const weight = t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1;
-    if(t.isMine){
+    // 老婆は女王が変化した姿なので、女王（またはそのペアの鏡）をマイツムに選んでいる間は
+    // 老婆を消した分も女王のスキルゲージにきちんと反映されるようにする
+    const countsAsMine = t.isMine || (t.type.key==='oldhag' && (myTsumKey==='queen' || (isPairMode() && pairPartnerKey()==='queen')));
+    if(countsAsMine){
       // マイツムは、スキルゲージ（満タンでなければ）に加えて、常にフィーバーゲージにも同時に加算する
       if(!isMySkillGaugeFull()){
         addSkillGauge(weight, [t], rate, ignoreGastonRain);
@@ -3787,12 +4185,14 @@
     // ナミネのスキル効果中（ソラが存在する間）に、ナミネ・ソラを含むチェーンを消した場合のみ
     // 周囲のツムも巻き込んで一緒に消す。スキル効果外では通常のチェーンとして扱う。
     const hasNamineOrSora = namineActive && path.some(t=> t.type.key==='namine' || t.type.key==='sora');
+    // 女王のスキル効果中（老婆が存在する間）に、老婆を含むチェーンを消した場合も同様に、周囲のツムを巻き込む。
+    const hasOldHag = queenActive && path.some(t=> t.type.key==='oldhag');
     let extraTargets = [];
-    let extraOwnerMap = new Map(); // 巻き込まれたツム → 巻き込んだナミネ/ソラ本体（pathの中のツム）
-    if(hasNamineOrSora){
+    let extraOwnerMap = new Map(); // 巻き込まれたツム → 巻き込んだナミネ/ソラ・老婆本体（pathの中のツム）
+    if(hasNamineOrSora || hasOldHag){
       const pathIds = new Set(path.map(t=>t.id));
-      const radius = tsumRadius * NAMINE_SKILL_RANGE;
-      const centers = path.filter(t=> t.type.key==='namine' || t.type.key==='sora');
+      const radius = tsumRadius * (hasOldHag ? QUEEN_SKILL_RANGE : NAMINE_SKILL_RANGE);
+      const centers = path.filter(t=> t.type.key==='namine' || t.type.key==='sora' || t.type.key==='oldhag');
       const nearbySet = new Set();
       tsums.forEach(t=>{
         if(pathIds.has(t.id) || t.isBomb || (t.ghost || t.popScheduled)) return;
@@ -3814,14 +4214,25 @@
     score += bonus;
     scoreVal.textContent = score.toLocaleString();
 
-    // ナミネ・ソラを含むチェーンはコイン補正-2（本家のナミネ固有コイン補正）
-    const coinBonus = hasNamineOrSora ? -2 : undefined;
+    // ナミネ・ソラ、老婆を含むチェーンはコイン補正-2
+    const coinBonus = (hasNamineOrSora || hasOldHag) ? -2 : undefined;
     const gainedCoins = coinsForChain(totalEffectiveN, coinBonus);
     coins += gainedCoins;
     coinVal.textContent = coins.toLocaleString();
 
     if(totalEffectiveN > maxChain) maxChain = totalEffectiveN;
     chainVal.textContent = maxChain;
+
+    // 老婆を含むチェーンの場合、通常のなぞり消去でも老婆の消去数を集計してゲージへ反映する
+    // （鏡のマジックミラーで巻き込んだ場合と同様の加算。ここで加算しないと、通常プレイで
+    //   老婆をなぞって消してもゲージが全く溜まらなくなってしまう）
+    if(hasOldHag){
+      const hagCount = path.reduce((sum,t)=> sum + (t.type.key==='oldhag' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0)
+        + extraTargets.reduce((sum,t)=> sum + (t.type.key==='oldhag' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
+      queenHagCleared += hagCount;
+      if(queenHagCleared >= QUEEN_HAG_GOAL) queenHagGoalReached = true;
+      updateHagGaugeUI();
+    }
 
     const myCount = path.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0)
       + extraTargets.reduce((sum,t)=> sum + (t.isMine ? (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1) : 0), 0);
@@ -4163,6 +4574,23 @@
   // Skill
   // ------------------------------------------------------------
   function updateSkillGaugeUI(){
+    if(myTsumKey==='queen'){
+      // ペアツム（女王＆鏡）：女王・鏡それぞれ専用のリングを独立して更新する
+      skillRingWrap2.style.display = '';
+      const pctQueen = Math.min(100, (queenGauge/SKILL_GAUGE_MAX)*100);
+      const pctMirror = Math.min(100, (mirrorGauge/SKILL_GAUGE_MAX)*100);
+      skillRingWrap.style.setProperty('--pct', pctQueen);
+      skillRingWrap2.style.setProperty('--pct', pctMirror);
+      if(queenGauge >= SKILL_GAUGE_MAX && !queenReady){
+        queenReady = true;
+        skillRingWrap.classList.add('ready');
+      }
+      if(mirrorGauge >= SKILL_GAUGE_MAX && !mirrorReady){
+        mirrorReady = true;
+        skillRingWrap2.classList.add('ready');
+      }
+      return;
+    }
     if(isPairMode()){
       // ペアツム（ジャック＆サリー）：ジャック・サリーそれぞれ専用のリングを独立して更新する
       skillRingWrap2.style.display = '';
@@ -4211,6 +4639,25 @@
     return (hero && hero.skillNeed) || 11;
   }
 
+  // 女王・鏡それぞれの消去数を個別ゲージへ加算する（ペアツム専用。片方が満タンでも、
+  // もう片方はスキル発動とは無関係に独立して溜まり続ける）
+  function addQueenSkillGauge(erasedList, rate, ignoreGastonRain){
+    if((gastonRainActive && !ignoreGastonRain) || !erasedList || erasedList.length===0) return;
+    const r = (rate===undefined) ? 1 : rate;
+    const queenType = TSUM_TYPES.find(t=>t.key==='queen');
+    const mirrorType = TSUM_TYPES.find(t=>t.key==='mirror');
+    // 老婆は女王がスキルで変化した姿なので、消した分は女王本体を消したのと同じくスキルゲージへ加算する
+    const queenCount = erasedList.reduce((sum,t)=> sum + ((t.isMine && t.type.key==='queen') || t.type.key==='oldhag' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0) * r;
+    const mirrorCount = erasedList.reduce((sum,t)=> sum + (t.isMine && t.type.key==='mirror' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0) * r;
+    if(queenCount>0 && !queenReady){
+      queenGauge = Math.min(SKILL_GAUGE_MAX, queenGauge + queenCount*(SKILL_GAUGE_MAX/queenType.skillNeed));
+    }
+    if(mirrorCount>0 && !mirrorReady){
+      mirrorGauge = Math.min(SKILL_GAUGE_MAX, mirrorGauge + mirrorCount*(SKILL_GAUGE_MAX/mirrorType.skillNeed));
+    }
+    if(queenCount>0 || mirrorCount>0) updateSkillGaugeUI();
+  }
+
   // ジャック・サリーそれぞれの消去数を個別ゲージへ加算する（ペアツム専用。片方が満タンでも、
   // もう片方はスキル発動とは無関係に独立して溜まり続ける）
   function addPairSkillGauge(erasedList, rate, ignoreGastonRain){
@@ -4234,6 +4681,10 @@
   //   （効果時間外で繋いだチェーンが、消去演出中に降臨タイム突入してしまっても取りこぼさないための救済）
   function addSkillGauge(myCount, erasedList, rate, ignoreGastonRain){
     const r = (rate===undefined) ? 1 : rate;
+    if(myTsumKey==='queen'){
+      addQueenSkillGauge(erasedList || [], r, ignoreGastonRain);
+      return;
+    }
     if(isPairMode()){
       addPairSkillGauge(erasedList || [], r, ignoreGastonRain);
       return;
@@ -4252,6 +4703,11 @@
 
   skillRingWrap.addEventListener('click', ()=>{
     if(!gameActive || gamePaused) return;
+    if(myTsumKey==='queen'){
+      if(!queenReady || skillActive) return;
+      activateQueenMirrorSkill('queen');
+      return;
+    }
     if(isPairMode()){
       // ジャック側のリング：ジャックのゲージが満タンなら、他方のスキルの発動状況に関わらず単独で使える
       if(!jackReady || skillActive) return;
@@ -4263,7 +4719,13 @@
   });
 
   skillRingWrap2.addEventListener('click', ()=>{
-    if(!gameActive || gamePaused || !isPairMode()) return;
+    if(!gameActive || gamePaused) return;
+    if(myTsumKey==='queen'){
+      if(!mirrorReady || skillActive) return;
+      activateQueenMirrorSkill('mirror');
+      return;
+    }
+    if(!isPairMode()) return;
     // サリー側のリング：サリーのゲージが満タンなら単独で使える
     if(!sallyReady || skillActive) return;
     activatePairSkill('sally');
@@ -4290,6 +4752,29 @@
       skillRingWrap2.classList.remove('ready');
       updateSkillGaugeUI();
       skillSallyStitch();
+    }
+  }
+
+  // ペアツム専用（女王＆鏡）：女王・鏡はゲージが別々なので、どちらかが満タンになった時点でそれぞれ独立して発動できる。
+  function activateQueenMirrorSkill(who){
+    skillActive = true;
+
+    if(selecting){
+      selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable'));
+      selecting=false; selectedPath=[]; ropeSvg.innerHTML=''; linkCountEl.textContent='0'; chainCountBadge.classList.remove('show'); lastPointerPoint=null;
+    }
+    pauseTimer(650);
+
+    if(who==='queen'){
+      queenReady = false; queenGauge = 0;
+      skillRingWrap.classList.remove('ready');
+      updateSkillGaugeUI();
+      skillQueenTransform();
+    } else {
+      mirrorReady = false; mirrorGauge = 0;
+      skillRingWrap2.classList.remove('ready');
+      updateSkillGaugeUI();
+      skillMirrorErase();
     }
   }
 
@@ -4323,6 +4808,7 @@
       stitch: skillStitchHero,
       luke: skillLukeSlash,
       guardianluke: skillGuardianLuke,
+      queen: skillQueenTransform,
     };
     (skillFns[myTsumKey] || skillRoyalClear)();
   }
@@ -4586,20 +5072,25 @@
     appEl.classList.remove('gastonRain');
   }
 
-  // キャプテンライトイヤー：狙撃してくる敵のカットインで足止め→
-  // タップした場所を中心に直径6ツム分の円範囲を消去（5回まで）
+  // キャプテンライトイヤー：カットイン演出（バズ本人が銃を構える）の後、
+  // プレイヤーがタップした場所を中心に円範囲を消去する（5回まで）。
   function skillBuzzLightyear(){
-    // 時間停止するがツムの物理は働く＝skillTimeFreezeのみON（boardFrozenは使わない）
+    // カットイン演出中だけ時間停止する（ツムの物理は働く＝skillTimeFreezeのみON、boardFrozenは使わない）。
+    // タップ消去中（スキル効果中）はプレイヤーの操作時間なので、時間は止めずに進行させる。
     skillTimeFreeze = true;
     appEl.classList.add('timeStopDimmed');
     pauseTimer(1500);
     showBuzzCutin(()=>{
       forceFinishAllGhosts();
+      // カットインが終わった時点で時間停止を解除し、タップ消去中はタイマーが進むようにする
+      skillTimeFreeze = false;
+      appEl.classList.remove('timeStopDimmed');
+      resumeTimerNow();
       startBuzzTapMode();
     });
   }
 
-  // 腕のビームでこちらを狙う敵のシルエットがカットインしてくる演出
+  // バズ本人が銃を構えるカットイン演出（本家準拠：敵ではなくバズ自身が主役）
   function showBuzzCutin(onDone){
     const layer = document.createElement('div');
     layer.className = 'buzzCutinLayer';
@@ -4608,29 +5099,25 @@
     flash.className = 'buzzCutinFlash';
     layer.appendChild(flash);
 
-    const foe = document.createElement('div');
-    foe.className = 'buzzFoe';
-    const foeHead = document.createElement('div');
-    foeHead.className = 'buzzFoeHead';
-    const foeArm = document.createElement('div');
-    foeArm.className = 'buzzFoeArm';
-    const foeBeam = document.createElement('div');
-    foeBeam.className = 'buzzFoeBeam';
-    foeArm.appendChild(foeBeam);
-    foe.appendChild(foeHead);
-    foe.appendChild(foeArm);
-    layer.appendChild(foe);
+    // 盤面中央に、なりきりバズの巨大な顔をカットインさせる（本家の「本人が身構える」演出を再現）
+    const hero = document.createElement('div');
+    hero.className = 'buzzHeroPortrait';
+    const buzzType = TSUM_TYPES.find(t=>t.key==='buzz');
+    const heroFace = createTsumEl(buzzType, true, 150);
+    heroFace.style.position = 'relative';
+    heroFace.style.left = '0'; heroFace.style.top = '0'; heroFace.style.transform = 'none';
+    heroFace.style.pointerEvents = 'none';
+    hero.appendChild(heroFace);
+    layer.appendChild(hero);
 
     const line = document.createElement('div');
     line.className = 'buzzCutinLine';
-    line.textContent = 'ビームロックオン！';
+    line.textContent = 'ネヴァー・ギブアップ！';
     layer.appendChild(line);
 
     board.appendChild(layer);
 
     requestAnimationFrame(()=>{ layer.classList.add('enter'); });
-
-    setTimeout(()=>{ foeBeam.classList.add('fire'); }, 500);
 
     setTimeout(()=>{
       layer.classList.add('exit');
@@ -5407,6 +5894,231 @@
     namineTransformedKey = null;
   }
 
+  // ------------------------------------------------------------
+  // 女王＆鏡：2種類のスキルを使えるペアツム
+  // ------------------------------------------------------------
+  // 女王：5秒間、女王が老婆に変化する。老婆は離れていてもつながり、つなぐと周りを巻き込んで消せる。
+  function skillQueenTransform(){
+    // 前回のスキル効果がまだ残っている場合は、先に前回分を即座に元へ戻してから今回の判定に入る
+    if(queenActive){
+      queenRemainingMs = 0;
+      const queenType = TSUM_TYPES.find(t=>t.key==='queen');
+      tsums.filter(t=> t.type.key==='oldhag' && !t.isBomb && !(t.ghost || t.popScheduled))
+        .forEach(t=> transformTsumType(t, queenType));
+      queenActive = false;
+    }
+
+    const queenType = TSUM_TYPES.find(t=>t.key==='queen');
+    const targets = tsums.filter(t=> t.isMine && t.type.key==='queen' && !t.isBomb && !(t.ghost || t.popScheduled));
+    if(targets.length===0){
+      showSkillLabel('クイーン・トランスフォーメーション！ 対象がいなかった…');
+      finishSkill();
+      return;
+    }
+
+    // 変化演出中は盤面の時間を止める
+    boardFrozen = true;
+    pauseTimer(700);
+
+    const flash = document.createElement('div');
+    flash.className = 'namineTransformFlashLayer';
+    board.appendChild(flash);
+    setTimeout(()=> flash.remove(), 520);
+
+    targets.forEach(t=>{ t.el.classList.add('soraTransforming'); });
+
+    showSkillLabel('クイーン・トランスフォーメーション！ 女王が老婆に変化');
+
+    setTimeout(()=>{
+      targets.forEach(t=> transformTsumType(t, OLDHAG_TYPE));
+      unfreezeBoard();
+      finishSkill();
+      queenActive = true;
+      queenRemainingMs = QUEEN_DURATION*1000;
+      queenHagGoalReached = (queenHagCleared >= QUEEN_HAG_GOAL);
+      updateHagGaugeUI();
+      hagGaugeWrap.classList.add('show');
+    }, 500);
+  }
+
+  // 効果終了時、老婆を女王に戻す。合計80個消していたら中央消去のおまけを発動する
+  function endQueenSkill(){
+    queenActive = false;
+    // 効果終了の瞬間も、変化演出に合わせて少しの間ツムの物理演算を止める
+    queenMirrorPhysicsFreeze = true;
+    const hagTsums = tsums.filter(t=> t.type.key==='oldhag' && !t.isBomb && !(t.ghost || t.popScheduled));
+    const queenType = TSUM_TYPES.find(t=>t.key==='queen');
+    hagGaugeWrap.classList.remove('show');
+
+    if(queenHagGoalReached){
+      // おまけ達成時は、中央消去が発動し終わるまで老婆の姿のまま残しておき、
+      // 消去が終わってから（消え残った老婆も含めて）まとめて女王の姿に戻す。
+      queenHagCleared -= QUEEN_HAG_GOAL;
+      updateHagGaugeUI();
+      setTimeout(()=>{ queenMirrorPhysicsFreeze = false; }, 260);
+      setTimeout(()=>{
+        triggerQueenBonusClear(()=>{
+          if(queenType){
+            tsums.filter(t=> t.type.key==='oldhag' && !t.isBomb && !(t.ghost || t.popScheduled)).forEach(t=>{
+              t.el.classList.add('soraTransforming');
+              setTimeout(()=>{
+                if(tsums.includes(t)) transformTsumType(t, queenType);
+              }, 250);
+            });
+          }
+        });
+      }, 320);
+    } else {
+      if(queenType){
+        hagTsums.forEach(t=>{
+          t.el.classList.add('soraTransforming');
+          setTimeout(()=>{
+            if(tsums.includes(t)) transformTsumType(t, queenType);
+          }, 250);
+        });
+      }
+      setTimeout(()=>{ queenMirrorPhysicsFreeze = false; }, 260);
+    }
+    queenHagGoalReached = false;
+  }
+
+  // 老婆を合計80個消したときの、効果時間終了時のおまけ：盤面中央付近のツムをまとめて消去する（直径7ツム分の範囲）
+  const QUEEN_BONUS_CLEAR_DIAMETER_TSUM = 7;
+  function triggerQueenBonusClear(onDone){
+    if(!gameActive){ if(onDone) onDone(); return; }
+    const center = {x:boardW/2, y:visY(boardH/2)};
+    const radius = tsumRadius * QUEEN_BONUS_CLEAR_DIAMETER_TSUM/2;
+    const targets = tsums.filter(t=>{
+      if(t.isBomb || (t.ghost || t.popScheduled)) return false;
+      const dx = t.x-center.x, dy = t.y-center.y;
+      return dx*dx+dy*dy <= radius*radius;
+    });
+    if(targets.length===0){ if(onDone) onDone(); return; }
+    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+    const bonus = computeScore(targets, effectiveN);
+    score += bonus;
+    scoreVal.textContent = score.toLocaleString();
+    const gainedCoins = coinsForChain(effectiveN, -2);
+    coins += gainedCoins;
+    coinVal.textContent = coins.toLocaleString();
+    if(effectiveN > maxChain) maxChain = effectiveN;
+    chainVal.textContent = maxChain;
+    showSkillLabel(`老婆80個達成！ 中央消去 +${bonus}`);
+    showEraseCount(targets, effectiveN, center);
+    burstSparkles(targets);
+    const suckTargets = buildSuckTargets(targets);
+    if(gainedCoins>0) burstCoins(targets, gainedCoins);
+    popWithWave(targets, center, 'popping', ()=>{
+      refillIfNeeded(targets.map(t=>t.x));
+      checkFeverTrigger();
+      if(onDone) onDone();
+    }, true, undefined, false, suckTargets);
+  }
+
+  // 緑ゲージの見た目を更新
+  function updateHagGaugeUI(){
+    const pct = Math.min(100, (queenHagCleared/QUEEN_HAG_GOAL)*100);
+    hagGaugeFill.style.width = pct+'%';
+    hagGaugeWrap.classList.toggle('goalReached', queenHagCleared>=QUEEN_HAG_GOAL);
+  }
+
+  // 鏡：ランダムなツム1種類を選び、盤面のそのツムをまとめて消す。
+  // 女王のスキル効果中（老婆が出現中）に発動した場合は、確定で老婆を選び、老婆の巻き込み消去を発動する。
+  function skillMirrorErase(){
+    let targetKey;
+    if(queenActive){
+      targetKey = 'oldhag';
+    } else {
+      const counts = {};
+      tsums.forEach(t=>{
+        if(t.isBomb || (t.ghost || t.popScheduled)) return;
+        counts[t.type.key] = (counts[t.type.key]||0) + 1;
+      });
+      const keys = Object.keys(counts);
+      if(keys.length===0){
+        showSkillLabel('マジックミラー！ 対象がいなかった…');
+        finishSkill();
+        return;
+      }
+      targetKey = keys[Math.floor(Math.random()*keys.length)];
+    }
+
+    const targetType = (targetKey==='oldhag') ? OLDHAG_TYPE : TSUM_TYPES.find(t=>t.key===targetKey);
+    const targetName = (targetType && targetType.name) || '';
+
+    // 鏡の中に選ばれたツムが映る演出
+    boardFrozen = true;
+    pauseTimer(650);
+    const flash = document.createElement('div');
+    flash.className = 'namineTransformFlashLayer';
+    board.appendChild(flash);
+    setTimeout(()=> flash.remove(), 520);
+    showSkillLabel(`マジックミラー！ ${targetName}が映った…`);
+
+    setTimeout(()=>{
+      unfreezeBoard();
+      const targets = tsums.filter(t=> t.type.key===targetKey && !t.isBomb && !(t.ghost || t.popScheduled));
+      if(targets.length===0){
+        showSkillLabel(`マジックミラー！ ${targetName}は見つからなかった…`);
+        finishSkill();
+        return;
+      }
+
+      // 老婆が選ばれた場合は、老婆本体だけでなく周囲のツムも巻き込んで消す（女王のスキルと同じ範囲消去）
+      let allTargets = targets;
+      if(targetKey==='oldhag'){
+        const idSet = new Set(targets.map(t=>t.id));
+        const radius = tsumRadius * QUEEN_SKILL_RANGE;
+        const nearbySet = new Set(targets);
+        tsums.forEach(t=>{
+          if(idSet.has(t.id) || t.isBomb || (t.ghost || t.popScheduled)) return;
+          for(const c of targets){
+            const dx = t.x-c.x, dy = t.y-c.y;
+            if(dx*dx+dy*dy <= radius*radius){ nearbySet.add(t); break; }
+          }
+        });
+        allTargets = Array.from(nearbySet);
+      }
+
+      const effectiveN = allTargets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(allTargets, effectiveN);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(effectiveN, -2);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(effectiveN > maxChain) maxChain = effectiveN;
+      chainVal.textContent = maxChain;
+
+      const labelText = (targetKey==='oldhag')
+        ? `マジックミラー！ 老婆を巻き込んで${allTargets.length}個消去 +${bonus}`
+        : `マジックミラー！ ${targetName}を${allTargets.length}個消去 +${bonus}`;
+      showSkillLabel(labelText);
+      const eraseCountPos = showEraseCount(allTargets, effectiveN);
+      burstSparkles(allTargets);
+      const suckTargets = buildSuckTargets(allTargets);
+      if(gainedCoins>0) burstCoins(allTargets, gainedCoins);
+
+      const spawnBomb = pickBombType(effectiveN) !== null;
+      const bombSpot = spawnBomb ? eraseCountPos : null;
+      forceFinishAllGhosts();
+
+      if(targetKey==='oldhag'){
+        // 老婆を消した数を集計してゲージに加算（このスキルでの消去はチェーン扱いではないため、popWithWave内のゲージ加算対象外）
+        const hagCount = allTargets.reduce((sum,t)=> sum + (t.type.key==='oldhag' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
+        queenHagCleared += hagCount;
+        if(queenHagCleared >= QUEEN_HAG_GOAL) queenHagGoalReached = true;
+        updateHagGaugeUI();
+      }
+
+      popWithWave(allTargets, null, 'popping', ()=>{
+        refillIfNeeded(allTargets.map(t=>t.x));
+        finishSkill();
+        checkFeverTrigger();
+      }, true, ()=>{ if(bombSpot) spawnBombAt(bombSpot, effectiveN); }, false, suckTargets);
+    }, 500);
+  }
+
   // ツムの種類を差し替える共通処理（座標・物理状態は維持したままDOM要素だけ作り直す）
   function transformTsumType(t, newType){
     t.type = newType;
@@ -5854,7 +6566,7 @@
   // 指定座標を中心に直径6ツム分の円形消去を行う（第2段階専用）
   function stitchCircleErase(p, onDone){
     const eraseRadius = tsumRadius*7; // 直径7ツム分の円
-    showBuzzTapCircle(p, eraseRadius);
+    showCircleEraseRange(p, eraseRadius);
 
     setTimeout(()=>{
       const targets = tsums.filter(t=>{
@@ -6193,9 +6905,11 @@
     }, true, undefined, false, suckTargets, 0.7);
   }
 
+  // タップした場所を中心に円範囲を消去する（本家のキャプテンライトイヤー：一斉射撃の1回分）。
+  // startBuzzTapMode()中の pointerdown ハンドラから呼ばれる。
   function doBuzzErase(p){
     const eraseRadius = tsumRadius*5*1.2; // 直径5ツム分の円を20%拡大
-    showBuzzTapCircle(p, eraseRadius);
+    showCircleEraseRange(p, eraseRadius);
 
     // タップできる位置は指が届く範囲（見える盤面内）に限られるが、積み上がって見えない
     // 枠外エリア（盤面の天井よりさらに上、y=0付近）のツムも巻き込めるようにしたい。
@@ -6262,8 +6976,8 @@
     }
   }
 
-  // タップした位置に一瞬だけ消去範囲の円を表示する
-  function showBuzzTapCircle(p, radius){
+  // 指定座標に一瞬だけ消去範囲の円を表示する（バズ・スティッチなど円形消去系スキルで共用）
+  function showCircleEraseRange(p, radius){
     const circle = document.createElement('div');
     circle.className = 'buzzTapCircle';
     const size = radius*2;
@@ -6607,8 +7321,11 @@
     // 生成されてから見え始めるまでの待ち時間が長すぎた。
     // ツム直径の数個分だけ枠外エリアのさらに外に隠せば「上空から降ってくる」演出としては十分なので、
     // その最低限の高さまで開始位置を下げる。
-    // #board要素の上端はy=0（＝枠外エリアの天井）なので、そこからさらに上にオフセットする。
-    const startY = -tsumRadius*3;
+    // #board要素のローカル座標系はy=0が「枠外エリアの天井」。見た目上の盤面の天井（boardFrameの枠）は
+    // y=TOP_OVERFLOWの位置にある。ヘッダー付近から降ってくるように見せるには、盤面の天井よりさらに
+    // 上（y座標としてはより小さい・マイナス方向）から出現させる必要があるので、TOP_OVERFLOWから
+    // SPAWN_ABOVE_MARGIN分だけ引いた位置を開始位置にする。
+    const startY = TOP_OVERFLOW - SPAWN_ABOVE_MARGIN;
 
     for(let i=0;i<deficit;i++){
       const rowIdx = Math.floor(i / perRow);
@@ -6648,7 +7365,7 @@
     const gAxisX = gyroEnabled ? gravityDirX : 0;
     const gAxisY = gyroEnabled ? gravityDirY : 1;
     for(const t of tsums){
-      if(t.selected || t.ghost || (t.popScheduled && !t.noCollide)) continue;
+      if(t.ghost || (t.popScheduled && !t.noCollide)) continue;
       // 他のツムに乗っかって静止しているとみなせる場合は重力・移動の積分自体をスキップする。
       //
       // 【設計の経緯】
@@ -6804,12 +7521,12 @@
                 // 見た目上なめらかに押し出されるようになる。
                 const MAX_PUSH_PER_ITER = tsumRadius * 0.35;
                 const overlap = Math.min(overlapRaw, MAX_PUSH_PER_ITER);
-                // 選択中（指に固定）／消去演出中（幽霊状態）／resting（積まれて静止済み）のツムは
-                // 「押し込まれて動かされない」ように扱う。resting も実質的に固定物とみなすことで、
-                // 上から降ってくるツムが積み上がった山を無理やり押しのけて隙間に割り込む、という
-                // 不自然な動きを防ぎ、降ってきた側だけが押し返される（＝山の上や横で受け止められる）ようにする。
-                const aFixed = !!a.selected || !!a.ghost || !!a.resting;
-                const bFixed = !!b.selected || !!b.ghost || !!b.resting;
+                // 選択中（なぞり中）のツムも、消去演出中（幽霊状態）／resting（積まれて静止済み）とは違い
+                // 通常のツムと同じく物理演算（重力・押し出し）の対象にする。なぞっている最中に他の
+                // ツムがぶつかってくれば、選択中のツムも自然に押し出される・落ちる。
+                // 「押し込まれて動かされない」のは、消去演出中（幽霊状態）／resting（積まれて静止済み）のみ。
+                const aFixed = !!a.ghost || !!a.resting;
+                const bFixed = !!b.ghost || !!b.resting;
                 if(aFixed && bFixed){
                   // 両方固定（選択中／幽霊／resting）の場合は基本的に何もしないが、
                   // 例外として「両方 resting（選択中でも幽霊でもない）」かつ実際に重なっている場合だけは、
@@ -6887,7 +7604,7 @@
     // 「埋もれたまま動かない」状態が固定化する原因になっていた。
     // そのため、速度に加えて「他のツムと有意な重なりが残っていないこと」も条件に加える。
     for(const t of tsums){
-      if(t.selected || t.ghost) continue;
+      if(t.ghost) continue;
       const almostStill = Math.abs(t.vx) < 4 && Math.abs(t.vy) < 4;
       t.resting = !!(t.supportedBelow && almostStill && !t.hasDeepOverlap);
     }
@@ -6934,7 +7651,7 @@
     lastFrameTime = now;
     // 最終決戦フック船長の演出中（hookAnimFreeze）は、ゲーム全体の時間停止(boardFrozen)とは違い、
     // ツムの物理演算（重力・衝突）はそのまま動かし続ける仕様のため、boardFrozenのみで判定する。
-    if((!boardFrozen || stitchSkillActive) && !hookPhysicsPause && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
+    if((!boardFrozen || stitchSkillActive) && !hookPhysicsPause && !queenMirrorPhysicsFreeze && (gameActive || tsums.some(t=>Math.abs(t.vy)>5))){
       physicsStep(dt);
     }
     // 最終決戦フック船長のスキル効果時間は、演出中（hookAnimFreeze中）や他の時間停止演出
@@ -6996,6 +7713,14 @@
         endNamineSkill();
       }
     }
+    // 女王（老婆への変化）の効果時間も同様に、時間停止中・一時停止中は経過させない。
+    if(queenActive && !hookAnimFreeze && !boardFrozen && !skillTimeFreeze){
+      queenRemainingMs -= dt*1000;
+      if(queenRemainingMs <= 0){
+        queenRemainingMs = 0;
+        endQueenSkill();
+      }
+    }
     // フィーバーゲージは合計で消したツム数のみで増える（時間経過による減衰はしない）
     rafHandle = requestAnimationFrame(frameLoop);
   }
@@ -7007,6 +7732,9 @@
     // ナミネ・ソラが盤面にいるなら、両者は距離を問わず必ずつながる特殊ペアなので即座に手ありと判定
     const namineSoraCount = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && (t.type.key==='namine' || t.type.key==='sora')).length;
     if(namineSoraCount>=3) return true;
+    // 老婆が3体以上盤面にいるなら、距離を問わず必ずつながる特殊ペアなので即座に手ありと判定
+    const oldhagCount = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && t.type.key==='oldhag').length;
+    if(oldhagCount>=3) return true;
 
     const visited = new Set();
     for(const start of tsums){
@@ -7022,8 +7750,8 @@
         for(const other of tsums){
           if(visited.has(other.id) || other.isBomb || other.ghost) continue;
           if(!sameChainType(other.type.key, cur.type.key)) continue;
-          if(isNamineSoraPair(other.type.key, cur.type.key)){
-            // ナミネ⇄ソラは距離を問わず必ずつながる
+          if(isNamineSoraPair(other.type.key, cur.type.key) || isOldHagPair(other.type.key, cur.type.key)){
+            // ナミネ⇄ソラ、老婆同士は距離を問わず必ずつながる
             visited.add(other.id);
             stack.push(other);
             continue;
@@ -7053,7 +7781,8 @@
   function reshuffleTypes(){
     // 座標は維持したまま色（type）だけをシャッフルする救済措置（ボム対象外）。
     // ナミネのスキル効果中はソラ（およびナミネ自身）の種類が壊れないよう対象から除外する。
-    const targets = tsums.filter(t=>!t.isBomb && !(t.ghost || t.popScheduled) && t.type.key!=='sora' && t.type.key!=='namine');
+    // 女王のスキル効果中も同様に、老婆（および女王自身）を対象から除外する。
+    const targets = tsums.filter(t=>!t.isBomb && !(t.ghost || t.popScheduled) && t.type.key!=='sora' && t.type.key!=='namine' && t.type.key!=='oldhag' && t.type.key!=='queen');
     const types = targets.map(t=>t.type);
     for(let i=types.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
@@ -7114,6 +7843,12 @@
     jackGauge = 0; sallyGauge = 0; jackReady = false; sallyReady = false;
     sallyActive = false; sallyRemainingMs = 0;
     sallyAuraLayer.classList.remove('show');
+    queenGauge = 0; mirrorGauge = 0; queenReady = false; mirrorReady = false;
+    queenActive = false; queenRemainingMs = 0;
+    queenMirrorPhysicsFreeze = false;
+    queenHagCleared = 0; queenHagGoalReached = false;
+    hagGaugeWrap.classList.remove('show','goalReached');
+    hagGaugeFill.style.width = '0%';
     ghostTimers.forEach(g=> clearTimeout(g.timeoutId));
     ghostTimers = [];
     clearTimeout(feverEndTimer);
@@ -7219,6 +7954,7 @@
     sallyActive = false; sallyRemainingMs = 0;
     buzzTapMode = false;
     boardWrap.classList.remove('buzzTapMode');
+    buzzTapsLeft = 0;
     lukeDragMode = false;
     lukeDragStart = null;
     boardWrap.classList.remove('lukeDragMode');
@@ -7243,6 +7979,10 @@
     if(guardianLukeIntroBig){ guardianLukeIntroBig.classList.remove('appear','visible','exit','slashMotion'); guardianLukeIntroBig.innerHTML=''; }
     if(guardianPullCircle){ guardianPullCircle.classList.remove('show'); }
     namineRemainingMs = 0;
+    queenActive = false;
+    queenRemainingMs = 0;
+    queenMirrorPhysicsFreeze = false;
+    hagGaugeWrap.classList.remove('show','goalReached');
     if(comboTimer) clearTimeout(comboTimer);
     if(selecting){
       selectedPath.forEach(t=>t.el.classList.remove('selected','namineLinkable','hookLinkable'));
@@ -7382,6 +8122,17 @@
       gyroStatusNoteEl.textContent = '許可をリクエスト中…';
       enableGyro();
     }
+  });
+
+  // 盤面外（天井の上、枠外エリア）を一時的に見えるようにするデバッグ表示トグル
+  function updateOverflowToggleUI(){
+    overflowToggleBtn.classList.toggle('on', overflowDebugVisible);
+    overflowDebugLayer.classList.toggle('show', overflowDebugVisible);
+    applyOverflowClip();
+  }
+  overflowToggleBtn.addEventListener('click', ()=>{
+    overflowDebugVisible = !overflowDebugVisible;
+    updateOverflowToggleUI();
   });
 
   // ------------------------------------------------------------
