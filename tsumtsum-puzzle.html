@@ -488,6 +488,67 @@
     25%{ opacity:1; transform:scaleY(1); }
     100%{ opacity:0; transform:scaleY(1); }
   }
+  /* 女王＆鏡：老婆80個達成のおまけ演出。中央消去が発動する直前に、盤面中央へ
+     毒々しい緑の靄をまとったリンゴ（毒リンゴ）が浮かび上がってくる。
+     リンゴが弾けるタイミングで実際の中央消去（ポップ演出）が始まる。 */
+  .queenPoisonAppleWrap{
+    position:absolute;
+    z-index:58;
+    pointer-events:none;
+    transform:translate(-50%,-50%) scale(0.1) rotate(-8deg);
+    opacity:0;
+    animation: queenPoisonAppleAppear 1.4s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  .queenPoisonAppleWrap.leaving{
+    animation: queenPoisonAppleLeave 0.38s ease-in forwards;
+  }
+  @keyframes queenPoisonAppleAppear{
+    0%{ transform:translate(-50%,-50%) scale(0.1) rotate(-10deg); opacity:0; }
+    55%{ transform:translate(-50%,-50%) scale(1.18) rotate(5deg); opacity:1; }
+    75%{ transform:translate(-50%,-50%) scale(0.94) rotate(-2deg); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
+  }
+  @keyframes queenPoisonAppleLeave{
+    0%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(1.6) rotate(10deg); opacity:0; }
+  }
+  .queenPoisonMist{
+    position:absolute;
+    left:50%; top:50%;
+    width:150px; height:150px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(130,255,150,0.55), rgba(60,200,80,0.28) 45%, transparent 72%);
+    z-index:-1;
+    animation: queenPoisonMistPulse 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes queenPoisonMistPulse{
+    0%{ transform:translate(-50%,-50%) scale(0.85); opacity:0.55; }
+    100%{ transform:translate(-50%,-50%) scale(1.2); opacity:0.9; }
+  }
+  .queenPoisonApple{
+    position:relative;
+    width:64px; height:64px;
+    font-size:52px;
+    line-height:64px;
+    text-align:center;
+    filter: drop-shadow(0 0 10px rgba(90,255,110,0.7)) drop-shadow(0 0 20px rgba(60,200,80,0.4));
+    animation: queenPoisonApplePulse 0.55s ease-in-out infinite alternate;
+  }
+  @keyframes queenPoisonApplePulse{
+    0%{ filter: drop-shadow(0 0 10px rgba(90,255,110,0.7)) drop-shadow(0 0 20px rgba(60,200,80,0.4)); }
+    100%{ filter: drop-shadow(0 0 20px rgba(150,255,160,1)) drop-shadow(0 0 40px rgba(60,200,80,0.8)); }
+  }
+  /* 女王＆鏡：おまけの中央消去演出中、盤面全体を少し暗くし、消去範囲だけを丸く明るく照らす */
+  .queenBonusDimOverlay{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:56;
+    opacity:0;
+    transition: opacity .4s ease;
+  }
+  .queenBonusDimOverlay.show{ opacity:1; }
   /* ナミネ・ソラは種類が違っても繋げられることを示す特別なリンク色の縁取り */
   .tsum.namineLinkable .face{
     box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 2px #fff, 0 0 8px 2px rgba(233,164,208,0.85), 0 4px 6px rgba(0,0,0,0.15);
@@ -2349,6 +2410,7 @@
   let queenRemainingMs = 0;                 // 女王効果の残り時間（ミリ秒）。時間停止中は減らさない。
   const QUEEN_DURATION = 5;                 // 女王のスキル効果時間（秒）
   const QUEEN_SKILL_RANGE = 3.6;            // 老婆を消す際に巻き込む範囲（ナミネよりも少し広い＝ツム半径の3.6倍）
+  const OLDHAG_LINK_RANGE_MULT = 5.5;       // 老婆同士がつながる許容距離（ツム半径の倍率）。通常のなぞり判定(3.4)より広いが無制限ではない
   const QUEEN_HAG_GOAL = 80;                // 老婆を合計何個消すと中央消去のおまけが付くか
   let queenHagCleared = 0;                  // これまでに消した老婆の累計数（満タンで消費するまでゲームを通して持ち越し）
   let queenHagGoalReached = false;          // 今回のスキル効果中に80個到達済みかどうか（効果終了時のおまけ演出の判定用）
@@ -3854,13 +3916,26 @@
     }
     if(selectedPath.includes(t)) return;
     const last = selectedPath[selectedPath.length-1];
-    // ナミネ⇄ソラ、怒ったフック船長⇄フック船長本体、老婆同士 は、盤面上どれだけ離れていてもつながる
-    if(isNamineSoraPair(t.type.key, last.type.key) || isHookPair(t.type.key, last.type.key) || isOldHagPair(t.type.key, last.type.key)){
+    // ナミネ⇄ソラ、怒ったフック船長⇄フック船長本体 は、盤面上どれだけ離れていてもつながる
+    if(isNamineSoraPair(t.type.key, last.type.key) || isHookPair(t.type.key, last.type.key)){
       selectedPath.push(t);
       t.selected = true;
       t.vx = 0; t.vy = 0;
       t.el.classList.add('selected', isHookPair(t.type.key, last.type.key) ? 'hookLinkable' : 'namineLinkable');
       updateRope(); updateLinkCount();
+      return;
+    }
+    // 老婆同士は少し離れていてもつながるが、無制限ではなく一定距離までに制限する
+    if(isOldHagPair(t.type.key, last.type.key)){
+      const dxh = t.x - last.x, dyh = t.y - last.y;
+      const disth = Math.sqrt(dxh*dxh+dyh*dyh);
+      if(disth <= t.r*OLDHAG_LINK_RANGE_MULT){
+        selectedPath.push(t);
+        t.selected = true;
+        t.vx = 0; t.vy = 0;
+        t.el.classList.add('selected','namineLinkable');
+        updateRope(); updateLinkCount();
+      }
       return;
     }
     const dx = t.x - last.x, dy = t.y - last.y;
@@ -5982,8 +6057,38 @@
     queenHagGoalReached = false;
   }
 
-  // 老婆を合計80個消したときの、効果時間終了時のおまけ：盤面中央付近のツムをまとめて消去する（直径7ツム分の範囲）
-  const QUEEN_BONUS_CLEAR_DIAMETER_TSUM = 7;
+  // 老婆を合計80個消したときの、効果時間終了時のおまけ：盤面中央に毒リンゴが出現し、
+  // それが弾けると同時に盤面中央付近のツムをまとめて消去する（直径7ツム分の範囲）
+  const QUEEN_BONUS_CLEAR_DIAMETER_TSUM = 14;
+  const QUEEN_POISON_APPLE_APPEAR_MS = 1400; // リンゴがゆっくり出現しきるまでの時間（出現し終わると同時に消去が発動する）
+  const QUEEN_POISON_APPLE_LEAVE_MS = 380;  // リンゴが弾けて消えるアニメーションの長さ
+  function spawnQueenPoisonApple(center){
+    const wrap = document.createElement('div');
+    wrap.className = 'queenPoisonAppleWrap';
+    wrap.style.left = center.x+'px';
+    wrap.style.top = center.y+'px';
+    const mist = document.createElement('div');
+    mist.className = 'queenPoisonMist';
+    wrap.appendChild(mist);
+    const apple = document.createElement('div');
+    apple.className = 'queenPoisonApple';
+    apple.textContent = '🍎';
+    wrap.appendChild(apple);
+    board.appendChild(wrap);
+    return wrap;
+  }
+  // 盤面全体を暗くしつつ、消去範囲(radius)の丸窓だけくり抜いたように明るいままにする
+  // スポットライト演出。中心・半径はピクセル単位（盤面ローカル座標）で指定する。
+  function spawnQueenBonusDimOverlay(center, radius){
+    const overlay = document.createElement('div');
+    overlay.className = 'queenBonusDimOverlay';
+    const innerR = radius;
+    const outerR = radius + 10;
+    overlay.style.background = `radial-gradient(circle at ${center.x}px ${center.y}px, rgba(0,0,0,0) 0px, rgba(0,0,0,0) ${innerR}px, rgba(0,0,0,0.68) ${outerR}px)`;
+    board.appendChild(overlay);
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    return overlay;
+  }
   function triggerQueenBonusClear(onDone){
     if(!gameActive){ if(onDone) onDone(); return; }
     const center = {x:boardW/2, y:visY(boardH/2)};
@@ -5994,25 +6099,39 @@
       return dx*dx+dy*dy <= radius*radius;
     });
     if(targets.length===0){ if(onDone) onDone(); return; }
-    const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
-    const bonus = computeScore(targets, effectiveN);
-    score += bonus;
-    scoreVal.textContent = score.toLocaleString();
-    const gainedCoins = coinsForChain(effectiveN, -2);
-    coins += gainedCoins;
-    coinVal.textContent = coins.toLocaleString();
-    if(effectiveN > maxChain) maxChain = effectiveN;
-    chainVal.textContent = maxChain;
-    showSkillLabel(`老婆80個達成！ 中央消去 +${bonus}`);
-    showEraseCount(targets, effectiveN, center);
-    burstSparkles(targets);
-    const suckTargets = buildSuckTargets(targets);
-    if(gainedCoins>0) burstCoins(targets, gainedCoins);
-    popWithWave(targets, center, 'popping', ()=>{
-      refillIfNeeded(targets.map(t=>t.x));
-      checkFeverTrigger();
-      if(onDone) onDone();
-    }, true, undefined, false, suckTargets);
+
+    // まずは盤面を暗くして消去範囲だけを照らし、中央に毒リンゴを出現させて少し溜めてから弾けさせる
+    const dimOverlay = spawnQueenBonusDimOverlay(center, radius);
+    const appleWrap = spawnQueenPoisonApple(center);
+    showSkillLabel('老婆80個達成！ 毒リンゴが出現…');
+
+    setTimeout(()=>{
+      appleWrap.classList.add('leaving');
+      setTimeout(()=> appleWrap.remove(), QUEEN_POISON_APPLE_LEAVE_MS);
+
+      const effectiveN = targets.reduce((sum,t)=> sum + (t.isBig ? BIG_TSUM_COUNT_WEIGHT : 1), 0);
+      const bonus = computeScore(targets, effectiveN);
+      score += bonus;
+      scoreVal.textContent = score.toLocaleString();
+      const gainedCoins = coinsForChain(effectiveN, -2);
+      coins += gainedCoins;
+      coinVal.textContent = coins.toLocaleString();
+      if(effectiveN > maxChain) maxChain = effectiveN;
+      chainVal.textContent = maxChain;
+      showSkillLabel(`老婆80個達成！ 中央消去 +${bonus}`);
+      showEraseCount(targets, effectiveN, center);
+      burstSparkles(targets);
+      const suckTargets = buildSuckTargets(targets);
+      if(gainedCoins>0) burstCoins(targets, gainedCoins);
+      popWithWave(targets, center, 'popping', ()=>{
+        refillIfNeeded(targets.map(t=>t.x));
+        checkFeverTrigger();
+        // 消去が終わったら暗くしていた盤面を元の明るさへ戻す
+        dimOverlay.classList.remove('show');
+        setTimeout(()=> dimOverlay.remove(), 420);
+        if(onDone) onDone();
+      }, true, undefined, false, suckTargets);
+    }, QUEEN_POISON_APPLE_APPEAR_MS);
   }
 
   // 緑ゲージの見た目を更新
@@ -7108,6 +7227,18 @@
     if(effectiveN > maxChain) maxChain = effectiveN;
     chainVal.textContent = maxChain;
 
+    // 女王のスキル効果中は、ボムの爆発に巻き込まれて消えた老婆の分も女王ゲージへ反映する
+    // （これまではなぞり消去とマジックミラーでしか加算しておらず、ボムで消えた老婆分が
+    //   カウントから漏れて「消しているのに全然貯まらない」ように見える原因になっていた）
+    if(queenActive){
+      const hagCount = affected.reduce((sum,t)=> sum + (t.type.key==='oldhag' ? (t.isBig?BIG_TSUM_COUNT_WEIGHT:1) : 0), 0);
+      if(hagCount>0){
+        queenHagCleared += hagCount;
+        if(queenHagCleared >= QUEEN_HAG_GOAL) queenHagGoalReached = true;
+        updateHagGaugeUI();
+      }
+    }
+
     let gainedExp = 0;
     if(bombType==='star'){
       gainedExp = STAR_BOMB_BONUS_EXP;
@@ -7732,9 +7863,8 @@
     // ナミネ・ソラが盤面にいるなら、両者は距離を問わず必ずつながる特殊ペアなので即座に手ありと判定
     const namineSoraCount = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && (t.type.key==='namine' || t.type.key==='sora')).length;
     if(namineSoraCount>=3) return true;
-    // 老婆が3体以上盤面にいるなら、距離を問わず必ずつながる特殊ペアなので即座に手ありと判定
-    const oldhagCount = tsums.filter(t=> !t.isBomb && !(t.ghost || t.popScheduled) && t.type.key==='oldhag').length;
-    if(oldhagCount>=3) return true;
+    // 老婆が3体以上盤面にいても、つながる範囲は有限になったため、ここでは早期リターンしない
+    // （下の距離ベースの探索で正しく判定される）
 
     const visited = new Set();
     for(const start of tsums){
@@ -7749,16 +7879,17 @@
         group.push(cur);
         for(const other of tsums){
           if(visited.has(other.id) || other.isBomb || other.ghost) continue;
-          if(!sameChainType(other.type.key, cur.type.key)) continue;
-          if(isNamineSoraPair(other.type.key, cur.type.key) || isOldHagPair(other.type.key, cur.type.key)){
-            // ナミネ⇄ソラ、老婆同士は距離を問わず必ずつながる
+          if(!sameChainType(other.type.key, cur.type.key) && !isOldHagPair(other.type.key, cur.type.key)) continue;
+          if(isNamineSoraPair(other.type.key, cur.type.key)){
+            // ナミネ⇄ソラは距離を問わず必ずつながる
             visited.add(other.id);
             stack.push(other);
             continue;
           }
           const dx = other.x-cur.x, dy = other.y-cur.y;
           const dist = Math.sqrt(dx*dx+dy*dy);
-          if(dist <= cur.r*3.4){
+          const range = isOldHagPair(other.type.key, cur.type.key) ? cur.r*OLDHAG_LINK_RANGE_MULT : cur.r*3.4;
+          if(dist <= range){
             visited.add(other.id);
             stack.push(other);
           }
