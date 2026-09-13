@@ -246,6 +246,12 @@
     box-shadow:0 3px 0 #2a7a2a;
   }
   #pauseResumeBtn:active{ box-shadow:0 1px 0 #2a7a2a; }
+  .pauseActionBtnSecondary{
+    background:linear-gradient(160deg,#f0f0f0,#c8c8c8);
+    color:#444;
+    box-shadow:0 3px 0 #9a9a9a;
+  }
+  .pauseActionBtnSecondary:active{ box-shadow:0 1px 0 #9a9a9a; }
 
   #comboDisplay{
     position:absolute;
@@ -1552,13 +1558,7 @@
     display:flex; flex-direction:column; align-items:center;
   }
 
-  #startTitleTsum{
-    width:76px; height:76px;
-    margin:0 auto 6px;
-    position:relative;
-  }
-
-  .resultRow{
+  .resultRow {
     display:flex;
     flex-wrap:wrap;
     justify-content:space-around;
@@ -1569,25 +1569,6 @@
   }
   .resultRow > div{ min-width:64px; }
   .resultRow b{ display:block; font-size:16px; color:var(--accent-purple); }
-
-  #skillInfoBox{
-    background:#f5eefe;
-    border-radius:14px;
-    padding:8px 12px;
-    margin-bottom:10px;
-    text-align:left;
-  }
-  #skillInfoBox .skName{
-    font-size:12px;
-    font-weight:900;
-    color:var(--accent-purple);
-    margin-bottom:2px;
-  }
-  #skillInfoBox .skDesc{
-    font-size:11px;
-    color:#7a6a90;
-    line-height:1.5;
-  }
 
   /* ---------- item select screen ---------- */
   .itemList{
@@ -1660,11 +1641,836 @@
     color:var(--accent-purple);
     text-align:center;
   }
+
+  /* ================= HOME SCREEN ================= */
+  #homeOverlay{
+    position:absolute; inset:0;
+    z-index:900;
+    display:flex;
+    background:linear-gradient(180deg,#5fd0f0 0%, #2fa8dc 55%, #2590c2 100%);
+    overflow:hidden;
+  }
+  #homeOverlay.hidden{ display:none; }
+  #homeScreen{
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    padding:14px 12px 16px;
+    box-sizing:border-box;
+  }
+  #homeTopBar{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  }
+  .homeStarBadge{
+    position:relative;
+    width:64px; height:58px;
+    background:linear-gradient(160deg,#fff6c8,#ffcf3f 55%,#e8a400);
+    clip-path:polygon(50% 0%,63% 35%,100% 38%,72% 60%,80% 100%,50% 78%,20% 100%,28% 60%,0% 38%,37% 35%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 3px 0 #b97a00;
+    flex-shrink:0;
+  }
+  .homeStarNum{ font-weight:900; color:#7a4400; font-size:16px; margin-top:-4px; }
+  .homeStarPct{ font-weight:800; color:#8a5300; font-size:10px; }
+  .homeCurrency{
+    flex:1;
+    display:flex; align-items:center; gap:6px;
+    background:linear-gradient(180deg,#eaf7ff,#cdeeff);
+    border-radius:20px;
+    padding:6px 8px 6px 6px;
+    box-shadow:inset 0 2px 3px rgba(255,255,255,0.8), 0 2px 0 rgba(20,90,120,0.25);
+    min-width:0;
+  }
+  .curIcon{
+    width:22px; height:22px; border-radius:50%; flex-shrink:0;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.7);
+  }
+  .curGem{ background:radial-gradient(circle at 35% 30%,#e9d9ff,#9b6bff 60%,#6a3fd0); }
+  .curCoin{ background:radial-gradient(circle at 35% 30%,#fff6c0,#ffd23f 55%,#e0ac00); }
+  .curRuby{ background:radial-gradient(circle at 35% 30%,#ffc9d6,#ff6fa5 55%,#c93066); }
+  .homeCurrency .curVal{ font-weight:900; color:#2a5a75; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .curPlusBtn{
+    margin-left:auto; width:18px; height:18px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    box-shadow:0 1px 0 #a86400;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:900; color:#7a4a00;
+  }
+  #homePanel{
+    flex:1; min-height:0;
+    background:linear-gradient(180deg,#eaf9ff,#d4f0ff);
+    border-radius:22px;
+    box-shadow:0 4px 0 rgba(15,70,100,0.3), 0 0 0 3px rgba(255,255,255,0.7);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    margin-bottom:12px;
+  }
+  #homeHeartsRow{
+    display:flex; align-items:center; gap:4px;
+    padding:9px 12px;
+    background:linear-gradient(180deg,#fff,#f3fbff);
+  }
+  .homeHeart{
+    width:19px; height:19px;
+    background:linear-gradient(160deg,#ff9fc0,#ff5f96);
+    clip-path:path('M9.5 18C9.5 18 0 12 0 5.8C0 2.6 2.4 0 5.4 0C7.1 0 8.6 0.8 9.5 2.1C10.4 0.8 11.9 0 13.6 0C16.6 0 19 2.6 19 5.8C19 12 9.5 18 9.5 18Z');
+    flex-shrink:0;
+  }
+  .homeExpPill{
+    margin-left:6px;
+    background:linear-gradient(180deg,#eef5ff,#d7e8fb);
+    border-radius:14px;
+    padding:3px 12px;
+    font-weight:900; color:#3a6ea5; font-size:14px;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,0.08);
+  }
+  #homeMailBtn{
+    margin-left:auto; position:relative;
+    width:38px; height:38px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    box-shadow:0 2px 0 #a86400, inset 0 2px 3px rgba(255,255,255,0.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+  }
+  .homeMailBadge{
+    position:absolute; top:-5px; right:-5px;
+    background:#ff3b3b; color:#fff; font-size:10px; font-weight:900;
+    border-radius:10px; padding:1px 5px; box-shadow:0 1px 0 rgba(0,0,0,0.2);
+  }
+  #homeBanner{
+    text-align:center; font-weight:900; font-size:19px; color:#3a6ea5;
+    padding:7px 0; letter-spacing:0.1em;
+    background:linear-gradient(180deg,#fff,#eef8ff);
+    position:relative;
+  }
+  #homeBanner::before, #homeBanner::after{ content:'✦'; color:#bcd; margin:0 10px; font-size:13px; }
+  #homeStage{
+    position:relative; flex:1; min-height:0;
+    background:linear-gradient(180deg,#8a5a2a 0%, #6a4420 40%, #2a4f78 40%, #1c3a5c 100%);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  #homeStageTitle{
+    position:absolute; top:10px; left:0; right:0;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    color:#fff; z-index:3; pointer-events:none;
+  }
+  #homeStageTitle .stName{ font-weight:900; font-size:15px; text-shadow:0 2px 2px rgba(0,0,0,0.4); }
+  #homeMenuBtn{
+    position:absolute; top:12px; left:12px; z-index:3;
+    width:34px; height:34px; border-radius:50%;
+    background:rgba(0,0,0,0.35); border:2px dashed rgba(255,255,255,0.7);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:16px;
+  }
+  #homeTsumDisplay{
+    position:relative; z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    transform:translateY(6px);
+    animation:homeTsumBounce 2.4s ease-in-out infinite;
+  }
+  @keyframes homeTsumBounce{
+    0%,100%{ transform:translateY(6px) scale(1); }
+    50%{ transform:translateY(-4px) scale(1.02); }
+  }
+  #homeHighscoreBox{
+    margin:10px 12px; padding:10px 14px;
+    background:linear-gradient(180deg,#2a5a8f,#1c3f6b);
+    border-radius:16px;
+    border:2px dashed rgba(255,255,255,0.4);
+    color:#fff; text-align:center;
+  }
+  .hsLabel{ font-size:12px; font-weight:700; color:#bfe0ff; margin-bottom:4px; }
+  .hsRow{ font-size:22px; font-weight:900; letter-spacing:0.5px; }
+  .hsRank{ margin-top:4px; font-size:12px; font-weight:700; color:#ffe27a; }
+  #homeMissionBar{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 12px 12px;
+    background:linear-gradient(180deg,#eef8ff,#d9edfb);
+  }
+  .homeCircleBtn{
+    width:44px; height:44px; border-radius:50%; flex-shrink:0; border:none;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    box-shadow:0 3px 0 #a86400, inset 0 2px 3px rgba(255,255,255,0.5);
+    font-size:18px; cursor:pointer;
+  }
+  #homeMissionLabel{
+    flex:1; text-align:center;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    border-radius:20px; padding:7px 10px;
+    font-weight:900; color:#7a4a00; font-size:13px; line-height:1.5;
+    box-shadow:0 3px 0 #a86400;
+    cursor:pointer;
+  }
+  #homeBottomRow{
+    display:flex; gap:10px; align-items:stretch;
+  }
+  .homeBigBtn{
+    border:none; border-radius:18px; cursor:pointer;
+    font-weight:900; color:#7a4400;
+    box-shadow:0 4px 0 rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.5);
+  }
+  #homeCardBtn{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a); font-size:16px;
+  }
+  #homePlayBtn{
+    flex:1.6; background:linear-gradient(160deg,#ffb768,#ff8b2e); color:#fff; font-size:22px;
+    text-shadow:0 2px 2px rgba(0,0,0,0.2);
+  }
+  #homeStoreBtn{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:12px; padding:4px;
+  }
+  #homeStoreTsumIcon{ width:34px; height:34px; pointer-events:none; }
+
+  /* ================= ITEM SELECT SCREEN ================= */
+  #itemOverlay{
+    position:absolute; inset:0;
+    z-index:850;
+    display:flex;
+    background:linear-gradient(180deg,#5fd0f0 0%, #2fa8dc 55%, #2590c2 100%);
+    overflow:hidden;
+  }
+  #itemOverlay.hidden{ display:none; }
+  #itemScreen{
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    padding:14px 12px 16px;
+    box-sizing:border-box;
+  }
+  #itemTopBar{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  #itemPanel{
+    flex:1; min-height:0;
+    background:linear-gradient(180deg,#eaf9ff,#d4f0ff);
+    border-radius:22px;
+    box-shadow:0 4px 0 rgba(15,70,100,0.3), 0 0 0 3px rgba(255,255,255,0.7);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    margin-bottom:12px;
+  }
+  #itemHeartsRow{
+    display:flex; align-items:center; gap:4px;
+    padding:9px 12px;
+    background:linear-gradient(180deg,#fff,#f3fbff);
+  }
+  #itemMailBtn{
+    margin-left:auto; position:relative;
+    width:38px; height:38px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    box-shadow:0 2px 0 #a86400, inset 0 2px 3px rgba(255,255,255,0.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+  }
+  #itemBanner{
+    text-align:center; font-weight:900; font-size:19px; color:#3a6ea5;
+    padding:7px 0; letter-spacing:0.1em;
+    background:linear-gradient(180deg,#fff,#eef8ff);
+  }
+  #itemBanner::before, #itemBanner::after{ content:'✦'; color:#bcd; margin:0 10px; font-size:13px; }
+  #itemBody{
+    flex:1; min-height:0; overflow-y:auto;
+    background:linear-gradient(180deg,#1c3a5c,#16304e);
+    padding:12px 12px 4px;
+  }
+  #itemNote{
+    text-align:center; color:#bfe0ff; font-size:11px; margin-bottom:10px; line-height:1.5;
+  }
+  #itemBonusBox{
+    margin:0 4px 14px; padding:14px 10px;
+    background:rgba(0,0,0,0.25);
+    border-radius:16px;
+    border:2px dashed rgba(255,255,255,0.35);
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    color:#fff; font-weight:800; font-size:15px; text-align:center;
+    min-height:34px;
+  }
+  #itemBonusBox .bonusIcon{
+    width:34px; height:34px; border-radius:50%; flex-shrink:0;
+    background:radial-gradient(circle at 35% 30%,#bdeeff,#4fc4e6 60%,#1f8fb8);
+    box-shadow:0 0 0 2px rgba(255,255,255,0.6);
+  }
+  #itemGrid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px 8px;
+    margin-bottom:10px;
+  }
+  .itemTile{
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer;
+  }
+  .itemTileIcon{
+    width:100%; aspect-ratio:1/1;
+    border-radius:18px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:900; color:#fff;
+    text-align:center; line-height:1.2;
+    background:radial-gradient(circle at 32% 28%,#4fa8e0,#1f5fa8 65%,#164a86);
+    box-shadow:0 3px 0 rgba(0,0,0,0.35), inset 0 2px 3px rgba(255,255,255,0.25);
+    border:2px solid rgba(255,255,255,0.15);
+    transition:background .15s ease, box-shadow .15s ease, transform .1s ease;
+    position:relative;
+  }
+  .itemTile.active .itemTileIcon{
+    background:radial-gradient(circle at 32% 28%,#ffe9a0,#ffb62e 65%,#e08a00);
+    box-shadow:0 3px 0 rgba(120,70,0,0.5), inset 0 2px 3px rgba(255,255,255,0.6), 0 0 0 3px #fff5cf;
+    color:#5a3600;
+  }
+  .itemTile.active .itemTileIcon:active{ transform:translateY(2px); }
+  .itemTile.disabled{ cursor:default; opacity:0.55; }
+  .itemTile.disabled .itemTileIcon{
+    background:linear-gradient(160deg,#5a6a78,#3d4a56);
+    color:#c8d4dc;
+  }
+  .itemTileLabel{
+    color:#fff; font-size:11px; font-weight:800;
+  }
+  .itemTile.disabled .itemTileLabel{ color:#9fb0bc; }
+  .itemTileCount{
+    display:flex; align-items:center; gap:3px;
+    background:rgba(0,0,0,0.3); border-radius:10px; padding:1px 7px;
+    font-size:11px; font-weight:800; color:#ffe27a;
+  }
+  .itemTileCount .ticketIcon{
+    width:12px; height:9px; border-radius:2px;
+    background:linear-gradient(160deg,#8fd8ff,#3fa8e0);
+    flex-shrink:0;
+  }
+  .itemTile.disabled .itemTileCount{ color:#9fb0bc; }
+  .itemCoinSliderRow{
+    grid-column:1 / -1;
+    margin:-2px 0 8px;
+    display:none;
+    background:rgba(0,0,0,0.25);
+    border-radius:12px; padding:8px 12px;
+  }
+  .itemCoinSliderRow.show{ display:block; }
+  .itemCoinSliderRow input[type=range]{ width:100%; accent-color:#ffb400; }
+  .itemCoinSliderVal{ text-align:center; color:#ffe27a; font-weight:900; font-size:13px; }
+  #itemFooterBar{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:8px 12px 12px;
+    background:linear-gradient(180deg,#eef8ff,#d9edfb);
+  }
+  #itemFooterLogo{
+    font-weight:900; font-size:14px; letter-spacing:0.05em;
+    background:linear-gradient(90deg,#ff8fc0,#8fd0ff,#ffd23f);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #itemBottomRow{ display:flex; gap:10px; }
+  #itemBackBtn2{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a); font-size:16px;
+  }
+  #itemStartBtn{
+    flex:1.6; background:linear-gradient(160deg,#ff8fa8,#ff5878); color:#fff; font-size:20px;
+    text-shadow:0 2px 2px rgba(0,0,0,0.2);
+  }
+  #itemStoreBtn{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:12px; padding:4px;
+  }
+  #itemStoreTsumIcon{ width:34px; height:34px; pointer-events:none; }
+
+  /* ================= CHARACTER SELECT SCREEN ================= */
+  #charSelectOverlay{
+    position:absolute; inset:0;
+    z-index:920;
+    display:flex;
+    background:linear-gradient(180deg,#5fd0f0 0%, #2fa8dc 55%, #2590c2 100%);
+    overflow:hidden;
+  }
+  #charSelectOverlay.hidden{ display:none; }
+  #csScreen{
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    padding:14px 12px 16px;
+    box-sizing:border-box;
+  }
+  #csTopBar{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  #csPanel{
+    flex:1; min-height:0;
+    background:linear-gradient(180deg,#eaf9ff,#d4f0ff);
+    border-radius:22px;
+    box-shadow:0 4px 0 rgba(15,70,100,0.3), 0 0 0 3px rgba(255,255,255,0.7);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    margin-bottom:12px;
+  }
+  #csHeroRow{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 14px 8px;
+    background:linear-gradient(180deg,#fff,#f3fbff);
+  }
+  #csHeroIcon{
+    width:84px; height:84px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #csHeroInfo{ flex:1; min-width:0; }
+  #csHeroName{ font-weight:900; font-size:19px; color:#2a5a75; line-height:1.25; }
+  #csHeroSub{ font-size:11px; color:#7a95a8; margin:2px 0 6px; }
+  #csHeroSkillDesc{
+    font-size:12px; color:#3a6ea5; line-height:1.5;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    max-height:calc(1.5em * 3);
+  }
+  #csStatRow{
+    display:flex; gap:10px;
+    padding:6px 14px 12px;
+    background:#fff;
+  }
+  .csStatBox{ flex:1; text-align:center; }
+  .csStatLabel{ font-size:12px; font-weight:800; color:#5a8aa8; margin-bottom:4px; }
+  .csStatBar{
+    height:16px; border-radius:9px;
+    background:linear-gradient(180deg,#3a6ea5,#2a5580);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:10px; font-weight:900; letter-spacing:0.05em;
+    box-shadow:inset 0 2px 3px rgba(0,0,0,0.25);
+  }
+  .csStatSub{ font-size:12px; font-weight:800; color:#3a6ea5; margin-top:4px; }
+  #csCollectionHead{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 12px;
+    background:linear-gradient(180deg,#fff,#eef8ff);
+    font-weight:900; color:#3a6ea5; font-size:15px;
+  }
+  #csSearchIcon{
+    width:26px; height:26px; border-radius:50%;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; flex-shrink:0; margin-left:4px;
+  }
+  .csFilterBtn{
+    margin-left:auto;
+    background:linear-gradient(160deg,#ffe27a,#ffb400);
+    border:none; border-radius:14px; padding:5px 10px;
+    font-size:11px; font-weight:800; color:#7a4a00;
+    box-shadow:0 2px 0 #a86400;
+  }
+  #csGridWrap{
+    flex:1; min-height:0; overflow-y:auto;
+    background:linear-gradient(180deg,#1c3a5c,#16304e);
+    padding:12px;
+  }
+  #csGrid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px 8px;
+  }
+  .csTile{
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer;
+  }
+  .csTileIcon{
+    width:100%; aspect-ratio:1/1;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 32% 28%,#4fa8e0,#1f5fa8 65%,#164a86);
+    box-shadow:0 3px 0 rgba(0,0,0,0.35), inset 0 2px 3px rgba(255,255,255,0.25);
+    border:2px solid rgba(255,255,255,0.15);
+    position:relative;
+  }
+  .csTile.selected .csTileIcon{
+    background:radial-gradient(circle at 32% 28%,#ffe9a0,#ffb62e 65%,#e08a00);
+    box-shadow:0 3px 0 rgba(120,70,0,0.5), inset 0 2px 3px rgba(255,255,255,0.6), 0 0 0 3px #fff5cf;
+  }
+  .csTileBadge{
+    position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+    background:#ffd23f; color:#7a4a00; font-size:9px; font-weight:900;
+    padding:2px 7px; border-radius:8px; white-space:nowrap;
+    box-shadow:0 2px 0 rgba(120,70,0,0.4);
+  }
+  .csTileLabel{ color:#fff; font-size:11px; font-weight:800; text-align:center; }
+  .csTileSub{ color:#ffe27a; font-size:10px; font-weight:800; }
+  #csFooterBar{
+    display:flex; align-items:center; justify-content:center;
+    padding:8px 12px 12px;
+    background:linear-gradient(180deg,#eef8ff,#d9edfb);
+    font-weight:900; font-size:14px; letter-spacing:0.05em;
+    background-image:linear-gradient(90deg,#ff8fc0,#8fd0ff,#ffd23f);
+  }
+  #csBottomRow{ display:flex; gap:10px; }
+  #csBackBtn{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a); font-size:16px;
+  }
+  #csSetBtn{
+    flex:1.6; background:linear-gradient(160deg,#9fd0ff,#4f9dff); color:#fff; font-size:16px;
+    text-shadow:0 2px 2px rgba(0,0,0,0.2);
+  }
+  #csStoreBtn2{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a); color:#7a4400; font-size:14px; font-weight:900;
+  }
+
+  /* ================= BOX (GACHA) SELECT SCREEN ================= */
+  #boxOverlay{
+    position:absolute; inset:0;
+    z-index:930;
+    display:flex;
+    background:linear-gradient(180deg,#5fd0f0 0%, #2fa8dc 55%, #2590c2 100%);
+    overflow:hidden;
+  }
+  #boxOverlay.hidden{ display:none; }
+  #boxScreen{
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    padding:14px 12px 16px;
+    box-sizing:border-box;
+  }
+  #boxTopBar{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  #boxPanel{
+    flex:1; min-height:0;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  #boxFeatured{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 4px 14px;
+    position:relative;
+  }
+  #boxFeaturedBanner{
+    position:absolute; left:4px; right:4px; top:-6px;
+    display:flex; align-items:center; gap:8px;
+    background:linear-gradient(90deg,#fff5d0,#ffe9a0);
+    border:2px solid #fff;
+    border-radius:14px;
+    padding:4px 8px;
+    box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    font-size:10px; font-weight:800; color:#8a5a00;
+    cursor:pointer;
+  }
+  #boxFeaturedBannerFaces{
+    display:flex;
+  }
+  #boxFeaturedBannerFaces .face{
+    width:22px; height:22px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#ffe9c0,#f0b878 70%,#d89858);
+    border:2px solid #fff;
+    margin-left:-6px;
+    flex-shrink:0;
+  }
+  #boxFeaturedBannerFaces .face:first-child{ margin-left:0; }
+  #boxFeaturedBannerText{ flex:1; line-height:1.3; }
+  #boxFeaturedBannerTap{
+    background:#ff6a8a; color:#fff; border-radius:8px; padding:2px 6px;
+    font-size:9px; flex-shrink:0;
+  }
+  #boxFeaturedArt{
+    width:130px; height:130px; flex-shrink:0;
+    border-radius:16px;
+    background:radial-gradient(circle at 40% 30%, rgba(255,255,255,0.25), transparent 60%);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    margin-top:22px;
+    overflow:visible;
+  }
+  #boxFeaturedArt .boxGiftIcon{
+    width:82px; height:82px;
+    background:linear-gradient(160deg,#c0392b,#7a1f16);
+    border-radius:10px;
+    position:relative;
+    box-shadow:0 6px 0 rgba(0,0,0,0.25);
+    z-index:1;
+  }
+  #boxFeaturedArt .boxGiftIcon::before{
+    content:''; position:absolute; left:50%; top:0; bottom:0; width:16px;
+    transform:translateX(-50%);
+    background:linear-gradient(160deg,#ffd23f,#e0a800);
+  }
+  #boxFeaturedArt .boxGiftIcon::after{
+    content:''; position:absolute; left:0; right:0; top:50%; height:16px;
+    transform:translateY(-50%);
+    background:linear-gradient(160deg,#ffd23f,#e0a800);
+  }
+  #boxFeaturedArt .boxFeaturedFace{
+    position:absolute;
+    width:36px; height:36px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#ffe9c0,#f0b878 70%,#d89858);
+    border:2px solid #fff;
+    box-shadow:0 2px 0 rgba(0,0,0,0.2);
+    z-index:2;
+  }
+  #boxFeaturedArt .face1{ top:-4px; left:2px; }
+  #boxFeaturedArt .face2{ top:-6px; right:0px; width:30px; height:30px; }
+  #boxFeaturedArt .face3{ bottom:-2px; left:0px; width:28px; height:28px; }
+  #boxFeaturedArt .face4{ bottom:-4px; right:10px; width:26px; height:26px; }
+  #boxFeaturedInfo{ flex:1; min-width:0; }
+  #boxFeaturedTitle{
+    font-weight:900; font-size:22px; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,0.25);
+    margin-bottom:10px;
+  }
+  #boxFeaturedBtns{ display:flex; gap:8px; }
+  .boxBuyBtn{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a);
+    border-radius:14px; text-align:center; padding:8px 4px;
+    font-weight:900; color:#5a3600; font-size:13px; line-height:1.4;
+    box-shadow:0 3px 0 rgba(120,70,0,0.4);
+    cursor:pointer;
+  }
+  .boxBuyBtn .boxBuyPrice{
+    display:flex; align-items:center; justify-content:center; gap:3px; font-size:14px;
+  }
+  #boxTicketRow{
+    text-align:center; color:#eaf8ff; font-size:12px; margin-bottom:10px;
+  }
+  #boxTabRow{ display:flex; gap:8px; margin-bottom:10px; }
+  .boxTabBtn{
+    flex:1; text-align:center; padding:10px 4px;
+    border-radius:14px 14px 0 0;
+    font-weight:900; font-size:15px;
+    background:rgba(255,255,255,0.25); color:#fff;
+    cursor:pointer;
+  }
+  .boxTabBtn.active{
+    background:linear-gradient(180deg,#ffe9a0,#ffc84a); color:#5a3600;
+  }
+  #boxGridWrap{
+    flex:1; min-height:0; overflow-y:auto;
+    background:rgba(10,40,65,0.35);
+    border-radius:16px;
+    padding:14px 10px;
+  }
+  #boxGrid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px 10px;
+  }
+  .boxTile{
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    background:rgba(20,60,95,0.55);
+    border-radius:18px;
+    padding:14px 8px 10px;
+    position:relative;
+    cursor:pointer;
+    border:2px solid rgba(255,255,255,0.35);
+    transition:background .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  .boxTile:active{ transform:translateY(2px); }
+  .boxTile.gold{
+    background:linear-gradient(160deg,#ffdb7e,#ffb02e);
+    border-color:#fff2c0;
+  }
+  .boxTile.active{
+    border-color:#fff;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.5) inset;
+  }
+  .boxTileBadge{
+    position:absolute; top:-6px; right:-4px;
+    background:#fff; color:#2a5a75; font-weight:900; font-size:10px;
+    border-radius:10px; padding:3px 6px; line-height:1.2; text-align:center;
+    box-shadow:0 2px 0 rgba(0,0,0,0.2);
+    z-index:2;
+  }
+  .boxTileArt{
+    width:76px; height:76px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .boxGiftIcon{
+    background:linear-gradient(160deg,#c0392b,#7a1f16);
+    border-radius:10px;
+    position:relative;
+  }
+  .boxGiftIcon::before{
+    content:''; position:absolute; left:50%; top:0; bottom:0; width:22%;
+    transform:translateX(-50%);
+    background:linear-gradient(160deg,#ffd23f,#e0a800);
+  }
+  .boxGiftIcon::after{
+    content:''; position:absolute; left:0; right:0; top:50%; height:22%;
+    transform:translateY(-50%);
+    background:linear-gradient(160deg,#ffd23f,#e0a800);
+  }
+  .boxGachaIcon{
+    background:radial-gradient(circle at 35% 25%,#fff,#dff3ff 55%,#7fc8ec);
+    border-radius:50%;
+    position:relative;
+    box-shadow:inset 0 -6px 10px rgba(0,60,90,0.25), inset 0 4px 6px rgba(255,255,255,0.8);
+  }
+  .boxGachaIcon::before, .boxGachaIcon::after{ content:none; }
+  .boxTileArt .boxGiftIcon{ width:60px; height:60px; }
+  .boxTileLabel{
+    color:#fff; font-weight:800; font-size:13px; text-align:center; line-height:1.3;
+  }
+  .boxTile.gold .boxTileLabel{ color:#6a3c00; }
+  .boxTileSub{
+    color:#bfe8ff; font-size:11px; text-align:center;
+  }
+  #boxBottomRow{ display:flex; gap:10px; margin-top:12px; }
+  #boxBackBtn{
+    flex:1; background:linear-gradient(160deg,#ffe9a0,#ffc84a); font-size:16px;
+  }
+
+  /* ================= START TRANSITION (スタート→ゲーム開始) ================= */
+  #startTransitionLayer{
+    position:absolute; inset:0;
+    z-index:960;
+    pointer-events:none;
+    display:none;
+  }
+  #startTransitionLayer.show{ display:block; }
+  #mickeyMask{
+    position:absolute;
+    left:50%; top:46%;
+    width:140px; height:140px;
+    margin-left:-70px; margin-top:-70px;
+    background:#000;
+    clip-path:url(#mickeyClipPath);
+    transform:scale(0);
+    transform-origin:50% 50%;
+  }
+  #mickeyMask.wipeIn{
+    animation:mickeyWipeIn .45s cubic-bezier(.5,0,.75,1) forwards;
+  }
+  #mickeyMask.wipeOut{
+    animation:mickeyWipeOut .45s cubic-bezier(.25,0,.5,1) forwards;
+  }
+  @keyframes mickeyWipeIn{
+    0%{ transform:scale(0); }
+    100%{ transform:scale(14); }
+  }
+  @keyframes mickeyWipeOut{
+    0%{ transform:scale(14); }
+    100%{ transform:scale(0); }
+  }
+  #loadingScreen{
+    position:absolute; inset:0;
+    background:#000;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    z-index:961;
+  }
+  #loadingScreen.show{ display:flex; }
+  #loadingLogo{
+    font-weight:900; font-size:34px; letter-spacing:0.08em;
+    background:linear-gradient(90deg,#ff8fc0,#8fd0ff,#ffd23f);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    margin-bottom:56px;
+  }
+  #loadingOrb{
+    width:96px; height:96px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #888 0%, #3a3a3a 45%, #101010 80%);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.08), inset 0 6px 14px rgba(255,255,255,0.15), inset 0 -10px 18px rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+  #loadingOrb::before{
+    content:''; position:absolute; left:8%; top:6%; width:38%; height:30%;
+    background:radial-gradient(circle, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%);
+    border-radius:50%;
+    animation:loadingOrbSpin 2.2s linear infinite;
+  }
+  @keyframes loadingOrbSpin{
+    0%{ transform:rotate(0deg) translateX(0); }
+    100%{ transform:rotate(360deg) translateX(0); }
+  }
+  #loadingOrbMickey{
+    width:30px; height:26px; position:relative; opacity:0.9;
+  }
+  #loadingOrbMickey::before, #loadingOrbMickey::after{
+    content:''; position:absolute; top:-8px; width:13px; height:13px; border-radius:50%;
+    background:#e8e8e8;
+  }
+  #loadingOrbMickey::before{ left:-2px; }
+  #loadingOrbMickey::after{ right:-2px; }
+  #loadingOrbMickeyHead{
+    position:absolute; left:50%; top:2px; width:22px; height:22px;
+    transform:translateX(-50%);
+    background:#e8e8e8; border-radius:50%;
+  }
+  #loadingText{
+    margin-top:18px; color:#fff; font-size:15px; font-weight:700; letter-spacing:0.05em;
+  }
+  #loadingTipBox{
+    position:absolute; left:24px; right:24px; bottom:64px;
+    border:2px dotted rgba(255,255,255,0.5);
+    border-radius:16px;
+    padding:16px 14px;
+    color:#bfe0ff; font-size:13px; text-align:center; line-height:1.7;
+  }
+  #readyGoLayer{
+    position:absolute; inset:0;
+    z-index:962;
+    display:flex; align-items:center; justify-content:center;
+    pointer-events:none;
+  }
+  #readyText, #goText{
+    position:absolute;
+    font-weight:900;
+    letter-spacing:2px;
+    opacity:0;
+  }
+  #readyText{
+    font-size:44px;
+    color:#ff4fa0;
+    -webkit-text-stroke:3px #ffffff;
+    paint-order:stroke fill;
+  }
+  #readyText.show{
+    animation:readyPop 0.9s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes readyPop{
+    0%{opacity:0; transform:scale(0.3) rotate(-8deg);}
+    20%{opacity:1; transform:scale(1.25) rotate(3deg);}
+    35%{transform:scale(1) rotate(0deg);}
+    78%{opacity:1; transform:scale(1) rotate(0deg);}
+    100%{opacity:0; transform:scale(0.9) translateY(-10px);}
+  }
+  #goText{
+    font-size:56px;
+    color:#4fc8ff;
+    -webkit-text-stroke:3px #ffffff;
+    paint-order:stroke fill;
+  }
+  #goText.show{
+    animation:goPop 0.7s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes goPop{
+    0%{opacity:0; transform:scale(0.2) rotate(-10deg);}
+    25%{opacity:1; transform:scale(1.3) rotate(4deg);}
+    45%{transform:scale(1) rotate(0deg);}
+    80%{opacity:1;}
+    100%{opacity:0; transform:scale(1) translateY(-20px);}
+  }
 </style>
 </head>
 <body>
 <div id="appOuter">
 <div id="app">
+
+  <svg width="0" height="0" style="position:absolute;">
+    <defs>
+      <clipPath id="mickeyClipPath" clipPathUnits="objectBoundingBox">
+        <!-- 顔(中央の大きい円) + 耳2つ(左右上の円)。ビューポート座標(0-1)基準、中心を(0.5,0.46)付近に配置 -->
+        <circle cx="0.5" cy="0.5" r="0.16" />
+        <circle cx="0.30" cy="0.30" r="0.10" />
+        <circle cx="0.70" cy="0.30" r="0.10" />
+      </clipPath>
+    </defs>
+  </svg>
+
+  <div id="startTransitionLayer">
+    <div id="mickeyMask"></div>
+  </div>
+  <div id="loadingScreen">
+    <div id="loadingLogo">まるまるパズル</div>
+    <div id="loadingOrb">
+      <div id="loadingOrbMickey">
+        <div id="loadingOrbMickeyHead"></div>
+      </div>
+    </div>
+    <div id="loadingText">Loading<span id="loadingDots">...</span></div>
+    <div id="loadingTipBox">スキルが貯まっている状態でタイムアップになるとボーナスルーレットがはじまるよ！</div>
+  </div>
+  <div id="readyGoLayer">
+    <div id="readyText">READY</div>
+    <div id="goText">Go!</div>
+  </div>
 
   <div id="hud">
     <div id="timerBox">
@@ -1692,6 +2498,7 @@
       </div>
       <div id="overflowStatusNote">ONにすると、盤面の天井より上に積み上がったツムを一時的に表示します（デバッグ用）</div>
       <button id="pauseResumeBtn" class="pauseActionBtn">再開する</button>
+      <button id="pauseHomeBtn" class="pauseActionBtn pauseActionBtnSecondary">ホーム画面へ</button>
     </div>
   </div>
 
@@ -1736,16 +2543,215 @@
     </div>
   </div>
 
-  <!-- Start overlay -->
-  <div class="overlay" id="startOverlay">
-    <div class="card">
-      <div id="startTitleTsum"></div>
-      <h1>まるまるパズル</h1>
-      <p>同じ仲間のツムを3個以上つなげて消そう！<br>7個以上でボム発生、フィーバーやスキルも駆使してハイスコアを狙え。</p>
-      <div class="charRow" id="charPreview"></div>
-      <div id="skillInfoBox"></div>
-      <button class="btn" id="startBtn">つぎへ</button>
-      <button class="btnSecondary" id="patchNotesBtn">📋 アップデート情報</button>
+  <!-- Home overlay -->
+  <div id="homeOverlay">
+    <div id="homeScreen">
+      <div id="homeTopBar">
+        <div class="homeStarBadge">
+          <div class="homeStarNum" id="homeLevelVal">1</div>
+          <div class="homeStarPct" id="homeLevelPct">0%</div>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curGem"></span>
+          <span class="curVal" id="homeGemVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curCoin"></span>
+          <span class="curVal" id="homeCoinVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curRuby"></span>
+          <span class="curVal" id="homeRubyVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+      </div>
+      <div id="homePanel">
+        <div id="homeHeartsRow">
+          <div class="homeHeart"></div><div class="homeHeart"></div><div class="homeHeart"></div><div class="homeHeart"></div><div class="homeHeart"></div>
+          <div class="homeExpPill">+<span id="homeExpGainVal">0</span></div>
+          <div id="homeMailBtn">✉<span class="homeMailBadge" id="homeMailCount">0</span></div>
+        </div>
+        <div id="homeBanner">ホーム</div>
+        <div id="homeStage">
+          <button id="homeMenuBtn">☰</button>
+          <div id="homeStageTitle">
+            <div class="stName" id="homeTsumName">―</div>
+          </div>
+          <div id="homeTsumDisplay"></div>
+        </div>
+        <div id="homeHighscoreBox">
+          <div class="hsLabel">自己ベストスコア</div>
+          <div class="hsRow"><span id="homeHighScore">0</span></div>
+          <div class="hsRank">🏆 プレイ回数　<span id="homePlayCount">0</span>回</div>
+        </div>
+        <div id="homeMissionBar">
+          <button class="homeCircleBtn" id="homeSettingsBtn" title="アップデート情報">⚙</button>
+          <div id="homeMissionLabel">今日のミッション<br>★★★</div>
+          <button class="homeCircleBtn" id="homeAddFriendBtn">👤＋</button>
+        </div>
+      </div>
+      <div id="homeBottomRow">
+        <button class="homeBigBtn" id="homeCardBtn">カード</button>
+        <button class="homeBigBtn" id="homePlayBtn">プレイ</button>
+        <button class="homeBigBtn" id="homeStoreBtn">
+          <div id="homeStoreTsumIcon"></div>
+          <div>Lv<span id="homeStoreLv">1</span></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Character select overlay (opened from the home screen's store/character button) -->
+  <div id="charSelectOverlay" class="hidden">
+    <div id="csScreen">
+      <div id="csTopBar">
+        <div class="homeStarBadge">
+          <div class="homeStarNum" id="csLevelVal">1</div>
+          <div class="homeStarPct" id="csLevelPct">0%</div>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curGem"></span>
+          <span class="curVal" id="csGemVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curCoin"></span>
+          <span class="curVal" id="csCoinVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curRuby"></span>
+          <span class="curVal" id="csRubyVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+      </div>
+      <div id="csPanel">
+        <div id="csHeroRow">
+          <div id="csHeroIcon"></div>
+          <div id="csHeroInfo">
+            <div id="csHeroName">―</div>
+            <div id="csHeroSub">オリジナルツム</div>
+            <div id="csHeroSkillDesc"></div>
+          </div>
+        </div>
+        <div id="csStatRow">
+          <div class="csStatBox">
+            <div class="csStatLabel">基本スコア</div>
+            <div class="csStatBar" id="csScoreBar">MAX</div>
+            <div class="csStatSub" id="csScoreVal">スコア 0</div>
+          </div>
+          <div class="csStatBox">
+            <div class="csStatLabel">スキル</div>
+            <div class="csStatBar" id="csSkillBar">MAX</div>
+            <div class="csStatSub" id="csSkillNeedVal">必要ツム数:0</div>
+          </div>
+        </div>
+        <div id="csCollectionHead">
+          コレクション
+          <div id="csSearchIcon">🔍</div>
+          <button class="csFilterBtn">すべてのツム▼</button>
+        </div>
+        <div id="csGridWrap">
+          <div id="csGrid"></div>
+        </div>
+        <div id="csFooterBar">まるまるパズル</div>
+      </div>
+      <div id="csBottomRow">
+        <button class="homeBigBtn" id="csBackBtn">もどる</button>
+        <button class="homeBigBtn" id="csSetBtn">マイツム<br>セット</button>
+        <button class="homeBigBtn" id="csStoreBtn2">ストア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Box (gacha) select overlay -->
+  <div id="boxOverlay" class="hidden">
+    <div id="boxScreen">
+      <div id="boxTopBar">
+        <div class="homeStarBadge">
+          <div class="homeStarNum" id="boxLevelVal">1</div>
+          <div class="homeStarPct" id="boxLevelPct">0%</div>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curGem"></span>
+          <span class="curVal" id="boxGemVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curCoin"></span>
+          <span class="curVal" id="boxCoinVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+        <div class="homeCurrency">
+          <span class="curIcon curRuby"></span>
+          <span class="curVal" id="boxRubyVal">0</span>
+          <span class="curPlusBtn">＋</span>
+        </div>
+      </div>
+      <div id="boxPanel">
+        <div id="boxFeatured">
+          <div id="boxFeaturedBanner">
+            <div id="boxFeaturedBannerFaces">
+              <div class="face"></div><div class="face"></div><div class="face"></div><div class="face"></div>
+            </div>
+            <div id="boxFeaturedBannerText">プレミアムBOX<br>シュガー・ラッシュ</div>
+            <div id="boxFeaturedBannerTap">TAP!</div>
+          </div>
+          <div id="boxFeaturedArt">
+            <div class="boxFeaturedFace face1"></div>
+            <div class="boxFeaturedFace face2"></div>
+            <div class="boxFeaturedFace face3"></div>
+            <div class="boxFeaturedFace face4"></div>
+            <div class="boxGiftIcon" id="boxFeaturedGift"></div>
+          </div>
+          <div id="boxFeaturedInfo">
+            <div id="boxFeaturedTitle">プレミアムBOX</div>
+            <div id="boxFeaturedBtns">
+              <div class="boxBuyBtn" id="boxBuy1">
+                1回購入
+                <div class="boxBuyPrice"><span class="curIcon curCoin" style="width:14px;height:14px;"></span><span id="boxBuy1Price">30,000</span></div>
+              </div>
+              <div class="boxBuyBtn" id="boxBuy10">
+                10回購入
+                <div class="boxBuyPrice"><span class="curIcon curCoin" style="width:14px;height:14px;"></span><span id="boxBuy10Price">300,000</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="boxTicketRow">🎫 所持数：0</div>
+        <div id="boxTabRow">
+          <div class="boxTabBtn active" id="boxTabTsum">ツムツムストア</div>
+          <div class="boxTabBtn" id="boxTabItem">アイテムストア</div>
+        </div>
+        <div id="boxGridWrap">
+          <div id="boxGrid">
+            <div class="boxTile" data-box="premiumPlus" data-title="プレミアムBOX＋" data-price1="50,000" data-price10="500,000" data-art-style="background:linear-gradient(160deg,#dff3ff,#9fd8ff);border-radius:10px;">
+              <div class="boxTileArt"><div class="boxGiftIcon" style="background:linear-gradient(160deg,#dff3ff,#9fd8ff);"></div></div>
+              <div class="boxTileLabel">プレミアム<br>BOX+</div>
+            </div>
+            <div class="boxTile gold" data-box="premium" data-title="プレミアムBOX" data-price1="30,000" data-price10="300,000" data-art-style="background:linear-gradient(160deg,#c0392b,#7a1f16);border-radius:10px;">
+              <div class="boxTileArt"><div class="boxGiftIcon"></div></div>
+              <div class="boxTileLabel">プレミアム<br>BOX</div>
+            </div>
+            <div class="boxTile" data-box="pickup" data-title="ピックアップガチャ" data-price1="30,000" data-price10="300,000" data-art-style="background:radial-gradient(circle at 35% 30%,#fff,#bfe8ff 60%,#5fb8e8);border-radius:50%;">
+              <div class="boxTileBadge">期間<br>限定</div>
+              <div class="boxTileArt"><div class="boxGachaIcon" style="width:60px;height:60px;"></div></div>
+              <div class="boxTileLabel">ピックアップ<br>ガチャ</div>
+              <div class="boxTileSub" id="boxPickupTimer">残り2日 3:06</div>
+            </div>
+            <div class="boxTile" data-box="happiness" data-title="ハピネスBOX" data-price1="10,000" data-price10="100,000" data-art-style="background:linear-gradient(160deg,#eafff0,#7fe8a0);border-radius:10px;">
+              <div class="boxTileBadge">Check!</div>
+              <div class="boxTileArt"><div class="boxGiftIcon" style="background:linear-gradient(160deg,#eafff0,#7fe8a0);"></div></div>
+              <div class="boxTileLabel">ハピネス<br>BOX</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="boxBottomRow">
+        <button class="homeBigBtn" id="boxBackBtn">もどる</button>
+      </div>
     </div>
   </div>
 
@@ -1758,6 +2764,49 @@
       <div id="patchNotesList">
         <div class="patchEntry">
           <div class="patchDate">最新のアップデート</div>
+          <div class="patchTitle">キャラクター選択画面のスキル説明を最大3行に収まるよう調整しました</div>
+          <ul>
+            <li>キャラクター選択画面上部のスキル説明文が長いキャラクターでも、レイアウトが崩れないよう最大3行までの表示に制限し、それを超える分は省略されるようにしました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchDate">アップデート</div>
+          <div class="patchTitle">「プレイ」の遷移先を整理し、旧キャラクター選択画面を削除しました</div>
+          <ul>
+            <li>ホーム画面の「プレイ」を押すと、以前のキャラクター選択画面を経由せず直接アイテム選択画面が開くように変更しました。</li>
+            <li>キャラクター（マイツム）の選択は、ホーム画面右下のキャラクターボタンから開く専用画面のみで行う形に一本化しました。</li>
+            <li>役目を終えた旧キャラクター選択画面（「つぎへ」ボタンのあった画面）と関連コードを削除しました。アップデート情報ボタンはホーム画面の⚙アイコンに移動しました。</li>
+            <li>アイテム選択画面の「もどる」、リザルト画面の「もういちど」も、上記の新しい画面構成に合わせて遷移先を調整しました。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchDate">アップデート</div>
+          <div class="patchTitle">ホーム画面右下のボタンからキャラクター選択画面を開けるようにしました</div>
+          <ul>
+            <li>ホーム画面右下のキャラクターアイコンをタップすると、選んだツムの詳細（名前・スキル説明・スコア・必要ツム数）とツム一覧（コレクション）を確認できる画面が開くようになりました。</li>
+            <li>一覧からツムをタップすると詳細プレビューが切り替わり、「マイツムセット」を押すと実際にマイツムとして確定してホーム画面に戻ります。「もどる」を押すと変更せずに閉じます。</li>
+            <li>現在マイツムに設定されているツムには一覧上に「マイツム」バッジが表示されます。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchDate">アップデート</div>
+          <div class="patchTitle">アイテム選択画面をアイコン一覧タイプにリニューアルしました</div>
+          <ul>
+            <li>「プレイ」を押した後のアイテム選択画面を、上部にレベル・所持コイン等を表示するホーム画面と統一感のあるデザインに変更しました。</li>
+            <li>アイテムは丸いアイコンを並べたグリッド形式にし、選択すると黄色くハイライトされて選択中かどうかが一目で分かるようにしました。</li>
+            <li>+Score・+Exp・+Combo は現在未実装のため「Coming Soon」として表示し、実際に選べる +Coin・+Time・+Bomb・5▶4 は引き続き従来どおりゲームに反映されます。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
+          <div class="patchDate">アップデート</div>
+          <div class="patchTitle">アプリ起動時に「ホーム画面」を追加しました</div>
+          <ul>
+            <li>これまでキャラクター選択画面から始まっていましたが、起動直後にレベル・所持コイン・自己ベストスコア・プレイ回数などを確認できるホーム画面を追加しました。</li>
+            <li>ホーム画面の「プレイ」ボタンからこれまでのキャラクター選択〜アイテム選択の流れに進めます。選択画面左上の矢印ボタンでホームへ戻れます。</li>
+            <li>リザルト画面に「ホームへ戻る」ボタンを追加しました。プレイで獲得したコイン・Exp・スコアはホーム画面に自動的に反映され、端末に保存されます。</li>
+          </ul>
+        </div>
+        <div class="patchEntry">
           <div class="patchTitle">キャプテンライトイヤーのタップ消去中は時間が止まらないように修正しました</div>
           <ul>
             <li>これまではカットイン演出からタップ消去終了まで、ずっとゲーム全体の残り時間が止まったままになっていました。時間停止はカットイン演出中だけにとどめ、タップして消去する効果時間中はゲームの残り時間が通常どおり進行するように修正しました。</li>
@@ -1991,50 +3040,110 @@
   </div>
 
   <!-- Item select overlay -->
-  <div class="overlay hidden" id="itemOverlay">
-    <div class="card">
-      <h1>アイテム選択</h1>
-      <p>使いたいアイテムを選んでゲームを始めよう！</p>
-      <div class="itemList" id="itemList">
-
-        <div class="itemCard" id="item_fewer" data-item="fewer">
-          <div class="itemHead">
-            <div class="itemName">5→4</div>
-            <div class="toggleSw"></div>
-          </div>
-          <div class="itemDesc">盤面に降ってくるツムが5種類→4種類になり、チェーンしやすくなる</div>
+  <div id="itemOverlay" class="hidden">
+    <div id="itemScreen">
+      <div id="itemTopBar">
+        <div class="homeStarBadge">
+          <div class="homeStarNum" id="itemLevelVal">1</div>
+          <div class="homeStarPct" id="itemLevelPct">0%</div>
         </div>
-
-        <div class="itemCard" id="item_coin" data-item="coin">
-          <div class="itemHead">
-            <div class="itemName">+Coin</div>
-            <div class="toggleSw"></div>
-          </div>
-          <div class="itemDesc">獲得コインが増加する（倍率を選択）</div>
-          <div class="coinSliderWrap">
-            <input type="range" id="coinSlider" min="1" max="100" value="1" step="1">
-            <div class="coinSliderVal" id="coinSliderVal">×1.1</div>
-          </div>
+        <div class="homeCurrency">
+          <span class="curIcon curGem"></span>
+          <span class="curVal" id="itemGemVal">0</span>
+          <span class="curPlusBtn">＋</span>
         </div>
-
-        <div class="itemCard" id="item_bomb" data-item="bomb">
-          <div class="itemHead">
-            <div class="itemName">Bomb</div>
-            <div class="toggleSw"></div>
-          </div>
-          <div class="itemDesc">ボムが出現するのに必要なチェーン数が1減る</div>
+        <div class="homeCurrency">
+          <span class="curIcon curCoin"></span>
+          <span class="curVal" id="itemCoinTotalVal">0</span>
+          <span class="curPlusBtn">＋</span>
         </div>
-
-        <div class="itemCard" id="item_time" data-item="time">
-          <div class="itemHead">
-            <div class="itemName">+Time</div>
-            <div class="toggleSw"></div>
-          </div>
-          <div class="itemDesc">制限時間が5秒プラスされる</div>
+        <div class="homeCurrency">
+          <span class="curIcon curRuby"></span>
+          <span class="curVal" id="itemRubyVal">0</span>
+          <span class="curPlusBtn">＋</span>
         </div>
-
       </div>
-      <button class="btn" id="itemStartBtn">はじめる</button>
+      <div id="itemPanel">
+        <div id="itemHeartsRow">
+          <div class="homeHeart"></div><div class="homeHeart"></div><div class="homeHeart"></div><div class="homeHeart"></div><div class="homeHeart"></div>
+          <div class="homeExpPill">+<span id="itemExpGainVal">0</span></div>
+          <div id="itemMailBtn">✉<span class="homeMailBadge" id="itemMailCount">0</span></div>
+        </div>
+        <div id="itemBanner">アイテムセット</div>
+        <div id="itemBody">
+          <div id="itemNote">※「スタート」ですぐに購入し利用できます（購入後は取り消しできません）</div>
+          <div id="itemBonusBox">
+            <span class="bonusIcon"></span>
+            <span id="itemBonusText">使用するアイテムを選んでね！</span>
+          </div>
+          <div id="itemGrid">
+            <div class="itemTile disabled" data-item="score">
+              <div class="itemTileIcon">+Score</div>
+              <div class="itemTileLabel">スコア</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>Coming Soon</div>
+            </div>
+
+            <div class="itemTile" id="item_coin" data-item="coin">
+              <div class="itemTileIcon">+Coin</div>
+              <div class="itemTileLabel">コイン</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>500</div>
+            </div>
+
+            <div class="itemTile disabled" data-item="exp">
+              <div class="itemTileIcon">+Exp</div>
+              <div class="itemTileLabel">Exp</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>Coming Soon</div>
+            </div>
+
+            <div class="itemTile" id="item_time" data-item="time">
+              <div class="itemTileIcon">+Time</div>
+              <div class="itemTileLabel">タイム</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>26</div>
+            </div>
+
+            <div class="itemTile" id="item_bomb" data-item="bomb">
+              <div class="itemTileIcon">+Bomb</div>
+              <div class="itemTileLabel">ボム</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>10</div>
+            </div>
+
+            <div class="itemTile" id="item_fewer" data-item="fewer">
+              <div class="itemTileIcon">5▶4</div>
+              <div class="itemTileLabel">ツム数減</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>68</div>
+            </div>
+
+            <div class="itemTile disabled" data-item="combo">
+              <div class="itemTileIcon">+Combo</div>
+              <div class="itemTileLabel">コンボ</div>
+              <div class="itemTileCount"><span class="ticketIcon"></span>Coming Soon</div>
+            </div>
+
+            <div class="itemTile disabled" data-item="soon">
+              <div class="itemTileIcon">Coming<br>Soon</div>
+              <div class="itemTileLabel">　</div>
+              <div class="itemTileCount">　</div>
+            </div>
+
+            <div class="itemCoinSliderRow" id="itemCoinSliderRow">
+              <input type="range" id="coinSlider" min="1" max="100" value="1" step="1">
+              <div class="itemCoinSliderVal" id="coinSliderVal">×1.1</div>
+            </div>
+          </div>
+        </div>
+        <div id="itemFooterBar">
+          <button class="homeCircleBtn" id="itemSettingsBtn">⚙</button>
+          <div id="itemFooterLogo">まるまるパズル</div>
+        </div>
+      </div>
+      <div id="itemBottomRow">
+        <button class="homeBigBtn" id="itemBackBtn2">もどる</button>
+        <button class="homeBigBtn" id="itemStartBtn">スタート</button>
+        <button class="homeBigBtn" id="itemStoreBtn">
+          <div id="itemStoreTsumIcon"></div>
+          <div>Lv<span id="itemStoreLv">1</span></div>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2052,6 +3161,7 @@
         <div>プレイ時間<b id="finalPlayTime">0:00</b></div>
       </div>
       <button class="btn" id="retryBtn">もういちど</button>
+      <button class="btnSecondary" id="resultHomeBtn">🏠 ホームへ戻る</button>
     </div>
   </div>
 
@@ -2089,7 +3199,8 @@
 
   // 物理パラメータ（資料の「円形ヒットボックス」「重力落下」「衝突による位置の遊び」を反映）
   const GRAVITY = 2200;          // px/s^2
-  const MAX_FALL_SPEED = 1800;   // px/s
+  const MAX_FALL_SPEED = 800;   // px/s（元は1800。降下時の見た目速度を調整）
+  const SPAWN_FALL_SPEED = MAX_FALL_SPEED; // px/s（スポーン時の初速。MAX_FALL_SPEEDと揃えることで、降ってくる間ずっと一定速度に見える）
   const RESTITUTION = 0.06;      // 床・壁での反発係数（低めでコトッと着地する感じ）
   const COLLISION_DAMPING = 0.14;// ツム同士の押し出し後の減衰（値を下げて反発を穏やかにし、暴れを抑える）
   const TSUM_FRICTION = 0.4;     // ツム同士が接触した際の摩擦（接線方向の滑りを抑える。強めにして山への滑り込み・無理な割り込みを抑制）
@@ -2245,19 +3356,19 @@
       skillName:'デビルボム',       skillDesc:'盤面のツムをランダムにボム化する' },
     { key:'gaston', name:'ガストン', color:'#c98b4a', dark:'#8a5a26', motif:'gun',    score:1030, skillNeed:20, colorGroup:'brown', coinBonus:-1,
       skillName:'ハンティングショット',
-      skillDesc:'横一列に3発撃ちぬいて消去。その後6秒間ガストンだけが降ってくる（その間スキルゲージは溜まらない）' },
+      skillDesc:'横一列を3発撃ちぬいて消去' },
     { key:'buzz',   name:'キャプテンライトイヤー', color:'#3a5fd9', dark:'#213c9e', motif:'wing', score:1265, skillNeed:16, colorGroup:'blue', coinBonus:-1,
       skillName:'ネヴァー・ギブアップ',
-      skillDesc:'バズ本人がカットイン登場（はけるまで時間停止）。その後タップした場所を中心に直径6ツム分の範囲を消去（5回まで）' },
+      skillDesc:'タップした場所を中心に円形消去（5回まで）' },
     { key:'namine', name:'ナミネ',     color:'#ffe8cc', dark:'#f0c99a', motif:'blondeHair', eyeColor:'#3f7fd9', score:962, skillNeed:19, colorGroup:'cream', coinBonus:-2,
       skillName:'メモリーチェイン',
-      skillDesc:'盤面で2番目に多いサブツムを、6秒間「ソラ」に変化させる。ナミネとソラは離れていても一緒につなげられ、消すと周りのツムも巻き込んで消える' },
+      skillDesc:'サブツムを「ソラ」に変化、繋げて消去' },
     { key:'hook', name:'最終決戦フック船長', color:'#ffe3d0', dark:'#f0c3a8', motif:'hook', score:1285, skillNeed:19, colorGroup:'skinTone', coinBonus:-2,
       skillName:'ネヴァー・ギブアップ・アゲイン',
-      skillDesc:'怒ったフック船長が出るよ、繋ぐと斜め消去して大きくなるよ！（効果時間は約3秒、繋ぐたびに消去範囲が拡大していく）' },
+      skillDesc:'怒ったフック船長が登場、斜め消去' },
     { key:'beast', name:'野獣', color:'#6b5335', dark:'#3f2f1c', motif:'beast', score:678, skillNeed:14, colorGroup:'brown',
       skillName:'ワイルドクロー',
-      skillDesc:'画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去。ボムも巻き込んで消せる（発動中は時間停止）' },
+      skillDesc:'爪で引っ掻き斜めラインを消去' },
     // ジャック＆サリー：ペアツム。ジャックを選ぶとサリーも一緒に「マイツム」として盤面に出現する。
     // ジャックとサリーは同じ種類ではないため互いには繋げられない（それぞれ別の色として扱う）。
     // スキルはジャック・サリーそれぞれ個別のゲージ（必要数が異なる）で溜まり、
@@ -2265,43 +3376,43 @@
     { key:'jack', name:'ジャック', color:'#f4f0e6', dark:'#cfc9b8', motif:'jackSkull', eyeColor:'#141414', eyeScale:2.2, score:1226, skillNeed:18, colorGroup:'jackSally', coinBonus:0,
       pairKey:'sally', pairLabel:'ジャック&サリー',
       skillName:'ランダムスクランブル',
-      skillDesc:'サブツム(ジャックとサリー以外)を15個ランダム消去（コイン補正+7）。発動中は時間停止（ツムの物理は働く）。サリーのスキル効果中に発動すると、追加でジャックとサリーを全て消去する特別演出になる（コイン補正+12）。※ペアツム：サリーとは別々のゲージ（ジャック18個／サリー36個）で管理' },
+      skillDesc:'サブツムを15個ランダム消去' },
     { key:'sally', name:'サリー', color:'#5b7691', dark:'#334656', motif:'sallyPatch', eyeColor:'#1c2230', score:1226, skillNeed:36, colorGroup:'jackSally', coinBonus:0, pairHidden:true,
       skillName:'ドリームスティッチ',
-      skillDesc:'効果時間中、少し離れたツムともつなげられるようになる。チェーンすると、たどった道の周りのツムも巻き込んで最後のツムのところへまとめて消える（道をたどるアニメーション中は時間停止・ツムの物理も止まる）' },
+      skillDesc:'離れたツムも繋げてまとめて消去' },
     { key:'duffy', name:'ダッフィー', color:'#d9a054', dark:'#9c6b28', motif:'duffyEars', score:1305, skillNeed:17, colorGroup:'brown', coinBonus:0,
       myTsumFallBoost:true, // おまけ効果：ダッフィーをマイツムに設定している間、マイツムが降ってきやすくなる
       skillName:'フォーチュン・トラペゾイド',
-      skillDesc:'2種類のスキルが交互に発動。1回目：盤面に逆台形型にマイツムを増やしてから、その逆台形の範囲を消去。2回目：同じ逆台形の範囲をそのまま消去。（発動中は時間停止・ツムの物理も停止）' },
+      skillDesc:'逆台形にマイツムを増やして消去' },
     // ヒーロースタイルスティッチ<変身>：スキルのたびに1/3の確率で変身が進み、姿と最終スキルが変わっていく多段変身ツム。
     // 専用サブツム「赤いかご」を常に一緒に降らせる（extraSubKeyで指定）。
     { key:'stitch', name:'ヒーロースタイルスティッチ<変身>', color:'#3fa9e0', dark:'#1f6fa8', motif:'stitchEars', score:1217, skillNeed:14, colorGroup:'blue2', coinBonus:3,
       extraSubKey:'redbasket',
       skillName:'ヒーロー・トランスフォーム',
-      skillDesc:'1/3の確率で「縦幅2ツム分の横ライン消去」「縦幅3ツム分の横ライン消去」「変身（演出あり）」のいずれかが発動。青い水着→赤いマントと2段階変身し、最終形態では左上→右下の順に直径6ツム分の円形消去を放つ。' },
+      skillDesc:'横ライン消去か変身、最後は円形消去' },
     // 赤いかご：スティッチ専用の追加サブツム。見た目以外は通常のサブツムと同じ。
     { key:'redbasket', name:'赤いかご', color:'#e05a3f', dark:'#a3341f', motif:'basket', score:130, colorGroup:'redBasketGroup', pairHidden:true },
     // ジェダイルーク：なぞった軌跡（始点→終点の直線）に沿ってツムを消去する。
     // なぞる速さで消去範囲の太さが変わる（速い＝細い／遅い＝太い）。スキル中は時間停止するがツムの物理は働く。
     { key:'luke', name:'ジェダイルーク', color:'#dfe6ea', dark:'#a9b4bc', motif:'lightsaber', eyeColor:'#1c1f22', score:1245, skillNeed:20, colorGroup:'jediGroup', coinBonus:-4,
       skillName:'ジェダイの一閃',
-      skillDesc:'巨大ルークが登場し、落ちてくるライトセーバーをキャッチ！キャッチした瞬間から4秒間、なぞった方向に何度でも消せるよ！ゆっくりなぞると太く消すよ！（指を置いた地点から離した地点を結ぶ直線上を消去。最速で消すと1ツム分、ゆっくりなぞった最大は3ツム分の太さ）発動中は時間停止（ツムの物理は働く）' },
+      skillDesc:'なぞった軌跡を消去、太さも変化' },
     // ガーディアンルーク：スキル中は盤面の一部がダークトルーパーに変化し、まず2ツム分の横ライン消去。
     // その後、盤面のガーディアンルーク同士をチェーンでつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、
     // 特別な緑のボムが出現する。緑のボムはドラッグして範囲内のツムを引き寄せてから指を離すと消去（5回まで）。
     { key:'guardianluke', name:'ガーディアンルーク', color:'#4a5a6a', dark:'#242e38', motif:'guardianHelmet', eyeColor:'#5cff7a', score:1197, skillNeed:15, colorGroup:'jediGroup2', coinBonus:-2,
       skillName:'ガーディアン・オーダー',
-      skillDesc:'横ライン+少しの間2種類になるよ！（発動時、大きなガーディアンルークが中央に出現し、盤面の一部がダークトルーパーに変化してから2ツム分の幅の横ライン消去。その後、ガーディアンルークをチェーンでつなぐと、つないだ数に比例して幅が広がる横ライン消去が発生し、特別な緑のボムが出現する。緑のボムはドラッグして直径8ツム分の範囲内のダークトルーパー・マジカルボムを引き寄せ、指を離すとまとめて消去。5回使うと効果終了）' },
+      skillDesc:'横ライン消去、繋ぐと範囲が拡大' },
     // 女王＆鏡：ペアツム。ジャック＆サリーと同様、女王を選ぶと鏡も一緒に「マイツム」として盤面に出現する。
     // 女王と鏡は同じ種類ではないため互いには繋げられない（それぞれ別の色として扱う）。
     // スキルはそれぞれ個別のゲージ（女王18個／鏡18個）で溜まり、ゲージが満タンになった方のスキルをボタンから発動できる。
     { key:'queen', name:'女王', color:'#fbdcc0', dark:'#e8b992', motif:'queenCrown', eyeColor:'#3f8f4a', eyeScale:0.85, score:1216, skillNeed:18, colorGroup:'queenMirror', coinBonus:-2,
       pairKey:'mirror', pairLabel:'女王＆鏡',
       skillName:'クイーン・トランスフォーメーション',
-      skillDesc:'5秒間、女王が黒いフードを被った老婆に変化するよ！老婆は少し離れていてもつながり、つなぐと周りのツムも巻き込んで消せる。老婆を合計80個消すと、効果終了時に中央消去のおまけ付き（溜まり具合は次回に持ち越し）。鏡のスキル効果中に発動すると、鏡は確定で老婆を選ぶようになるよ。' },
+      skillDesc:'女王が老婆に変化し巻き込み消去' },
     { key:'mirror', name:'鏡', color:'#7fae74', dark:'#557d4c', motif:'mirrorFrame', eyeColor:'#2a2a2a', eyeScale:0.7, score:1216, skillNeed:18, colorGroup:'queenMirror', coinBonus:-2, pairHidden:true,
       skillName:'マジックミラー',
-      skillDesc:'鏡の中にランダムなツムが1種類映り、盤面のそのツムをまとめて消し去る。女王のスキル効果中（老婆が出現中）に発動すると、確定で老婆が選ばれ、老婆の巻き込み消去が発動するよ！' },
+      skillDesc:'鏡に映ったツムをまとめて消去' },
   ];
 
   // 怒ったフック船長：最終決戦フック船長のスキル発動中のみ一時的に生まれる特殊ツム（通常は盤面に出現しない）
@@ -2470,6 +3581,7 @@
   const overflowToggleBtn = document.getElementById('overflowToggleBtn');
   const overflowDebugLayer = document.getElementById('overflowDebugLayer');
   const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+  const pauseHomeBtn = document.getElementById('pauseHomeBtn');
   const chainVal = document.getElementById('chainVal');
   const linkCountEl = document.getElementById('linkCount');
   const chainCountBadge = document.getElementById('chainCountBadge');
@@ -2489,10 +3601,66 @@
   const skillRingWrap2 = document.getElementById('skillRingWrap2');
   const myTsumIcon = document.getElementById('myTsumIcon');
   const sallyIcon = document.getElementById('sallyIcon');
-  const startOverlay = document.getElementById('startOverlay');
   const resultOverlay = document.getElementById('resultOverlay');
-  const startBtn = document.getElementById('startBtn');
-  const patchNotesBtn = document.getElementById('patchNotesBtn');
+  const resultHomeBtn = document.getElementById('resultHomeBtn');
+  const homeOverlay = document.getElementById('homeOverlay');
+  const homePlayBtn = document.getElementById('homePlayBtn');
+  const homeCardBtn = document.getElementById('homeCardBtn');
+  const homeStoreBtn = document.getElementById('homeStoreBtn');
+  const homeSettingsBtn = document.getElementById('homeSettingsBtn');
+  const homeAddFriendBtn = document.getElementById('homeAddFriendBtn');
+  const homeMissionLabel = document.getElementById('homeMissionLabel');
+  const homeMenuBtn = document.getElementById('homeMenuBtn');
+  const homeTsumDisplay = document.getElementById('homeTsumDisplay');
+  const homeTsumName = document.getElementById('homeTsumName');
+  const homeStoreTsumIcon = document.getElementById('homeStoreTsumIcon');
+  const homeLevelVal = document.getElementById('homeLevelVal');
+  const homeLevelPct = document.getElementById('homeLevelPct');
+  const homeGemVal = document.getElementById('homeGemVal');
+  const homeCoinVal = document.getElementById('homeCoinVal');
+  const homeRubyVal = document.getElementById('homeRubyVal');
+  const homeExpGainVal = document.getElementById('homeExpGainVal');
+  const homeMailCount = document.getElementById('homeMailCount');
+  const homeHighScore = document.getElementById('homeHighScore');
+  const homePlayCount = document.getElementById('homePlayCount');
+  const homeStoreLv = document.getElementById('homeStoreLv');
+  const charSelectOverlay = document.getElementById('charSelectOverlay');
+  const csLevelVal = document.getElementById('csLevelVal');
+  const csLevelPct = document.getElementById('csLevelPct');
+  const csGemVal = document.getElementById('csGemVal');
+  const csCoinVal = document.getElementById('csCoinVal');
+  const csRubyVal = document.getElementById('csRubyVal');
+  const csHeroIcon = document.getElementById('csHeroIcon');
+  const csHeroName = document.getElementById('csHeroName');
+  const csHeroSub = document.getElementById('csHeroSub');
+  const csHeroSkillDesc = document.getElementById('csHeroSkillDesc');
+  const csScoreVal = document.getElementById('csScoreVal');
+  const csSkillNeedVal = document.getElementById('csSkillNeedVal');
+  const csGrid = document.getElementById('csGrid');
+  const csBackBtn = document.getElementById('csBackBtn');
+  const csSetBtn = document.getElementById('csSetBtn');
+  const csStoreBtn2 = document.getElementById('csStoreBtn2');
+  const boxOverlay = document.getElementById('boxOverlay');
+  const boxBackBtn = document.getElementById('boxBackBtn');
+  const boxLevelVal = document.getElementById('boxLevelVal');
+  const boxLevelPct = document.getElementById('boxLevelPct');
+  const boxGemVal = document.getElementById('boxGemVal');
+  const boxCoinVal = document.getElementById('boxCoinVal');
+  const boxRubyVal = document.getElementById('boxRubyVal');
+  const boxFeaturedGift = document.getElementById('boxFeaturedGift');
+  const boxFeaturedTitle = document.getElementById('boxFeaturedTitle');
+  const boxFeaturedBannerText = document.getElementById('boxFeaturedBannerText');
+  const boxBuy1Price = document.getElementById('boxBuy1Price');
+  const boxBuy10Price = document.getElementById('boxBuy10Price');
+  const boxTiles = document.querySelectorAll('.boxTile');
+  const startTransitionLayer = document.getElementById('startTransitionLayer');
+  const mickeyMask = document.getElementById('mickeyMask');
+  const loadingScreen = document.getElementById('loadingScreen');
+  const loadingDots = document.getElementById('loadingDots');
+  const loadingTipBox = document.getElementById('loadingTipBox');
+  const readyGoLayer = document.getElementById('readyGoLayer');
+  const readyText = document.getElementById('readyText');
+  const goText = document.getElementById('goText');
   const patchNotesOverlay = document.getElementById('patchNotesOverlay');
   const patchNotesCloseBtn = document.getElementById('patchNotesCloseBtn');
   const retryBtn = document.getElementById('retryBtn');
@@ -2502,10 +3670,22 @@
   const finalFever = document.getElementById('finalFever');
   const finalExp = document.getElementById('finalExp');
   const finalPlayTime = document.getElementById('finalPlayTime');
-  const charPreview = document.getElementById('charPreview');
-  const skillInfoBox = document.getElementById('skillInfoBox');
   const itemOverlay = document.getElementById('itemOverlay');
   const itemStartBtn = document.getElementById('itemStartBtn');
+  const itemBackBtn2 = document.getElementById('itemBackBtn2');
+  const itemStoreBtn = document.getElementById('itemStoreBtn');
+  const itemLevelVal = document.getElementById('itemLevelVal');
+  const itemLevelPct = document.getElementById('itemLevelPct');
+  const itemGemVal = document.getElementById('itemGemVal');
+  const itemCoinTotalVal = document.getElementById('itemCoinTotalVal');
+  const itemRubyVal = document.getElementById('itemRubyVal');
+  const itemExpGainVal = document.getElementById('itemExpGainVal');
+  const itemMailCount = document.getElementById('itemMailCount');
+  const itemStoreLv = document.getElementById('itemStoreLv');
+  const itemStoreTsumIcon = document.getElementById('itemStoreTsumIcon');
+  const itemBonusText = document.getElementById('itemBonusText');
+  const itemCoinSliderRow = document.getElementById('itemCoinSliderRow');
+  const itemSettingsBtn = document.getElementById('itemSettingsBtn');
   const itemFewerEl = document.getElementById('item_fewer');
   const itemCoinEl = document.getElementById('item_coin');
   const itemBombEl = document.getElementById('item_bomb');
@@ -2637,7 +3817,7 @@
     tsumRadius = Math.max(13, Math.round((Math.floor(boardW/6/2*0.8) - 2) * 0.85 * 1.2 * 1.05 * 1.1 * 1.1 * 0.95));
     // 枠外エリア（天井のさらに上、ツム6個分の高さ。積み上がったツムが詰まらず逃げるための余白）を確保する。
     const prevOverflow = TOP_OVERFLOW;
-    TOP_OVERFLOW = tsumRadius * 6;
+    TOP_OVERFLOW = tsumRadius * 6 * 5;
     // 補充されたツムは refillIfNeeded() が呼ばれた瞬間（＝なぞって消したツムの当たり判定が
     // 完全に消え終わった瞬間）に生成される。そのため、生成位置は「見える盤面の天井のすぐ外」
     // 程度に留め、生成された直後にはもう天井から姿を見せ始めるようにする。
@@ -7474,7 +8654,11 @@
       }
       // 段が上がるほど、さらに高い画面外から降ってくる
       const y = startY - rowIdx*(tsumRadius*2.2) - Math.random()*tsumRadius*0.6;
-      const t = spawnTsum(x, y, (Math.random()-0.5)*20, 0);
+      // 初速0の自由落下だと画面上に出た瞬間はゆっくり、着地直前は速く…と
+      // 加速していく見た目になってしまう。降ってくる間、常に一定速度に
+      // 見えるようにするため、出現時点から最終落下速度（MAX_FALL_SPEED）を
+      // 初速として与える。
+      const t = spawnTsum(x, y, (Math.random()-0.5)*20, SPAWN_FALL_SPEED);
       t.el.classList.add('spawning');
       setTimeout(()=>t.el.classList.remove('spawning'), 340);
     }
@@ -7940,7 +9124,8 @@
       const jitterX = (Math.random()-0.5)*tsumRadius*0.6;
       const x = tsumRadius + col*((boardW - tsumRadius*2)/(perRow-1||1)) + jitterX;
       const y = -tsumRadius*2 - rowIdx*(tsumRadius*2.05) - Math.random()*tsumRadius;
-      spawnTsum(Math.max(tsumRadius, Math.min(boardW-tsumRadius, x)), y, (Math.random()-0.5)*20, 0, false);
+      // こちらも同様に、降下中の見た目速度を一定にするため初速をMAX_FALL_SPEEDにしておく
+      spawnTsum(Math.max(tsumRadius, Math.min(boardW-tsumRadius, x)), y, (Math.random()-0.5)*20, SPAWN_FALL_SPEED, false);
     }
   }
 
@@ -7959,6 +9144,12 @@
   // Timer / game flow
   // ------------------------------------------------------------
   function startGame(){
+    startGamePrepare();
+    startGameReveal();
+  }
+
+  // ゲーム開始演出の前半：状態リセットとHUD初期化のみ行い、盤面はまだ空のままにする
+  function startGamePrepare(){
     gamePaused = false;
     pauseOverlay.classList.remove('show');
     score = 0; coins = 0; exp = 0; maxChain = 0; feverCount = 0;
@@ -8050,16 +9241,22 @@
     skillRingWrap.style.setProperty('--pct', 0);
     updateFeverGaugeUI();
     timerBox.classList.remove('warn');
-    startOverlay.classList.add('hidden');
     resultOverlay.classList.add('hidden');
 
     renderMyTsumIcon();
     layoutBoard();
+    // まだツムは投入しない（盤面は空のまま）。投入とタイマー開始は startGameReveal で行う。
+    gameActive = false;
+    clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
+  }
+
+  // ゲーム開始演出の後半：ツムを盤面に投入し、タイマーを実際に動かし始める（「Go!」表示と同時に呼ぶ）
+  function startGameReveal(){
     initBoard();
-    presimulate(1800);
+    gameActive = true;
     ensurePlayable();
 
-    gameActive = true;
     clearInterval(timerHandle);
     clearTimeout(timerResumeTimeout);
     timerHandle = setInterval(tick, 1000);
@@ -8074,7 +9271,8 @@
     if(timeLeft<=0) endGame();
   }
 
-  function endGame(){
+  function endGame(opts){
+    const skipResult = !!(opts && opts.skipResult);
     gameActive = false;
     gamePaused = false;
     pauseOverlay.classList.remove('show');
@@ -8134,7 +9332,14 @@
     if(pauseStartTimestamp){ pausedAccumMs += Date.now() - pauseStartTimestamp; pauseStartTimestamp = 0; }
     totalPlayTimeSec = gameStartTimestamp ? Math.max(0, (Date.now() - gameStartTimestamp - pausedAccumMs)/1000) : 0;
     finalPlayTime.textContent = formatPlayTime(totalPlayTimeSec);
-    setTimeout(()=>{ resultOverlay.classList.remove('hidden'); }, 400);
+    updateHomeStatsAfterGame(score, coins, exp);
+    if(skipResult){
+      // 一時停止メニューからの中断：リザルト画面を経由せず直接ホームへ戻る
+      resultOverlay.classList.add('hidden');
+      showHomeOverlay();
+    } else {
+      setTimeout(()=>{ resultOverlay.classList.remove('hidden'); }, 400);
+    }
   }
 
   // プレイ時間（秒）を「分:秒」形式の文字列に整形する（例：1分5秒→'1:05'）
@@ -8148,6 +9353,234 @@
   // ------------------------------------------------------------
   // My-tsum selection UI (start screen)
   // ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // Home screen（プレイ前のトップ画面）
+  // ------------------------------------------------------------
+  const HOME_SAVE_KEY = 'marumaruPuzzleHomeSave_v1';
+  function loadHomeSave(){
+    try{
+      const raw = localStorage.getItem(HOME_SAVE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        return Object.assign({ totalCoins:0, totalExp:0, bestScore:0, playCount:0 }, parsed);
+      }
+    }catch(e){}
+    return { totalCoins:0, totalExp:0, bestScore:0, playCount:0 };
+  }
+  function saveHomeSave(data){
+    try{ localStorage.setItem(HOME_SAVE_KEY, JSON.stringify(data)); }catch(e){}
+  }
+  let homeSave = loadHomeSave();
+
+  function levelFromExp(totalExp){
+    // 100Expごとにレベルが1つ上がる簡易計算（見た目のための演出用の数値）
+    const level = 1 + Math.floor(totalExp/100);
+    const pct = Math.floor((totalExp%100));
+    return { level, pct };
+  }
+
+  function renderHomeScreen(){
+    const { level, pct } = levelFromExp(homeSave.totalExp);
+    homeLevelVal.textContent = level;
+    homeLevelPct.textContent = pct + '%';
+    homeGemVal.textContent = 0;
+    homeCoinVal.textContent = homeSave.totalCoins.toLocaleString();
+    homeRubyVal.textContent = 0;
+    homeExpGainVal.textContent = 0;
+    homeMailCount.textContent = 0;
+    homeHighScore.textContent = homeSave.bestScore.toLocaleString();
+    homePlayCount.textContent = homeSave.playCount;
+    homeStoreLv.textContent = level;
+
+    const type = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    homeTsumName.textContent = type ? (type.pairKey ? (type.pairLabel || type.name) : type.name) : '―';
+
+    homeTsumDisplay.innerHTML = '';
+    if(type){
+      const el = createTsumEl(type, true, 96);
+      el.style.position='relative'; el.style.left='0'; el.style.top='0'; el.style.transform='none';
+      el.style.pointerEvents='none';
+      homeTsumDisplay.appendChild(el);
+    }
+    homeStoreTsumIcon.innerHTML = '';
+    if(type){
+      const el2 = createTsumEl(type, true, 34);
+      el2.style.position='relative'; el2.style.left='0'; el2.style.top='0'; el2.style.transform='none';
+      el2.style.pointerEvents='none';
+      homeStoreTsumIcon.appendChild(el2);
+    }
+  }
+
+  function updateHomeStatsAfterGame(finalScoreVal, finalCoinsVal, finalExpVal){
+    homeSave.totalCoins += finalCoinsVal;
+    homeSave.totalExp += finalExpVal;
+    homeSave.playCount += 1;
+    if(finalScoreVal > homeSave.bestScore) homeSave.bestScore = finalScoreVal;
+    saveHomeSave(homeSave);
+    renderHomeScreen();
+  }
+
+  function showHomeOverlay(){
+    renderHomeScreen();
+    homeOverlay.classList.remove('hidden');
+    itemOverlay.classList.add('hidden');
+  }
+  function goToItemsFromHome(){
+    homeOverlay.classList.add('hidden');
+    itemOverlay.classList.remove('hidden');
+    renderItemScreenTopInfo();
+  }
+
+  homePlayBtn.addEventListener('click', goToItemsFromHome);
+  resultHomeBtn.addEventListener('click', ()=>{
+    resultOverlay.classList.add('hidden');
+    showHomeOverlay();
+  });
+  homeSettingsBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    patchNotesOverlay.classList.add('show');
+  });
+  // カード・ミッション・フレンド追加・メニューは見た目のみのボタン（今後の拡張用プレースホルダー）
+  [homeCardBtn, homeAddFriendBtn, homeMissionLabel, homeMenuBtn].forEach(btn=>{
+    if(btn) btn.addEventListener('click', (e)=>{ e.stopPropagation(); });
+  });
+
+  // ------------------------------------------------------------
+  // キャラクター選択画面（ホーム画面右下のキャラボタンから開く）
+  // ------------------------------------------------------------
+  let csPreviewKey = myTsumKey;
+
+  function renderCharSelectTopInfo(){
+    const { level, pct } = levelFromExp(homeSave.totalExp);
+    csLevelVal.textContent = level;
+    csLevelPct.textContent = pct + '%';
+    csGemVal.textContent = 0;
+    csCoinVal.textContent = homeSave.totalCoins.toLocaleString();
+    csRubyVal.textContent = 0;
+  }
+
+  function renderCharSelectHero(){
+    const type = TSUM_TYPES.find(t=>t.key===csPreviewKey);
+    if(!type) return;
+    csHeroIcon.innerHTML = '';
+    const el = createTsumEl(type, true, 84);
+    el.style.position='relative'; el.style.left='0'; el.style.top='0'; el.style.transform='none';
+    el.style.pointerEvents='none';
+    csHeroIcon.appendChild(el);
+    csHeroName.textContent = type.pairKey ? (type.pairLabel || type.name) : type.name;
+    csHeroSub.textContent = 'オリジナルツム';
+    csHeroSkillDesc.textContent = `${type.skillName || ''}：${type.skillDesc || ''}`;
+    csScoreVal.textContent = `スコア ${type.score || 0}`;
+    csSkillNeedVal.textContent = `必要ツム数:${type.skillNeed || '-'}`;
+  }
+
+  function renderCharSelectGrid(){
+    csGrid.innerHTML = '';
+    TSUM_TYPES.filter(t=>!t.pairHidden).forEach(t=>{
+      const tile = document.createElement('div');
+      tile.className = 'csTile' + (t.key===csPreviewKey ? ' selected' : '');
+      const icon = document.createElement('div');
+      icon.className = 'csTileIcon';
+      if(t.key===myTsumKey){
+        const badge = document.createElement('div');
+        badge.className = 'csTileBadge';
+        badge.textContent = 'マイツム';
+        icon.appendChild(badge);
+      }
+      const el = createTsumEl(t, false, 52);
+      el.style.position='relative'; el.style.left='0'; el.style.top='0'; el.style.transform='none';
+      el.style.pointerEvents='none';
+      icon.appendChild(el);
+      const label = document.createElement('div');
+      label.className = 'csTileLabel';
+      label.textContent = t.pairKey ? (t.pairLabel || t.name) : t.name;
+      const sub = document.createElement('div');
+      sub.className = 'csTileSub';
+      sub.textContent = t.skillNeed ? `必要:${t.skillNeed}` : '';
+      tile.appendChild(icon);
+      tile.appendChild(label);
+      tile.appendChild(sub);
+      tile.addEventListener('click', ()=>{
+        csPreviewKey = t.key;
+        renderCharSelectHero();
+        renderCharSelectGrid();
+      });
+      csGrid.appendChild(tile);
+    });
+  }
+
+  function openCharSelectOverlay(){
+    csPreviewKey = myTsumKey;
+    renderCharSelectTopInfo();
+    renderCharSelectHero();
+    renderCharSelectGrid();
+    charSelectOverlay.classList.remove('hidden');
+  }
+  function closeCharSelectOverlay(){
+    charSelectOverlay.classList.add('hidden');
+  }
+
+  function renderBoxTopInfo(){
+    const { level, pct } = levelFromExp(homeSave.totalExp);
+    boxLevelVal.textContent = level;
+    boxLevelPct.textContent = pct + '%';
+    boxGemVal.textContent = 0;
+    boxCoinVal.textContent = homeSave.totalCoins.toLocaleString();
+    boxRubyVal.textContent = 0;
+  }
+  function openBoxOverlay(){
+    renderBoxTopInfo();
+    const defaultTile = document.querySelector('.boxTile.gold') || boxTiles[0];
+    if(defaultTile) selectBoxTile(defaultTile);
+    boxOverlay.classList.remove('hidden');
+  }
+  function closeBoxOverlay(){
+    boxOverlay.classList.add('hidden');
+  }
+  boxBackBtn.addEventListener('click', closeBoxOverlay);
+
+  // タイルをタップすると、そのBOXの内容が上部のフィーチャー表示
+  // （タイトル・アートワーク・価格・バナー文言）に反映されるようにする。
+  function selectBoxTile(tile){
+    boxTiles.forEach(t=> t.classList.remove('active'));
+    tile.classList.add('active');
+
+    const title = tile.dataset.title || 'プレミアムBOX';
+    const price1 = tile.dataset.price1 || '30,000';
+    const price10 = tile.dataset.price10 || '300,000';
+    const artStyle = tile.dataset.artStyle || '';
+
+    boxFeaturedTitle.textContent = title;
+    boxBuy1Price.textContent = price1;
+    boxBuy10Price.textContent = price10;
+    if(boxFeaturedBannerText){
+      boxFeaturedBannerText.innerHTML = title.replace(/\n/g,'<br>');
+    }
+    if(boxFeaturedGift){
+      boxFeaturedGift.setAttribute('style', artStyle);
+    }
+  }
+  boxTiles.forEach(tile=>{
+    tile.addEventListener('click', ()=> selectBoxTile(tile));
+  });
+
+  homeStoreBtn.addEventListener('click', openCharSelectOverlay);
+  itemStoreBtn.addEventListener('click', openCharSelectOverlay);
+  csBackBtn.addEventListener('click', closeCharSelectOverlay);
+  csStoreBtn2.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    openBoxOverlay();
+  });
+  csSetBtn.addEventListener('click', ()=>{
+    myTsumKey = csPreviewKey;
+    if(!itemOverlay.classList.contains('hidden')){
+      renderItemScreenTopInfo();
+    } else {
+      renderHomeScreen();
+    }
+    closeCharSelectOverlay();
+  });
+
   function renderMyTsumIcon(){
     myTsumIcon.innerHTML = '';
     const type = TSUM_TYPES.find(t=>t.key===myTsumKey);
@@ -8166,47 +9599,6 @@
         sallyIcon.appendChild(el2);
       }
     }
-  }
-
-  function buildStartPreview(){
-    const titleWrap = document.getElementById('startTitleTsum');
-    const heroType = TSUM_TYPES.find(t=>t.key===myTsumKey);
-    titleWrap.innerHTML = '';
-    const el = createTsumEl(heroType, true, 76);
-    el.style.position='relative';
-    el.style.left='0'; el.style.top='0'; el.style.transform='none';
-    titleWrap.appendChild(el);
-
-    charPreview.innerHTML = '';
-    TSUM_TYPES.filter(t=>!t.pairHidden).forEach(t=>{
-      const col = document.createElement('div');
-      col.className = 'charCol';
-
-      const pickEl = createTsumEl(t, false, 46);
-      pickEl.style.position='relative';
-      pickEl.style.left='0'; pickEl.style.top='0'; pickEl.style.transform='none';
-      pickEl.style.width='46px'; pickEl.style.height='46px';
-      pickEl.classList.add('charPick');
-      if(t.key===myTsumKey) pickEl.classList.add('pickSelected');
-      pickEl.addEventListener('click', ()=>{
-        myTsumKey = t.key;
-        buildStartPreview();
-        renderMyTsumIcon();
-      });
-      col.appendChild(pickEl);
-
-      const label = document.createElement('div');
-      label.className='charName';
-      label.textContent = t.pairKey ? (t.pairLabel || t.name) : t.name;
-      col.appendChild(label);
-
-      charPreview.appendChild(col);
-    });
-
-    const heroLabel = heroType.pairKey ? (heroType.pairLabel || heroType.name) : heroType.name;
-    skillInfoBox.innerHTML =
-      `<div class="skName">${heroLabel}のスキル：${heroType.skillName}</div>`+
-      `<div class="skDesc">${heroType.skillDesc}</div>`;
   }
 
   // ------------------------------------------------------------
@@ -8246,6 +9638,11 @@
   pauseResumeBtn.addEventListener('click', ()=>{
     closePauseMenu();
   });
+  pauseHomeBtn.addEventListener('click', ()=>{
+    if(!confirm('プレイ中のゲームを中断してホーム画面に戻りますか？')) return;
+    pauseOverlay.classList.remove('show');
+    endGame({ skipResult:true });
+  });
   gyroToggleBtn.addEventListener('click', ()=>{
     if(gyroEnabled){
       disableGyro();
@@ -8267,26 +9664,131 @@
   });
 
   // ------------------------------------------------------------
-  // キャラ選択 → アイテム選択 → ゲーム開始 の3段階フロー
-  startBtn.addEventListener('click', ()=>{
-    startOverlay.classList.add('hidden');
-    itemOverlay.classList.remove('hidden');
-  });
-  patchNotesBtn.addEventListener('click', ()=>{
-    patchNotesOverlay.classList.add('show');
-  });
+  // ホーム → アイテム選択 → ゲーム開始 の流れ（キャラクター選択はホーム画面のキャラボタンから独立）
   patchNotesCloseBtn.addEventListener('click', ()=>{
     patchNotesOverlay.classList.remove('show');
   });
+  const GAME_START_TIPS = [
+    'スキルが貯まっている状態でタイムアップになるとボーナスルーレットがはじまるよ！',
+    'たくさんのツムをつなぐと高得点＆スキルゲージが貯まりやすくなるよ！',
+    'フィーバー中はスコアが2倍になるよ！チャンスを逃さないで！',
+  ];
+  let loadingDotsInterval = null;
+  let loadingTipInterval = null;
+
+  function startLoadingAnimations(){
+    let dotCount = 3;
+    loadingDots.textContent = '...';
+    loadingDotsInterval = setInterval(()=>{
+      dotCount = (dotCount % 3) + 1;
+      loadingDots.textContent = '.'.repeat(dotCount);
+    }, 450);
+    let tipIndex = Math.floor(Math.random()*GAME_START_TIPS.length);
+    loadingTipBox.textContent = GAME_START_TIPS[tipIndex];
+    loadingTipInterval = setInterval(()=>{
+      tipIndex = (tipIndex + 1) % GAME_START_TIPS.length;
+      loadingTipBox.textContent = GAME_START_TIPS[tipIndex];
+    }, 2600);
+  }
+  function stopLoadingAnimations(){
+    clearInterval(loadingDotsInterval); loadingDotsInterval = null;
+    clearInterval(loadingTipInterval); loadingTipInterval = null;
+  }
+
+  // スタートボタン押下→ゲーム開始までの演出シーケンス
+  // 1) ミッキーマスクのワイプイン（黒くなる）
+  // 2) ローディング画面（スピナー＋Tips）
+  // 3) ミッキーマスクのワイプアウト（盤面が見える。ただしツムはまだ落ちていない）
+  // 4) 「READY」→「Go!」の表示と同時にツムが盤面に登場し、ゲーム本編が始まる
+  function playStartTransition(){
+    startTransitionLayer.classList.add('show');
+    mickeyMask.classList.remove('wipeIn','wipeOut');
+    mickeyMask.style.transform = 'scale(0)';
+
+    // 1) ワイプイン
+    requestAnimationFrame(()=>{
+      mickeyMask.classList.add('wipeIn');
+    });
+
+    setTimeout(()=>{
+      // ワイプインが完了＝画面は真っ黒。ここで裏側の画面をアイテム選択→ゲーム画面に切り替えておく
+      itemOverlay.classList.add('hidden');
+      startGamePrepare();
+      loadingScreen.classList.add('show');
+      startLoadingAnimations();
+
+      setTimeout(()=>{
+        // 2) ローディング表示を終え、ワイプアウトで盤面を見せる（ツムはまだ空）
+        loadingScreen.classList.remove('show');
+        stopLoadingAnimations();
+        mickeyMask.classList.remove('wipeIn');
+        mickeyMask.style.transform = 'scale(14)';
+        requestAnimationFrame(()=>{
+          mickeyMask.classList.add('wipeOut');
+        });
+
+        setTimeout(()=>{
+          // 3) ワイプアウト完了。演出レイヤーを隠す
+          startTransitionLayer.classList.remove('show');
+          mickeyMask.classList.remove('wipeOut');
+
+          // 4) READY→Go!表示、Go!のタイミングでツムを投入してゲーム開始
+          readyText.classList.add('show');
+          setTimeout(()=>{
+            readyText.classList.remove('show');
+            setTimeout(()=>{
+              goText.classList.add('show');
+              startGameReveal();
+              setTimeout(()=>{
+                goText.classList.remove('show');
+              }, 700);
+            }, 120);
+          }, 900);
+        }, 460);
+      }, 1000);
+    }, 460);
+  }
   itemStartBtn.addEventListener('click', ()=>{
+    playStartTransition();
+  });
+
+  itemBackBtn2.addEventListener('click', ()=>{
     itemOverlay.classList.add('hidden');
-    startGame();
+    showHomeOverlay();
   });
   retryBtn.addEventListener('click', ()=>{
     resultOverlay.classList.add('hidden');
-    startOverlay.classList.remove('hidden');
-    buildStartPreview();
+    itemOverlay.classList.remove('hidden');
+    renderItemScreenTopInfo();
   });
+
+  function renderItemScreenTopInfo(){
+    const { level, pct } = levelFromExp(homeSave.totalExp);
+    itemLevelVal.textContent = level;
+    itemLevelPct.textContent = pct + '%';
+    itemGemVal.textContent = 0;
+    itemCoinTotalVal.textContent = homeSave.totalCoins.toLocaleString();
+    itemRubyVal.textContent = 0;
+    itemExpGainVal.textContent = 0;
+    itemMailCount.textContent = 0;
+    itemStoreLv.textContent = level;
+    const type = TSUM_TYPES.find(t=>t.key===myTsumKey);
+    itemStoreTsumIcon.innerHTML = '';
+    if(type){
+      const el = createTsumEl(type, true, 34);
+      el.style.position='relative'; el.style.left='0'; el.style.top='0'; el.style.transform='none';
+      el.style.pointerEvents='none';
+      itemStoreTsumIcon.appendChild(el);
+    }
+  }
+
+  function updateItemBonusText(){
+    if(itemCoinEl.classList.contains('active')){
+      itemBonusText.textContent = `コイン${coinSliderVal.textContent}ボーナス`;
+    } else {
+      itemBonusText.textContent = '使用するアイテムを選んでね！';
+    }
+  }
 
   function toggleItem(el){
     el.classList.toggle('active');
@@ -8306,6 +9808,7 @@
   itemCoinEl.addEventListener('click', (e)=>{
     if(e.target===coinSlider) return;
     toggleItem(itemCoinEl);
+    itemCoinSliderRow.classList.toggle('show', itemCoinEl.classList.contains('active'));
     updateCoinMultiplier();
   });
   coinSlider.addEventListener('click', (e)=> e.stopPropagation());
@@ -8318,6 +9821,7 @@
     const rounded = Math.round(mult*10)/10;
     coinSliderVal.textContent = `×${rounded}`;
     coinMultiplier = itemCoinEl.classList.contains('active') ? rounded : 1;
+    updateItemBonusText();
   }
   updateCoinMultiplier();
 
@@ -8332,8 +9836,8 @@
 
   tsumRadius = 20;
   layoutBoard();
-  buildStartPreview();
   renderMyTsumIcon();
+  showHomeOverlay();
 
   rafHandle = requestAnimationFrame(frameLoop);
 
