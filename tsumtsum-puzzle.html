@@ -3474,13 +3474,14 @@
   let guardianLukeActive = false;       // スキル発動〜効果終了までtrue（この間、ガーディアンルークのチェーンは専用フローで処理する）
   let guardianLukeIntroPlaying = false; // 発動演出（巨大ガーディアンルーク登場〜ダークトルーパー変化〜1回目の横ライン消去）の再生中フラグ
   let guardianLukeTransformedKeys = []; // ダークトルーパーに変化させた元のツムのkey一覧（効果終了時に戻すため）
-  let guardianBombActive = false;       // 特別な緑のボムが盤面に出現している間true
-  let guardianBombUsesLeft = 0;         // 緑のボムの残り使用回数（最大5回）
+  let guardianBombActive = false;       // 特別な緑のボムが盤面に1個以上出現している間true
+  let guardianBombs = [];               // 現在盤面にある緑のボムのツム参照一覧（複数同時に存在できる）
   let guardianBombDragging = false;     // 現在ドラッグ中かどうか
-  let guardianBombTsum = null;          // 現在盤面にある緑のボムのツム参照
+  let guardianBombDragTarget = null;    // ドラッグ中の緑のボム（guardianBombsのうちの1つ）
   let guardianBombDragPoint = null;     // ドラッグ中の指の座標（盤面ローカル座標）
   let guardianPullCircle = null;        // ドラッグ中に表示する引き寄せ範囲円のDOM要素
-  const GUARDIAN_BOMB_MAX_USES = 5;
+  let guardianBombTotalUses = 0;        // スキル発動中に緑のボムを使った通算回数（5回使い切るとスキル終了）
+  const GUARDIAN_BOMB_MAX_TOTAL_USES = 5;
   const GUARDIAN_BOMB_PULL_RADIUS_TSUM = 8; // 半径8ツム分
 
   // 最終決戦フック船長：スキル効果中は「怒ったフック船長」が盤面に出現し、
@@ -3920,9 +3921,9 @@
     }
     // ガーディアンルークのスキル効果中（発動演出が終わったあと）は、新しく降ってくるサブツムも
     // マイツム以外はすべてガーディアンルーク／ダークトルーパーのどちらかになるようにする
-    // （ガーディアンルーク：ダークトルーパー＝1：9の比率にする）
+    // （ガーディアンルーク：ダークトルーパー＝0.25：9.75の比率にする）
     if(guardianLukeActive && !guardianLukeIntroPlaying && !isMineType(picked)){
-      return Math.random()<0.1 ? TSUM_TYPES.find(t=>t.key==='guardianluke') : DARKTROOPER_TYPE;
+      return Math.random()<0.025 ? TSUM_TYPES.find(t=>t.key==='guardianluke') : DARKTROOPER_TYPE;
     }
     // スティッチが変身中は、新しく降ってくるマイツムも今の変身後の姿にする
     if(myTsumKey==='stitch' && picked.key==='stitch' && stitchStage>0){
@@ -4966,7 +4967,7 @@
     t.el.addEventListener('pointerdown', (e)=>{
       if(!gameActive || skillActive || gamePaused || (t.ghost || t.popScheduled) || hookAnimFreeze || buzzTapMode) return;
       if(t.isGuardianBomb) return; // 専用のドラッグ処理（board側のpointerdownリスナー）に任せる
-      if(guardianBombActive || guardianBombDragging) return; // 緑のボム出現中〜ドラッグ中は通常のチェーン入力を受け付けない
+      if(guardianBombDragging) return; // 緑のボムをドラッグ中は、それ以外のツムへの通常のチェーン入力を受け付けない
       e.preventDefault();
       // 暗黙のポインターキャプチャを解除し、boardのpointermoveで追跡できるようにする
       if(e.pointerId!=null && t.el.hasPointerCapture && t.el.hasPointerCapture(e.pointerId)){
@@ -5197,10 +5198,10 @@
       return;
     }
 
-    // ガーディアンルークのスキル効果中：ガーディアンルーク同士を2つ以上つないだ場合、
+    // ガーディアンルークのスキル効果中：ガーディアンルーク同士を3つ以上つないだ場合、
     // 通常のなぞり消去ではなく、つないだ数に比例して幅が広がる専用の横ライン消去を発動する。
     const hasGuardianLukeChain = guardianLukeActive && !guardianLukeIntroPlaying && path.every(t=> t.type.key==='guardianluke');
-    if(hasGuardianLukeChain && path.length>=2){
+    if(hasGuardianLukeChain && path.length>=3){
       resolveGuardianLukeChain(path);
       return;
     }
@@ -6716,6 +6717,7 @@
     guardianLukeActive = true;
     guardianLukeIntroPlaying = true;
     guardianLukeTransformedKeys = [];
+    guardianBombTotalUses = 0;
     appEl.classList.add('timeStopDimmed');
     pauseTimer(GUARDIAN_LUKE_ANIM_MS*2 + 900);
     showSkillLabel('ガーディアン・オーダー！ 巨大ガーディアンルーク登場');
@@ -6831,8 +6833,8 @@
     path.forEach(t=>{ t.el.classList.remove('selected'); });
     ropeSvg.innerHTML = '';
 
-    // つないだ数(2つで最小幅2、以降1つにつき+0.5ツム分ずつ広がる)に比例して幅を決める
-    const rows = 2 + (path.length-2)*0.5;
+    // つないだ数(3つで最小幅2、以降1つにつき+0.5ツム分ずつ広がる)に比例して幅を決める
+    const rows = 2 + (path.length-3)*0.5;
     const spot = { x: path[path.length-1].x, y: path[path.length-1].y };
     boardFrozen = true;
     appEl.classList.add('timeStopDimmed'); // つないでの横ライン消去中も画面を薄暗くし、時間が止まっていることが分かるようにする
@@ -6848,17 +6850,15 @@
     }, path);
   }
 
-  // 特別な緑のボムを指定座標付近に出現させる
+  // 特別な緑のボムを指定座標付近に出現させる（既存の緑のボムはそのまま残し、追加で出現させる）
   function spawnGuardianBomb(spot){
-    // 既に緑のボムが盤面にある場合は、出し直す前に取り除いておく
-    if(guardianBombTsum && tsums.includes(guardianBombTsum)){
-      guardianBombTsum.el.remove();
-      removeTsum(guardianBombTsum);
-    }
-    if(guardianBombUsesLeft<=0) guardianBombUsesLeft = GUARDIAN_BOMB_MAX_USES;
-    // 特別なボムは常に画面（盤面）中央に出現させる
-    const x = boardW/2;
-    const y = visY(boardH/2);
+    // 特別なボムは常に画面（盤面）中央付近に出現させる。複数個が完全に重ならないよう、
+    // 既存の個数に応じて少しずつ位置をずらす。
+    const count = guardianBombs.length;
+    const offsetAngle = count * 1.3;
+    const offsetDist = count>0 ? tsumRadius*1.4 : 0;
+    const x = Math.max(tsumRadius, Math.min(boardW-tsumRadius, boardW/2 + Math.cos(offsetAngle)*offsetDist));
+    const y = visY(Math.max(tsumRadius, Math.min(boardH-tsumRadius, boardH/2 + Math.sin(offsetAngle)*offsetDist)));
     const t = spawnTsum(x, y, 0, 0);
     t.isBomb = true;
     t.bombType = 'guardian';
@@ -6869,19 +6869,26 @@
     t.el.replaceWith(newEl);
     t.el = newEl;
     attachHandlers(t);
-    guardianBombTsum = t;
+    guardianBombs.push(t);
     guardianBombActive = true;
-    showSkillLabel(`特別なボム出現！ 残り${guardianBombUsesLeft}回`);
+    showSkillLabel(`特別なボム出現！`);
   }
 
-  // 緑のボムのドラッグ開始
+  // 緑のボムのドラッグ開始（複数ある場合は、タップした位置に最も近いボムを対象にする）
   board.addEventListener('pointerdown', (e)=>{
-    if(!guardianBombActive || !guardianBombTsum || !gameActive || gamePaused) return;
+    if(!guardianBombActive || guardianBombs.length===0 || !gameActive || gamePaused) return;
     const p = getBoardLocalPoint(e);
-    const dx = p.x-guardianBombTsum.x, dy = p.y-guardianBombTsum.y;
-    if(Math.sqrt(dx*dx+dy*dy) > guardianBombTsum.r*1.6) return; // ボム自身の近くのみドラッグ開始を受け付ける
+    let target = null, bestD = Infinity;
+    for(const b of guardianBombs){
+      if(!tsums.includes(b)) continue;
+      const dx = p.x-b.x, dy = p.y-b.y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if(d <= b.r*1.6 && d < bestD){ bestD = d; target = b; }
+    }
+    if(!target) return; // ボム自身の近くのみドラッグ開始を受け付ける
     e.preventDefault();
     guardianBombDragging = true;
+    guardianBombDragTarget = target;
     guardianBombDragPoint = p;
     boardFrozen = true;
     appEl.classList.add('timeStopDimmed'); // ドラッグ中〜消去まで時間が止まっていることが分かるよう画面を薄暗くする
@@ -6897,15 +6904,16 @@
   });
 
   board.addEventListener('pointermove', (e)=>{
-    if(!guardianBombDragging || !guardianBombTsum) return;
+    if(!guardianBombDragging || !guardianBombDragTarget) return;
     e.preventDefault();
     const p = getBoardLocalPoint(e);
     guardianBombDragPoint = p;
     // ボム自身をドラッグ位置へ追従させる
-    guardianBombTsum.x = Math.max(guardianBombTsum.r, Math.min(boardW-guardianBombTsum.r, p.x));
-    guardianBombTsum.y = Math.max(visY(guardianBombTsum.r), Math.min(visY(boardH-guardianBombTsum.r), p.y));
-    renderTsumPosition(guardianBombTsum);
-    updateGuardianPullCircle({x:guardianBombTsum.x, y:guardianBombTsum.y});
+    const bomb = guardianBombDragTarget;
+    bomb.x = Math.max(bomb.r, Math.min(boardW-bomb.r, p.x));
+    bomb.y = Math.max(visY(bomb.r), Math.min(visY(boardH-bomb.r), p.y));
+    renderTsumPosition(bomb);
+    updateGuardianPullCircle({x:bomb.x, y:bomb.y});
     guardianPullTick();
   });
 
@@ -6925,13 +6933,14 @@
 
   // ドラッグ中、範囲内のダークトルーパー・マジカルボムをボムへ少しずつ引き寄せる
   function guardianPullTick(){
-    if(!guardianBombDragging || !guardianBombTsum) return;
+    if(!guardianBombDragging || !guardianBombDragTarget) return;
+    const bomb = guardianBombDragTarget;
     const pullR = tsumRadius*GUARDIAN_BOMB_PULL_RADIUS_TSUM;
     tsums.forEach(t=>{
-      if(t===guardianBombTsum || (t.ghost || t.popScheduled)) return;
+      if(t===bomb || t.isGuardianBomb || (t.ghost || t.popScheduled)) return;
       const isTarget = t.type.key==='darktrooper' || (t.isBomb && !t.isGuardianBomb);
       if(!isTarget) return;
-      const dx = guardianBombTsum.x-t.x, dy = guardianBombTsum.y-t.y;
+      const dx = bomb.x-t.x, dy = bomb.y-t.y;
       const dist = Math.sqrt(dx*dx+dy*dy);
       if(dist > pullR || dist < 1) return;
       const pullStrength = 0.18;
@@ -6947,38 +6956,39 @@
   function finishGuardianBombDrag(){
     guardianBombDragging = false;
     if(guardianPullCircle) guardianPullCircle.classList.remove('show');
-    if(!guardianBombTsum || !tsums.includes(guardianBombTsum)){ unfreezeBoard(); resumeTimerNow(); appEl.classList.remove('timeStopDimmed'); checkFeverTrigger(); return; }
+    const bomb = guardianBombDragTarget;
+    guardianBombDragTarget = null;
+    if(!bomb || !tsums.includes(bomb)){ unfreezeBoard(); resumeTimerNow(); appEl.classList.remove('timeStopDimmed'); checkFeverTrigger(); return; }
 
     const pullR = tsumRadius*GUARDIAN_BOMB_PULL_RADIUS_TSUM;
-    const bombPos = {x: guardianBombTsum.x, y: guardianBombTsum.y};
+    const bombPos = {x: bomb.x, y: bomb.y};
     const targets = tsums.filter(t=>{
-      if(t===guardianBombTsum || (t.ghost || t.popScheduled)) return false;
+      if(t===bomb || t.isGuardianBomb || (t.ghost || t.popScheduled)) return false;
       const isTarget = t.type.key==='darktrooper' || (t.isBomb && !t.isGuardianBomb);
       if(!isTarget) return false;
       const dx = bombPos.x-t.x, dy = bombPos.y-t.y;
       return Math.sqrt(dx*dx+dy*dy) <= pullR;
     });
 
-    guardianBombUsesLeft--;
-    // ボム自身も1回分の使用を終えたら盤面から消える（自動での再出現はしない）
-    guardianBombTsum.el.remove();
-    removeTsum(guardianBombTsum);
-    guardianBombTsum = null;
-    guardianBombActive = false;
+    // 緑のボムは1回使うと必ず消える（自動での再出現はしない）
+    bomb.el.remove();
+    removeTsum(bomb);
+    guardianBombs = guardianBombs.filter(b=>b!==bomb);
+    if(guardianBombs.length===0) guardianBombActive = false;
+    guardianBombTotalUses++;
+    const skillShouldEnd = guardianBombTotalUses >= GUARDIAN_BOMB_MAX_TOTAL_USES;
 
     const finishUp = ()=>{
-      if(guardianBombUsesLeft<=0){
+      if(skillShouldEnd){
         endGuardianLukeSkill();
         appEl.classList.remove('timeStopDimmed');
       } else {
-        // ボムは1回使うたびに消え、自動で再出現はしない。
-        // 再度ガーディアンルークをつなぐことで、次のボムを出現させられる。
         unfreezeBoard();
         resumeTimerNow();
         appEl.classList.remove('timeStopDimmed');
         finishSkill(); // 通常のチェーン入力を解禁し、再度ガーディアンルークをつなげられるようにする
         checkFeverTrigger();
-        showSkillLabel(`もう一度ガーディアンルークをつなごう！ 残り${guardianBombUsesLeft}回`);
+        showSkillLabel(`もう一度ガーディアンルークをつなごう！ 残り${GUARDIAN_BOMB_MAX_TOTAL_USES - guardianBombTotalUses}回`);
       }
     };
 
@@ -7021,12 +7031,15 @@
     guardianLukeIntroPlaying = false;
     guardianBombActive = false;
     guardianBombDragging = false;
-    guardianBombUsesLeft = 0;
-    if(guardianBombTsum && tsums.includes(guardianBombTsum)){
-      guardianBombTsum.el.remove();
-      removeTsum(guardianBombTsum);
-    }
-    guardianBombTsum = null;
+    guardianBombDragTarget = null;
+    // スキル効果が終了した時点で盤面に残っている緑のボムは、消えずに通常のマジカルボムへ変化する
+    guardianBombs.forEach(b=>{
+      if(tsums.includes(b)){
+        b.isGuardianBomb = false;
+        markAsBomb(b, 'normal');
+      }
+    });
+    guardianBombs = [];
     if(guardianPullCircle) guardianPullCircle.classList.remove('show');
 
     const darktroopers = tsums.filter(t=> t.type.key==='darktrooper' && !t.isBomb && !(t.ghost || t.popScheduled));
@@ -9208,9 +9221,9 @@
     guardianLukeIntroPlaying = false;
     guardianLukeTransformedKeys = [];
     guardianBombActive = false;
-    guardianBombUsesLeft = 0;
+    guardianBombs = [];
     guardianBombDragging = false;
-    guardianBombTsum = null;
+    guardianBombDragTarget = null;
     guardianBombDragPoint = null;
     if(guardianLukeIntroLayer){ guardianLukeIntroLayer.classList.remove('show'); }
     if(guardianLukeIntroBig){ guardianLukeIntroBig.classList.remove('appear','visible','exit','slashMotion'); guardianLukeIntroBig.innerHTML=''; }
@@ -9300,9 +9313,9 @@
     guardianLukeIntroPlaying = false;
     guardianLukeTransformedKeys = [];
     guardianBombActive = false;
-    guardianBombUsesLeft = 0;
+    guardianBombs = [];
     guardianBombDragging = false;
-    guardianBombTsum = null;
+    guardianBombDragTarget = null;
     guardianBombDragPoint = null;
     if(guardianLukeIntroLayer){ guardianLukeIntroLayer.classList.remove('show'); }
     if(guardianLukeIntroBig){ guardianLukeIntroBig.classList.remove('appear','visible','exit','slashMotion'); guardianLukeIntroBig.innerHTML=''; }
