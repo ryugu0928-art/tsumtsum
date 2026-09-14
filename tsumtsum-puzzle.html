@@ -3482,7 +3482,7 @@
   let guardianPullCircle = null;        // ドラッグ中に表示する引き寄せ範囲円のDOM要素
   let guardianBombTotalUses = 0;        // スキル発動中に緑のボムを使った通算回数（5回使い切るとスキル終了）
   const GUARDIAN_BOMB_MAX_TOTAL_USES = 5;
-  const GUARDIAN_BOMB_PULL_RADIUS_TSUM = 8; // 半径8ツム分
+  const GUARDIAN_BOMB_PULL_RADIUS_TSUM = 10; // 半径10ツム分
 
   // 最終決戦フック船長：スキル効果中は「怒ったフック船長」が盤面に出現し、
   // フック船長本体と繋ぐたびに斜めライン消去が発生、消去範囲がどんどん拡大していく。
@@ -6389,12 +6389,14 @@
     buzzTapsLeft = 5;
     buzzTapMode = true;
     boardWrap.classList.add('buzzTapMode');
+    appEl.classList.add('timeStopDimmed'); // タップモード中は盤面全体を暗くし、タップした消去範囲内のツムだけ明るく見せる
     showSkillLabel(`タップして敵を一掃！ 残り${buzzTapsLeft}回`);
   }
 
   function endBuzzTapMode(){
     buzzTapMode = false;
     boardWrap.classList.remove('buzzTapMode');
+    appEl.classList.remove('timeStopDimmed');
     refillIfNeeded();
     finishSkill();
     checkFeverTrigger();
@@ -7252,7 +7254,7 @@
 
   // 老婆を合計80個消したときの、効果時間終了時のおまけ：盤面中央に毒リンゴが出現し、
   // それが弾けると同時に盤面中央付近のツムをまとめて消去する（直径7ツム分の範囲）
-  const QUEEN_BONUS_CLEAR_DIAMETER_TSUM = 14;
+  const QUEEN_BONUS_CLEAR_DIAMETER_TSUM = 8;
   const QUEEN_POISON_APPLE_APPEAR_MS = 1400; // リンゴがゆっくり出現しきるまでの時間（出現し終わると同時に消去が発動する）
   const QUEEN_POISON_APPLE_LEAVE_MS = 380;  // リンゴが弾けて消えるアニメーションの長さ
   function spawnQueenPoisonApple(center){
@@ -7562,7 +7564,7 @@
   // 野獣：画面右上から左下へ鋭い爪で引っ掻き、斜めライン状（5ツム分ほどの幅）にツムを消去する。
   // ボムも巻き込んで消去でき、発動中（引っ掻き演出〜消去）は盤面の時間を完全に停止する。
   const BEAST_CLAW_ANIM_MS = 650;   // 爪が引っ掻く演出の時間
-  const BEAST_BAND_HALF_RATIO = 3.5; // 斜め帯の半幅（tsumRadius基準）。以前より幅広に。
+  const BEAST_BAND_HALF_RATIO = 4; // 斜め帯の半幅（tsumRadius基準）。以前より幅広に。
   const BEAST_LINE_ANGLE_DEG = 35;   // 斜めラインの角度（鉛直から何度傾けるか）。右上→左下の対角に近い角度。
   const BEAST_LINE_X_OFFSET_RATIO = 0.7; // 斜めラインの基準点を盤面中央から右へずらす量（tsumRadius基準）
   function skillBeastClaw(){
@@ -8374,14 +8376,14 @@
     markAsBomb(t, bombType || 'normal');
   }
 
-  function detonateBomb(bombTsum){
-    if(!gameActive || skillActive || gamePaused) return;
+  function detonateBomb(bombTsum, onDone){
+    if(!gameActive || skillActive || gamePaused) { if(onDone) onDone(); return; }
     // 爆発演出中（removeTsumで配列からは消えているがDOM要素はまだ300ms残っている間）に、
     // 連打やチェーンで同じボムへ再度触れてしまうと、この関数が二重に実行され、
     // スコアやコイン・エフェクトが二重発生したり、最悪DOM要素の削除タイミングがずれて
     // 「消えずに残ってもう一回使える」ように見える不具合につながる。
     // detonating フラグを立てて即座にガードすることで、同じボムへの二重発火を防ぐ。
-    if(bombTsum.detonating) return;
+    if(bombTsum.detonating) { if(onDone) onDone(); return; }
     bombTsum.detonating = true;
     bombTsum.el.style.pointerEvents = 'none';
     // ボムの爆発は、盤面上で消去演出待ち（幽霊状態）のツムを強制的に0フレームで消し切り、
@@ -8403,6 +8405,7 @@
         bombTsum.el.remove();
         refillIfNeeded([bombTsum.x]);
         checkFeverTrigger();
+        if(onDone) onDone();
       }, 300);
       return;
     }
@@ -8492,6 +8495,7 @@
       bombTsum.el.remove();
       refillIfNeeded(affected.map(t=>t.x).concat([bombTsum.x]));
       checkFeverTrigger();
+      if(onDone) onDone();
     }, 300);
   }
 
@@ -9281,7 +9285,43 @@
     timeLeft--;
     timeVal.textContent = timeLeft;
     if(timeLeft<=10) timerBox.classList.add('warn');
-    if(timeLeft<=0) endGame();
+    if(timeLeft<=0) beginTimeUpSequence();
+  }
+
+  // タイムアップの瞬間に「つないでいる途中のツム」や「盤面に残ったボム」を後始末してから終了する。
+  // ・つないでいる途中のツムがあれば、通常に指を離した時と同じ処理（endSelection）で最後まで消す。
+  // ・盤面に残った通常のボム（マジカルボム等）は、1個ずつ順番に自動でタップされたように起動する
+  //   （同時に全部起爆するのではなく、演出が見えるよう少し間を空けて丁寧に処理する）。
+  //   緑のガーディアンボムは専用のドラッグ操作でしか起動できない特殊なボムのため、ここでは対象外とする。
+  function beginTimeUpSequence(){
+    clearInterval(timerHandle);
+    clearTimeout(timerResumeTimeout);
+
+    const afterChain = ()=>{
+      const bombs = tsums.filter(t=> t.isBomb && !t.isGuardianBomb && !t.detonating && !(t.ghost || t.popScheduled));
+      detonateBombsSequentially(bombs, 0, ()=> endGame());
+    };
+
+    if(selecting && selectedPath.length>0){
+      endSelection();
+      // なぞり消去のポップ演出が完了するまで少し待ってから、ボムの後始末に進む
+      setTimeout(afterChain, 400);
+    } else {
+      afterChain();
+    }
+  }
+
+  // ボムを1個ずつ順番に自動起動する（前のボムの演出が終わってから次を起動する）
+  function detonateBombsSequentially(bombs, index, onAllDone){
+    if(index>=bombs.length){ onAllDone(); return; }
+    const b = bombs[index];
+    if(!tsums.includes(b) || b.detonating){
+      detonateBombsSequentially(bombs, index+1, onAllDone);
+      return;
+    }
+    detonateBomb(b, ()=>{
+      setTimeout(()=> detonateBombsSequentially(bombs, index+1, onAllDone), 150);
+    });
   }
 
   function endGame(opts){
