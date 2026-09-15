@@ -390,6 +390,22 @@
     transform:scale(1.14);
     box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 4px #fff, 0 0 0 7px var(--rope), 0 4px 10px rgba(0,0,0,0.2);
   }
+  /* 指で押している（なぞっている）ツムから、次につながる候補のツムを白っぽくハイライトする */
+  .tsum.connectable .face{
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 3px rgba(255,255,255,0.9), 0 4px 8px rgba(0,0,0,0.15);
+  }
+  .tsum.connectable .face::after{
+    content:'';
+    position:absolute; inset:0;
+    border-radius:50%;
+    background:rgba(255,255,255,0.35);
+    pointer-events:none;
+    animation:connectablePulse 0.9s ease-in-out infinite;
+  }
+  @keyframes connectablePulse{
+    0%,100%{ opacity:0.35; }
+    50%{ opacity:0.6; }
+  }
   .tsum.mytsum .face{
     box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), inset 0 5px 8px rgba(255,255,255,0.5), 0 0 0 3px #fff8, 0 4px 8px rgba(0,0,0,0.2);
   }
@@ -1680,6 +1696,7 @@
     box-shadow:inset 0 2px 3px rgba(255,255,255,0.8), 0 2px 0 rgba(20,90,120,0.25);
     min-width:0;
   }
+  .homeCurrencyCoin{ flex:1.4; } /* コインは桁数が大きくなりやすいので、他の通貨より幅を広めに確保する */
   .curIcon{
     width:22px; height:22px; border-radius:50%; flex-shrink:0;
     box-shadow:0 0 0 2px rgba(255,255,255,0.7);
@@ -1687,7 +1704,7 @@
   .curGem{ background:radial-gradient(circle at 35% 30%,#e9d9ff,#9b6bff 60%,#6a3fd0); }
   .curCoin{ background:radial-gradient(circle at 35% 30%,#fff6c0,#ffd23f 55%,#e0ac00); }
   .curRuby{ background:radial-gradient(circle at 35% 30%,#ffc9d6,#ff6fa5 55%,#c93066); }
-  .homeCurrency .curVal{ font-weight:900; color:#2a5a75; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .homeCurrency .curVal{ font-weight:900; color:#2a5a75; font-size:14px; overflow:visible; text-overflow:clip; white-space:nowrap; flex-shrink:0; }
   .curPlusBtn{
     margin-left:auto; width:18px; height:18px; border-radius:50%; flex-shrink:0;
     background:linear-gradient(160deg,#ffe27a,#ffb400);
@@ -2556,7 +2573,7 @@
           <span class="curVal" id="homeGemVal">0</span>
           <span class="curPlusBtn">＋</span>
         </div>
-        <div class="homeCurrency">
+        <div class="homeCurrency homeCurrencyCoin">
           <span class="curIcon curCoin"></span>
           <span class="curVal" id="homeCoinVal">0</span>
           <span class="curPlusBtn">＋</span>
@@ -3496,7 +3513,7 @@
   const HOOK_RETURN_TO_CENTER_MS = 120; // 怒ったフック船長が画面中央へ戻るアニメーションの時間（.tsumのtransform transitionに合わせて少し余裕を持たせる）
   const HOOK_CUT_ANIM_MS = 900;   // 斜めに切るアニメーションの時間
   const HOOK_GROW_ANIM_MS = 850;  // 消去後、怒ったフック船長が大きくなるアニメーションの時間
-  const HOOK_LINE_ANGLE_DEG = 22; // 斜めラインの角度（鉛直から何度傾けるか）。小さいほど縦寄りになる。
+  const HOOK_LINE_ANGLE_DEG = 30; // 斜めラインの角度（鉛直から何度傾けるか）。小さいほど縦寄りになる。
   const HOOK_LINE_X_OFFSET_RATIO = 0.7; // 怒ったフック船長の出現位置（＝斜めラインの基準点）を盤面中央から右へずらす量（tsumRadius基準）
   let HOOK_ANGRY_INITIAL_R = 0;   // 怒ったフック船長の出現直後（初期）の半径。成長比率の基準にする。
   let HOOK_BAND_BASE = 0;         // 初期半径のときの消去帯の半幅（初期基準値）。成長比率と同じ比率で拡大させる。
@@ -4986,17 +5003,22 @@
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  // maxDistRatio: そのツム自身の半径(t.r)に対する割合で判定距離を決める。
+  // maxDistRatio: 判定距離を決める基準となる半径に対する割合。
   // 1.0に近いほど「ツムの見た目のふちギリギリまで」なぞり判定に含まれる。
-  function findTsumNear(x, y, maxDistRatio){
+  // fromR: なぞりの起点（現在つながっている末尾のツム）の半径。指定した場合、
+  // 候補ツム自身の半径(t.r)とfromRの大きい方を基準にすることで、
+  // 「大ツム→通常ツム」のように大きい方から小さい方へつなぐ場合でも、
+  // 大ツムのサイズ分だけ判定距離が広がり、感覚的に自然な距離でつなげられるようにする。
+  function findTsumNear(x, y, maxDistRatio, fromR){
     let best = null, bestD = Infinity;
     for(const t of tsums){
       if(t.isBomb || (t.ghost || t.popScheduled)) continue;
       const dx = t.x - x, dy = t.y - y;
       const d = Math.sqrt(dx*dx + dy*dy);
       // 大ツムや成長した怒ったフック船長など、ツムごとに実際の大きさ(t.r)が違うため、
-      // 固定距離ではなく各ツム自身の半径を基準にした判定距離を使う。
-      const maxDist = t.r * maxDistRatio;
+      // 固定距離ではなく、候補ツムの半径・起点の半径のうち大きい方を基準にした判定距離を使う。
+      const baseR = fromR!=null ? Math.max(t.r, fromR) : t.r;
+      const maxDist = baseR * maxDistRatio;
       if(d < maxDist && d < bestD){
         bestD = d; best = t;
       }
@@ -5016,16 +5038,17 @@
       const dx = p.x - lastPointerPoint.x, dy = p.y - lastPointerPoint.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
       const steps = Math.min(48, Math.max(1, Math.ceil(dist / (tsumRadius*0.3))));
+      const fromR = selectedPath.length>0 ? selectedPath[selectedPath.length-1].r : null;
       for(let i=1; i<=steps; i++){
         const sx = lastPointerPoint.x + dx*(i/steps);
         const sy = lastPointerPoint.y + dy*(i/steps);
         // ツムの見た目の縁を少し超えたあたりまでなぞり判定に含め、
         // 指が多少ズレても拾いやすくする（つながる距離＝linkRangeは変更しない）
-        const t = findTsumNear(sx, sy, 1.15);
+        const t = findTsumNear(sx, sy, 1.15, fromR);
         if(t) tryAddToSelection(t);
       }
     } else {
-      const t = findTsumNear(p.x, p.y, 1.15);
+      const t = findTsumNear(p.x, p.y, 1.15, null);
       if(t) tryAddToSelection(t);
     }
     lastPointerPoint = p;
@@ -5067,6 +5090,7 @@
     if(t.type.key==='hook' || t.type.key==='hookAngry') t.el.classList.add('hookLinkable');
     updateRope();
     updateLinkCount();
+    updateConnectableHighlight();
   }
 
   // ナミネとソラは互いに「同じ種類」とみなして自由に（離れていても）つなげられる特殊ペア
@@ -5085,6 +5109,42 @@
     return keyA===keyB || isNamineSoraPair(keyA, keyB) || isHookPair(keyA, keyB);
   }
 
+  // 現在なぞっている末尾のツムから、次に指を動かせばつながる候補のツムを判定し、
+  // それらのツムだけ白っぽくハイライト表示する（実際につなぐ処理は行わない、見た目専用の判定）。
+  let connectableHighlighted = [];
+  function isConnectableCandidate(t, last){
+    if(selectedPath.includes(t)) return false;
+    if(!sameChainType(t.type.key, last.type.key)) return false;
+    if(isNamineSoraPair(t.type.key, last.type.key) || isHookPair(t.type.key, last.type.key)) return true;
+    if(isOldHagPair(t.type.key, last.type.key)){
+      const dxh = t.x - last.x, dyh = t.y - last.y;
+      return Math.sqrt(dxh*dxh+dyh*dyh) <= t.r*OLDHAG_LINK_RANGE_MULT;
+    }
+    const dx = t.x - last.x, dy = t.y - last.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const linkRange = t.r*3.4*(sallyActive ? SALLY_LINK_RANGE_MULT/3.4 : 1);
+    return dist <= linkRange;
+  }
+
+  function updateConnectableHighlight(){
+    connectableHighlighted.forEach(t=> t.el.classList.remove('connectable'));
+    connectableHighlighted = [];
+    if(!selecting || selectedPath.length===0) return;
+    const last = selectedPath[selectedPath.length-1];
+    for(const t of tsums){
+      if(t.isBomb || (t.ghost || t.popScheduled)) continue;
+      if(isConnectableCandidate(t, last)){
+        t.el.classList.add('connectable');
+        connectableHighlighted.push(t);
+      }
+    }
+  }
+
+  function clearConnectableHighlight(){
+    connectableHighlighted.forEach(t=> t.el.classList.remove('connectable'));
+    connectableHighlighted = [];
+  }
+
   function tryAddToSelection(t){
     if(!sameChainType(t.type.key, selectedType)) return;
     const len = selectedPath.length;
@@ -5092,7 +5152,7 @@
       const removed = selectedPath.pop();
       removed.selected = false;
       removed.el.classList.remove('selected','namineLinkable','hookLinkable','sallyLinkable');
-      updateRope(); updateLinkCount();
+      updateRope(); updateLinkCount(); updateConnectableHighlight();
       return;
     }
     if(selectedPath.includes(t)) return;
@@ -5103,7 +5163,7 @@
       t.selected = true;
       t.vx = 0; t.vy = 0;
       t.el.classList.add('selected', isHookPair(t.type.key, last.type.key) ? 'hookLinkable' : 'namineLinkable');
-      updateRope(); updateLinkCount();
+      updateRope(); updateLinkCount(); updateConnectableHighlight();
       return;
     }
     // 老婆同士は少し離れていてもつながるが、無制限ではなく一定距離までに制限する
@@ -5115,7 +5175,7 @@
         t.selected = true;
         t.vx = 0; t.vy = 0;
         t.el.classList.add('selected','namineLinkable');
-        updateRope(); updateLinkCount();
+        updateRope(); updateLinkCount(); updateConnectableHighlight();
       }
       return;
     }
@@ -5133,7 +5193,7 @@
       if(t.type.key==='hook' || t.type.key==='hookAngry') t.el.classList.add('hookLinkable');
       if(t.type.key==='oldhag') t.el.classList.add('namineLinkable');
       if(sallyActive) t.el.classList.add('sallyLinkable');
-      updateRope(); updateLinkCount();
+      updateRope(); updateLinkCount(); updateConnectableHighlight();
     }
   }
 
@@ -5180,6 +5240,7 @@
   function endSelection(){
     selecting = false;
     lastPointerPoint = null;
+    clearConnectableHighlight();
     const path = selectedPath;
     selectedPath = [];
     selectedType = null;
@@ -9490,6 +9551,10 @@
     showHomeOverlay();
   });
   homeSettingsBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    patchNotesOverlay.classList.add('show');
+  });
+  itemSettingsBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     patchNotesOverlay.classList.add('show');
   });
